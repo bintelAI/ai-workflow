@@ -31,4 +31,4 @@ export const DataOpConfig: React.FC<DataOpConfigProps> = ({ config, onConfigChan
             </div>
         </div>
     );
-}
+};

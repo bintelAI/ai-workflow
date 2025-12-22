@@ -393,15 +393,17 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
 
     const handleTestAPI = async () => {
         setTestResult({ status: 'testing' });
+        const startTime = Date.now();
         
         try {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
             // Parse test input
-            let inputData = {};
+            let inputData: Record<string, any> = {};
             if (testInput) {
-                inputData = JSON.parse(testInput);
+                try {
+                    inputData = JSON.parse(testInput);
+                } catch (e) {
+                    throw new Error('测试输入必须是有效的 JSON 格式');
+                }
             }
             
             // Helper function to replace variables in strings
@@ -411,11 +413,12 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
                     const trimmedName = variableName.trim();
                     // Check if variable exists in input data
                     if (trimmedName in inputData) {
-                        return inputData[trimmedName];
+                        const val = inputData[trimmedName];
+                        return typeof val === 'object' ? JSON.stringify(val) : String(val);
                     }
                     // Check if variable is "payload"
                     if (trimmedName === 'payload') {
-                        return inputData;
+                        return JSON.stringify(inputData);
                     }
                     // Return original match if variable not found
                     return match;
@@ -423,7 +426,9 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
             };
             
             // Build URL with query parameters
-            let url = localConfig.url || 'https://api.example.com';
+            let url = localConfig.url || '';
+            if (!url) throw new Error('请输入请求 URL');
+            
             url = replaceVariables(url);
             
             const enabledQueryParams = localConfig.queryParams.filter(param => param.enabled);
@@ -440,26 +445,89 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
             // Process headers
             const enabledHeaders = localConfig.headers.filter(header => header.enabled);
             const headersObj = enabledHeaders.reduce((acc, header) => {
-                acc[replaceVariables(header.key)] = replaceVariables(header.value);
+                if (header.key) {
+                    acc[replaceVariables(header.key)] = replaceVariables(header.value);
+                }
                 return acc;
             }, {} as Record<string, string>);
 
-            // Mock API call response
-            const mockResponse = {
-                status: 200,
-                data: inputData || { success: true, message: 'API调用成功', timestamp: new Date().toISOString() },
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Request-ID': Math.random().toString(36).substring(2, 15),
-                    'X-Server-Time': new Date().toISOString()
-                },
-                responseTime: Math.floor(Math.random() * 500) + 100
-            };
+            // Process Auth
+            if (localConfig.auth.type === 'basic') {
+                const username = replaceVariables(localConfig.auth.username || '');
+                const password = replaceVariables(localConfig.auth.password || '');
+                headersObj['Authorization'] = `Basic ${btoa(`${username}:${password}`)}`;
+            } else if (localConfig.auth.type === 'bearer') {
+                const token = replaceVariables(localConfig.auth.token || '');
+                headersObj['Authorization'] = `Bearer ${token}`;
+            } else if (localConfig.auth.type === 'api_key') {
+                const keyName = replaceVariables(localConfig.auth.apiKeyName || '');
+                const keyValue = replaceVariables(localConfig.auth.apiKey || '');
+                if (localConfig.auth.apiKeyLocation === 'query') {
+                     url += (url.includes('?') ? '&' : '?') + `${encodeURIComponent(keyName)}=${encodeURIComponent(keyValue)}`;
+                } else {
+                    headersObj[keyName] = keyValue;
+                }
+            }
 
-            setTestResult({
-                status: 'success',
-                response: mockResponse
-            });
+            // Process Body
+            let body: BodyInit | null = null;
+            if (!['GET', 'HEAD', 'OPTIONS'].includes(localConfig.method) && localConfig.bodyType !== 'none') {
+                const rawBody = replaceVariables(localConfig.body || '');
+                body = rawBody;
+                
+                if (localConfig.bodyType === 'json') {
+                    if (!headersObj['Content-Type']) {
+                        headersObj['Content-Type'] = 'application/json';
+                    }
+                } else if (localConfig.bodyType === 'x-www-form-urlencoded') {
+                     if (!headersObj['Content-Type']) {
+                        headersObj['Content-Type'] = 'application/x-www-form-urlencoded';
+                    }
+                }
+            }
+
+            // Timeout handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), localConfig.timeout || 30000);
+
+            try {
+                const response = await fetch(url, {
+                    method: localConfig.method,
+                    headers: headersObj,
+                    body: body,
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+
+                const responseTime = Date.now() - startTime;
+                const responseHeaders: Record<string, string> = {};
+                response.headers.forEach((value, key) => {
+                    responseHeaders[key] = value;
+                });
+
+                // Try to parse body as text first, then JSON
+                const responseText = await response.text();
+                let responseData: any = responseText;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (e) {
+                    // Not JSON, keep as text
+                }
+
+                setTestResult({
+                    status: 'success',
+                    response: {
+                        status: response.status,
+                        data: responseData,
+                        headers: responseHeaders,
+                        responseTime
+                    }
+                });
+            } catch (fetchError: any) {
+                clearTimeout(timeoutId);
+                throw fetchError;
+            }
         } catch (error) {
             setTestResult({
                 status: 'error',

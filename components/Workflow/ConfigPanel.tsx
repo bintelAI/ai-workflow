@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useWorkflowStore, DEFAULT_DEV_INPUT } from './store/useWorkflowStore';
+import { useWorkflowStore, DEFAULT_DEV_INPUT } from "./store/useWorkflowStore";
 import { WorkflowNodeType } from '../../types';
-import { ConfigPanelProps, NodeConfigProps } from './Workflow.types';
 import { 
     X, Save, Trash2, Sparkles, Loader2, Wand2, Braces, Bug,
     Plus, Split, ChevronRight, ChevronDown,
-    PlayCircle, FileText, Hash, ToggleLeft, Calendar, LayoutList, Box, Repeat, ListPlus
+    PlayCircle, FileText, Hash, ToggleLeft, Calendar,
+    LayoutList, Box, Repeat, ListPlus
 } from 'lucide-react';
-import styles from './ConfigPanel.module.css';
 
 // Import configuration components
 import { LoopConfig } from './configs/LoopConfig';
@@ -314,11 +313,7 @@ const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
     );
 };
 
-/**
- * 节点配置面板组件
- * 用于配置选中节点的属性和高级设置
- */
-export const ConfigPanel: React.FC = () => {
+const ConfigPanel: React.FC = () => {
   const { nodes, selectedNodeId, updateNodeData, setSelectedNode, deleteNode, aiAutocompleteConfig } = useWorkflowStore();
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
   const [loadingField, setLoadingField] = useState<string | null>(null);
@@ -351,10 +346,8 @@ export const ConfigPanel: React.FC = () => {
   };
 
   const handleConfigChange = (key: string, value: any) => {
-    // 获取最新的节点数据，而不是闭包中的旧数据
-    const currentNode = nodes.find((n) => n.id === selectedNodeId);
-    const currentConfig = currentNode?.data.config || {};
-    updateNodeData(selectedNodeId, {
+    const currentConfig = selectedNode.data.config || {};
+    updateNodeData(selectedNode.id, {
       config: { ...currentConfig, [key]: value }
     });
   };
@@ -411,7 +404,7 @@ export const ConfigPanel: React.FC = () => {
 
   return (
     <aside 
-        className={`${styles.configPanel} relative group`}
+        className="bg-white border-l border-slate-200 h-full flex flex-col shadow-xl z-20 relative group"
         style={{ width: panelWidth }}
     >
       <div 
@@ -435,24 +428,24 @@ export const ConfigPanel: React.FC = () => {
           <div className="p-5 overflow-y-auto space-y-6">
             <div className="space-y-4">
               <div>
-                <label className={styles.label}>节点名称</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">节点名称</label>
                 <input
                   type="text"
                   value={selectedNode.data.label}
                   onChange={(e) => handleChange('label', e.target.value)}
-                  className={styles.input}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                 />
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1">
-                    <label className={styles.label}>描述</label>
+                    <label className="block text-sm font-medium text-slate-700">描述</label>
                     <AIButton field="description" />
                 </div>
                 <textarea
                   rows={2}
                   value={selectedNode.data.description || ''}
                   onChange={(e) => handleChange('description', e.target.value)}
-                  className={`${styles.textarea} resize-none`}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
                 />
               </div>
             </div>
@@ -486,3 +479,4 @@ export const ConfigPanel: React.FC = () => {
   );
 };
 
+export default ConfigPanel;

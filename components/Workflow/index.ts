@@ -5,7 +5,7 @@ export { WorkflowApp } from './WorkflowApp';
 
 // 工作流主组件
 export { WorkflowCanvas } from './WorkflowCanvas';
-export { ConfigPanel } from './ConfigPanel';
+export { default as ConfigPanel } from './ConfigPanel';
 export { Sidebar } from './Sidebar';
 export { AICommandCenter } from './AICommandCenter';
 export { DataDrawer } from './DataDrawer';
