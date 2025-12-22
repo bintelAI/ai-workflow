@@ -19,7 +19,7 @@ const App: React.FC = () => {
   };
 
   const handleOpenDrawer = () => {
-      runSimulation();
+      // runSimulation(); // 移除自动运行，改为手动触发
       toggleDrawer(true);
   };
 

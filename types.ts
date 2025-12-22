@@ -177,7 +177,7 @@ export interface WorkflowStoreState {
 
   // Simulation Actions
   toggleDrawer: (isOpen?: boolean) => void;
-  runSimulation: (customInput?: string) => void; 
+  runSimulation: (customInput?: string) => Promise<void>; 
   resetSimulation: () => void; 
   
   // --- NEW: Node Output Actions ---
