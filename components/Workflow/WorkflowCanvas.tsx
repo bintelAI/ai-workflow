@@ -26,12 +26,14 @@ import {
   ScriptNode, 
   ParallelNode, 
   LLMNode, 
-  LoopNode 
+  LoopNode,
+  SQLNode,
+  KnowledgeRetrievalNode,
+  DocumentExtractorNode
 } from './nodes'; // Import all node components
 import { CustomEdge } from './edges/CustomEdge';
 import { WorkflowNodeType } from '../../types';
 import { WorkflowCanvasProps } from './Workflow.types';
-import styles from './WorkflowCanvas.module.css';
 import { 
   CheckSquare, 
   GitFork, 
@@ -44,7 +46,9 @@ import {
   X,
   GitMerge,
   Bot,
-  Repeat // Loop Icon
+  Repeat, // Loop Icon
+  BookOpen,
+  FileText
 } from 'lucide-react';
 
 // Register custom node types
@@ -62,6 +66,9 @@ const nodeTypes: NodeTypes = {
   [WorkflowNodeType.SCRIPT]: ScriptNode,
   [WorkflowNodeType.LLM]: LLMNode,
   [WorkflowNodeType.LOOP]: LoopNode,
+  [WorkflowNodeType.SQL]: SQLNode,
+  [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: KnowledgeRetrievalNode,
+  [WorkflowNodeType.DOCUMENT_EXTRACTOR]: DocumentExtractorNode,
 };
 
 // Register custom edge types
@@ -71,7 +78,7 @@ const edgeTypes: EdgeTypes = {
 
 const getLabelForType = (type: WorkflowNodeType) => {
     switch (type) {
-        case WorkflowNodeType.LOOP: return '循环执行';
+        case WorkflowNodeType.LOOP: return '循环迭代';
         case WorkflowNodeType.START: return '开始节点';
         case WorkflowNodeType.END: return '结束节点';
         case WorkflowNodeType.APPROVAL: return '审批节点';
@@ -84,6 +91,9 @@ const getLabelForType = (type: WorkflowNodeType) => {
         case WorkflowNodeType.DATA_OP: return '数据操作';
         case WorkflowNodeType.SCRIPT: return '脚本代码';
         case WorkflowNodeType.LLM: return 'LLM 模型';
+        case WorkflowNodeType.SQL: return 'SQL 节点';
+        case WorkflowNodeType.KNOWLEDGE_RETRIEVAL: return '知识库检索';
+        case WorkflowNodeType.DOCUMENT_EXTRACTOR: return '文档提取器';
         default: return '新节点';
     }
 }
@@ -106,11 +116,19 @@ const NodeAddMenu = () => {
   const position = edgeMenu.isOpen ? edgeMenu.position : nodeMenu.position;
   const isInsertMode = edgeMenu.isOpen;
 
+  const { flowToScreenPosition } = useReactFlow();
+
   if (!isOpen || !position) return null;
+
+  // Convert flow position to screen position for absolute positioning
+  const screenPos = flowToScreenPosition(position);
 
   const quickAddOptions = [
     { type: WorkflowNodeType.LLM, label: 'LLM 模型', icon: Bot, color: 'text-fuchsia-500' },
-    { type: WorkflowNodeType.LOOP, label: '循环执行', icon: Repeat, color: 'text-indigo-600' }, // Added Loop
+    { type: WorkflowNodeType.KNOWLEDGE_RETRIEVAL, label: '知识检索', icon: BookOpen, color: 'text-sky-600' },
+    { type: WorkflowNodeType.DOCUMENT_EXTRACTOR, label: '文档提取', icon: FileText, color: 'text-amber-600' },
+    { type: WorkflowNodeType.SQL, label: 'SQL 节点', icon: Database, color: 'text-indigo-500' },
+    { type: WorkflowNodeType.LOOP, label: '循环迭代', icon: Repeat, color: 'text-indigo-600' }, // Added Loop
     { type: WorkflowNodeType.APPROVAL, label: '审批', icon: CheckSquare, color: 'text-blue-500' },
     { type: WorkflowNodeType.CONDITION, label: '条件', icon: GitFork, color: 'text-amber-500' },
     { type: WorkflowNodeType.PARALLEL, label: '并行', icon: GitMerge, color: 'text-teal-500' },
@@ -141,10 +159,10 @@ const NodeAddMenu = () => {
 
   return (
     <div 
-      className="absolute z-50 bg-white rounded-lg shadow-xl border border-slate-200 w-64 animate-in fade-in zoom-in-95 duration-100 origin-top-left"
+      className="fixed z-[9999] bg-white rounded-lg shadow-xl border border-slate-200 w-64 animate-in fade-in zoom-in-95 duration-100 origin-top-left"
       style={{
-        left: position.x,
-        top: position.y,
+        left: screenPos.x,
+        top: screenPos.y,
         // Removed translate(-50%) to allow bottom-right positioning from anchor point
       }}
       ref={menuRef}
@@ -153,7 +171,7 @@ const NodeAddMenu = () => {
       <div className="flex items-center justify-between p-2 border-b border-slate-100">
          <div className="flex flex-col">
             <span className="text-xs font-semibold text-slate-500 px-2">
-                {isInsertMode ? '插入节点' : '添加后续节点'}
+                {isInsertMode ? '插入节点' : (nodeMenu.sourceNodeId ? '添加后续节点' : '添加内部节点')}
             </span>
             <span className="text-[10px] text-indigo-400 px-2 truncate max-w-[200px]">
                 模式: {activeCategory?.name}
@@ -226,8 +244,16 @@ const WorkflowCanvasInner: React.FC = () => {
         y: event.clientY - reactFlowBounds.top,
       });
 
-      // Default Parallel/Loop Config
+      // Default Descriptions and Configs
+      let description = '新添加的节点';
       let config = {};
+
+      if (type === WorkflowNodeType.KNOWLEDGE_RETRIEVAL) {
+        description = '添加知识库检索';
+      } else if (type === WorkflowNodeType.DOCUMENT_EXTRACTOR) {
+        description = '从文档中提取内容';
+      }
+
       if (type === WorkflowNodeType.PARALLEL) {
           config = { branches: ['分支 1', '分支 2'] };
       }
@@ -242,7 +268,7 @@ const WorkflowCanvasInner: React.FC = () => {
         style: type === WorkflowNodeType.LOOP ? { width: 350, height: 250 } : undefined, // Default size for Loop
         data: { 
             label: getLabelForType(type),
-            description: '新添加的节点',
+            description,
             config 
         },
       };
@@ -320,8 +346,6 @@ const WorkflowCanvasInner: React.FC = () => {
  */
 export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = () => {
   return (
-    <ReactFlowProvider>
-      <WorkflowCanvasInner />
-    </ReactFlowProvider>
+    <WorkflowCanvasInner />
   );
 };

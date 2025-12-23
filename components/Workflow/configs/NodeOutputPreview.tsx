@@ -102,6 +102,18 @@ export const NodeOutputPreview: React.FC<NodeOutputPreviewProps> = ({ node }) =>
             case WorkflowNodeType.CC:
                  return [{ name: 'status', type: 'string', description: '抄送状态' }];
                  
+            case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
+                return [
+                    { name: 'result', type: 'string', description: '检索到的最相关内容文本 (Retrieved Result)' },
+                    { name: 'context', type: 'string', description: '格式化的上下文内容 (Formatted Context)' },
+                    { name: 'references', type: 'array', description: '引用分段列表 (References/Segments)' }
+                ];
+
+            case WorkflowNodeType.DOCUMENT_EXTRACTOR:
+                return [
+                    { name: 'text', type: 'string', description: '从文档中提取的纯文本内容 (Extracted Text)' }
+                ];
+
             case WorkflowNodeType.END:
                 return []; // End nodes don't produce outputs for other nodes
 

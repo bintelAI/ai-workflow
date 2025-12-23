@@ -18,6 +18,9 @@ import { NotificationConfig } from './configs/NotificationConfig';
 import { ApprovalConfig } from './configs/ApprovalConfig';
 import { DataOpConfig } from './configs/DataOpConfig';
 import { CCConfig } from './configs/CCConfig';
+import { SQLConfig } from './configs/SQLConfig';
+import KnowledgeRetrievalConfig from './configs/KnowledgeRetrievalConfig';
+import DocumentExtractorConfig from './configs/DocumentExtractorConfig';
 import { NodeOutputPreview } from './configs/NodeOutputPreview';
 
 // Import common components from configs/common.tsx
@@ -90,6 +93,12 @@ const ConfigPanel: React.FC = () => {
               return <DataOpConfig config={config} onConfigChange={handleConfigChange} />;
           case WorkflowNodeType.CC:
               return <CCConfig config={config} onConfigChange={handleConfigChange} />;
+          case WorkflowNodeType.SQL:
+              return <SQLConfig config={config} onConfigChange={handleConfigChange} />;
+          case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
+              return <KnowledgeRetrievalConfig config={config} onConfigChange={handleConfigChange} />;
+          case WorkflowNodeType.DOCUMENT_EXTRACTOR:
+              return <DocumentExtractorConfig config={config} onConfigChange={handleConfigChange} />;
           default:
               return (
                  <div className="p-3 bg-slate-50 rounded border border-slate-100 text-xs text-slate-500 flex items-center gap-2">

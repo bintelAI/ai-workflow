@@ -44,10 +44,10 @@ export const CustomEdge: React.FC<EdgeProps> = ({
         y: evt.clientY
     });
     
-    // Add offset to position the menu at bottom-right of the click point
+    // Add offset to position the menu to the right of the plus button
     const menuPosition = {
-        x: position.x + 15, 
-        y: position.y + 15  
+        x: position.x + 25, 
+        y: position.y - 20  
     };
 
     openEdgeMenu(id, menuPosition, source, target);

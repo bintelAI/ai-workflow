@@ -102,6 +102,7 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
         isOpen: false,
         sourceNodeId: null,
         position: null,
+        parentNodeId: null, // Add parentNodeId to support adding to loop
       },
       
       isDrawerOpen: false,
@@ -311,6 +312,14 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
         };
 
         let label = getNodeLabel(nodeType);
+        let description = '插入的新节点';
+
+        if (nodeType === WorkflowNodeType.KNOWLEDGE_RETRIEVAL) {
+            description = '添加知识库检索';
+        } else if (nodeType === WorkflowNodeType.DOCUMENT_EXTRACTOR) {
+            description = '从文档中提取内容';
+        }
+
         let config: any = {};
         if (nodeType === WorkflowNodeType.PARALLEL) {
             config = { branches: ['分支 1', '分支 2'] };
@@ -329,14 +338,19 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
           parentNode: (sourceNode.parentNode === targetNode.parentNode) ? sourceNode.parentNode : undefined,
           extent: (sourceNode.parentNode === targetNode.parentNode && sourceNode.parentNode) ? "parent" : undefined,
           style: nodeType === WorkflowNodeType.LOOP ? { width: 350, height: 250 } : undefined,
-          data: { label, description: '插入的新节点', config },
+          data: { label, description, config },
         };
+
+        let sourceHandle = oldEdge?.sourceHandle;
+        if (sourceNode.type === WorkflowNodeType.LOOP && !sourceHandle) {
+            sourceHandle = 'loop-output';
+        }
 
         const newEdge1 = {
           id: `e${edgeMenu.sourceId}-${newNodeId}`,
           source: edgeMenu.sourceId,
           target: newNodeId,
-          sourceHandle: oldEdge?.sourceHandle,
+          sourceHandle: sourceHandle,
           type: 'custom',
           animated: true,
           markerEnd: { type: MarkerType.ArrowClosed }
@@ -347,11 +361,17 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
             sourceHandleForSecondEdge = 'branch-0'; 
         }
 
+        let targetHandleForSecondEdge: string | undefined = undefined;
+        if (targetNode.type === WorkflowNodeType.LOOP) {
+            targetHandleForSecondEdge = 'loop-input';
+        }
+
         const newEdge2 = {
           id: `e${newNodeId}-${edgeMenu.targetId}`,
           source: newNodeId,
           target: edgeMenu.targetId,
           sourceHandle: sourceHandleForSecondEdge,
+          targetHandle: targetHandleForSecondEdge,
           type: 'custom',
           animated: true,
           markerEnd: { type: MarkerType.ArrowClosed }
@@ -368,13 +388,15 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
       },
 
       // Node Menu Implementation
-      openNodeAppendMenu: (sourceNodeId, position) => {
+      openNodeAppendMenu: (sourceNodeId, position, parentNodeId, canvasPosition) => {
         get().closeEdgeMenu(); // Ensure edge menu is closed
         set({
             nodeMenu: {
                 isOpen: true,
                 sourceNodeId,
-                position
+                position,
+                canvasPosition: canvasPosition || null,
+                parentNodeId: parentNodeId || null
             }
         });
       },
@@ -387,20 +409,35 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
 
       appendNode: (nodeType) => {
           const { nodeMenu, nodes, edges } = get();
-          if (!nodeMenu.sourceNodeId) return;
+          
+          let newNodePosition = { x: 0, y: 0 };
+          let parentNodeId = nodeMenu.parentNodeId;
+          let sourceNode = null;
 
-          const sourceNode = nodes.find(n => n.id === nodeMenu.sourceNodeId);
-          if (!sourceNode) return;
+          if (nodeMenu.sourceNodeId) {
+              sourceNode = nodes.find(n => n.id === nodeMenu.sourceNodeId);
+              if (sourceNode) {
+                  newNodePosition = {
+                      x: sourceNode.position.x,
+                      y: sourceNode.position.y + 150, 
+                  };
+                  parentNodeId = sourceNode.parentNode || parentNodeId;
+              }
+          } else if (nodeMenu.canvasPosition) {
+              // Use the provided canvas position (already relative if parented)
+              newNodePosition = nodeMenu.canvasPosition;
+          }
 
           const newNodeId = `${nodeType}_${Date.now()}`;
-          
-          // Offset calculation
-          const newNodePosition = {
-              x: sourceNode.position.x,
-              y: sourceNode.position.y + 150, 
-          };
-
           let label = getNodeLabel(nodeType);
+          let description = '追加的新节点';
+          
+          if (nodeType === WorkflowNodeType.KNOWLEDGE_RETRIEVAL) {
+              description = '添加知识库检索';
+          } else if (nodeType === WorkflowNodeType.DOCUMENT_EXTRACTOR) {
+              description = '从文档中提取内容';
+          }
+
           let config: any = {};
           if (nodeType === WorkflowNodeType.PARALLEL) {
               config = { branches: ['分支 1', '分支 2'] };
@@ -414,24 +451,59 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
               type: nodeType,
               position: newNodePosition,
               // Inherit Parent if inside a loop
-              parentNode: sourceNode.parentNode,
-              extent: sourceNode.parentNode ? "parent" : undefined,
+              parentNode: parentNodeId || undefined,
+              extent: parentNodeId ? "parent" : undefined,
               style: nodeType === WorkflowNodeType.LOOP ? { width: 350, height: 250 } : undefined,
-              data: { label, description: '追加的新节点', config },
+              data: { label, description, config },
           };
           
-          const newEdge = {
-              id: `e${nodeMenu.sourceNodeId}-${newNodeId}`,
-              source: nodeMenu.sourceNodeId,
-              target: newNodeId,
-              type: 'custom',
-              animated: true,
-              markerEnd: { type: MarkerType.ArrowClosed }
-          };
+          let newEdges = [...edges];
+          if (nodeMenu.sourceNodeId) {
+              const sourceNode = nodes.find(n => n.id === nodeMenu.sourceNodeId);
+              let sourceHandle = undefined;
+              
+              // If the source is a loop node, default to the main output handle
+              if (sourceNode?.type === WorkflowNodeType.LOOP) {
+                  sourceHandle = 'loop-output';
+              }
+
+              // Determine target handle for the new node if it's a loop
+              let targetHandle = undefined;
+              if (nodeType === WorkflowNodeType.LOOP) {
+                  targetHandle = 'loop-input';
+              }
+
+              const newEdge = {
+                  id: `e${nodeMenu.sourceNodeId}-${newNodeId}`,
+                  source: nodeMenu.sourceNodeId,
+                  sourceHandle: sourceHandle,
+                  target: newNodeId,
+                  targetHandle: targetHandle,
+                  type: 'custom',
+                  animated: true,
+                  markerEnd: { type: MarkerType.ArrowClosed }
+              };
+              newEdges.push(newEdge);
+          } else if (nodeMenu.parentNodeId) {
+              // If added via loop-start plus button, connect loop start handle to new node
+              const parentNode = nodes.find(n => n.id === nodeMenu.parentNodeId);
+              if (parentNode && parentNode.type === WorkflowNodeType.LOOP) {
+                  const newEdge = {
+                      id: `e${nodeMenu.parentNodeId}-start-${newNodeId}`,
+                      source: nodeMenu.parentNodeId,
+                      sourceHandle: 'loop-start',
+                      target: newNodeId,
+                      type: 'custom',
+                      animated: true,
+                      markerEnd: { type: MarkerType.ArrowClosed }
+                  };
+                  newEdges.push(newEdge);
+              }
+          }
 
           set({
               nodes: [...nodes, newNode],
-              edges: [...edges, newEdge],
+              edges: newEdges,
               nodeMenu: { ...nodeMenu, isOpen: false }
           });
       },
@@ -619,6 +691,15 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
         }
       },
 
+      setWorkflow: (nodes, edges, activeCategoryId, categories) => {
+        set((state) => ({ 
+          nodes, 
+          edges,
+          activeCategoryId: activeCategoryId || state.activeCategoryId,
+          categories: categories || state.categories
+        }));
+      },
+
       aiAutocompleteConfig: async (field, context) => {
           await new Promise(resolve => setTimeout(resolve, 800));
           return `AI 智能填充: ${field}`;
@@ -665,7 +746,7 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
 // Helper
 function getNodeLabel(nodeType: WorkflowNodeType): string {
     switch (nodeType) {
-        case WorkflowNodeType.LOOP: return '循环执行';
+        case WorkflowNodeType.LOOP: return '循环迭代';
         case WorkflowNodeType.DELAY: return '延时等待';
         case WorkflowNodeType.DATA_OP: return '数据更新';
         case WorkflowNodeType.SCRIPT: return '脚本代码';
@@ -676,6 +757,8 @@ function getNodeLabel(nodeType: WorkflowNodeType): string {
         case WorkflowNodeType.API_CALL: return 'API 调用';
         case WorkflowNodeType.NOTIFICATION: return '消息通知';
         case WorkflowNodeType.LLM: return 'LLM 模型';
+        case WorkflowNodeType.KNOWLEDGE_RETRIEVAL: return '知识库检索';
+        case WorkflowNodeType.DOCUMENT_EXTRACTOR: return '文档提取器';
         default: return '新节点';
     }
 }

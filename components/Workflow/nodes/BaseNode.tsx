@@ -16,7 +16,9 @@ import {
   Trash2,
   GitMerge,
   Bot,
-  Server
+  Server,
+  BookOpen,
+  FileText
 } from 'lucide-react';
 import { WorkflowNodeType, NodeData } from '../../../types';
 import { useWorkflowStore } from '../store/useWorkflowStore';
@@ -36,6 +38,9 @@ export const getNodeIcon = (type: string) => {
     case WorkflowNodeType.SCRIPT: return <Code className="w-5 h-5 text-slate-700" />;
     case WorkflowNodeType.LLM: return <Bot className="w-5 h-5 text-fuchsia-500" />;
     case WorkflowNodeType.LOOP: return <GitFork className="w-5 h-5 text-purple-500" />;
+    case WorkflowNodeType.SQL: return <Database className="w-5 h-5 text-indigo-500" />;
+    case WorkflowNodeType.KNOWLEDGE_RETRIEVAL: return <BookOpen className="w-5 h-5 text-sky-600" />;
+    case WorkflowNodeType.DOCUMENT_EXTRACTOR: return <FileText className="w-5 h-5 text-amber-600" />;
     default: return <CheckSquare className="w-5 h-5 text-gray-500" />;
   }
 };
@@ -55,7 +60,32 @@ export const getNodeTypeLabel = (type: string) => {
     case WorkflowNodeType.SCRIPT: return '脚本代码';
     case WorkflowNodeType.LLM: return 'LLM 模型';
     case WorkflowNodeType.LOOP: return '循环节点';
+    case WorkflowNodeType.SQL: return 'SQL 节点';
+    case WorkflowNodeType.KNOWLEDGE_RETRIEVAL: return '知识库检索';
+    case WorkflowNodeType.DOCUMENT_EXTRACTOR: return '文档提取器';
     default: return '未知节点';
+  }
+};
+
+export const getNodeIconBgColor = (type: string) => {
+  switch (type) {
+    case WorkflowNodeType.START: return 'bg-emerald-50 border-emerald-100';
+    case WorkflowNodeType.END: return 'bg-rose-50 border-rose-100';
+    case WorkflowNodeType.APPROVAL: return 'bg-blue-50 border-blue-100';
+    case WorkflowNodeType.CC: return 'bg-indigo-50 border-indigo-100';
+    case WorkflowNodeType.CONDITION: return 'bg-amber-50 border-amber-100';
+    case WorkflowNodeType.PARALLEL: return 'bg-teal-50 border-teal-100';
+    case WorkflowNodeType.API_CALL: return 'bg-blue-50 border-blue-100';
+    case WorkflowNodeType.NOTIFICATION: return 'bg-orange-50 border-orange-100';
+    case WorkflowNodeType.DELAY: return 'bg-yellow-50 border-yellow-100';
+    case WorkflowNodeType.DATA_OP: return 'bg-cyan-50 border-cyan-100';
+    case WorkflowNodeType.SCRIPT: return 'bg-slate-50 border-slate-200';
+    case WorkflowNodeType.LLM: return 'bg-fuchsia-50 border-fuchsia-100';
+    case WorkflowNodeType.LOOP: return 'bg-purple-50 border-purple-100';
+    case WorkflowNodeType.SQL: return 'bg-indigo-50 border-indigo-100';
+    case WorkflowNodeType.KNOWLEDGE_RETRIEVAL: return 'bg-sky-50 border-sky-100';
+    case WorkflowNodeType.DOCUMENT_EXTRACTOR: return 'bg-amber-50 border-amber-100';
+    default: return 'bg-slate-50 border-slate-100';
   }
 };
 
@@ -118,13 +148,13 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
     const node = getNode(id);
     if (!node) return;
     
-    // Calculate position for the menu (centered below the node)
+    // Calculate position for the menu (to the right of the plus button)
     const width = node.width || 200;
     const height = node.height || 74; 
     
     const menuPos = {
-        x: node.position.x + width / 2,
-        y: node.position.y + height + 80 // Adjusted for new plus button position
+        x: node.position.x + width / 2 + 20, 
+        y: node.position.y + height + 30 
     };
     
     openNodeAppendMenu(id, menuPos);
@@ -165,7 +195,9 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
 
       {/* Node Header */}
       <div className="flex items-center p-3 border-b border-slate-100 gap-3">
-        <div className={`p-2 rounded-md bg-slate-50 border border-slate-100 transition-colors ${status === 'success' ? 'bg-emerald-50 border-emerald-100' : ''}`}>
+        <div className={`p-2 rounded-md border transition-colors ${
+          status === 'success' ? 'bg-emerald-50 border-emerald-100' : getNodeIconBgColor(type || '')
+        }`}>
           {getNodeIcon(type || '')}
         </div>
         <div className="flex-1 min-w-0">

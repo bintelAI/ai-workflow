@@ -14,7 +14,10 @@ export enum WorkflowNodeType {
   SCRIPT = 'script',
   PARALLEL = 'parallel',
   LLM = 'llm',
+  KNOWLEDGE_RETRIEVAL = 'knowledge_retrieval', // Knowledge Retrieval Node
+  DOCUMENT_EXTRACTOR = 'document_extractor', // Document Extractor Node
   LOOP = 'loop', // Added Loop Node
+  SQL = 'sql',
 }
 
 // API Call Node Configuration Interfaces
@@ -73,10 +76,17 @@ export interface APICallConfig {
   responseHandling: ResponseHandling;
 }
 
+export interface SQLConfig {
+  sql: string;
+  databaseId: string;
+  returnSingleRecord: boolean;
+  unsafeMode: boolean;
+}
+
 export interface NodeData {
   label: string;
   description?: string;
-  config?: APICallConfig | Record<string, any>;
+  config?: APICallConfig | SQLConfig | Record<string, any>;
   icon?: string;
   status?: 'idle' | 'running' | 'completed' | 'error';
 }
@@ -97,7 +107,9 @@ export interface EdgeMenuState {
 export interface NodeMenuState {
   isOpen: boolean;
   sourceNodeId: string | null;
-  position: { x: number; y: number } | null;
+  position: { x: number; y: number } | null; // This is menu display position (screen)
+  canvasPosition?: { x: number; y: number } | null; // This is new node position (canvas)
+  parentNodeId?: string | null;
 }
 
 // Simulation Log Interface
@@ -168,7 +180,7 @@ export interface WorkflowStoreState {
   insertNodeBetween: (nodeType: WorkflowNodeType) => void;
   
   // Node Menu Actions
-  openNodeAppendMenu: (sourceNodeId: string, position: { x: number; y: number }) => void;
+  openNodeAppendMenu: (sourceNodeId: string | null, position: { x: number; y: number }, parentNodeId?: string | null, canvasPosition?: { x: number; y: number }) => void;
   closeNodeMenu: () => void;
   appendNode: (nodeType: WorkflowNodeType) => void;
   
@@ -187,6 +199,9 @@ export interface WorkflowStoreState {
   // AI Actions
   generateWorkflowFromPrompt: (prompt: string) => Promise<void>;
   aiAutocompleteConfig: (field: string, context: string) => Promise<string>;
+
+  // --- NEW: Workflow Management ---
+  setWorkflow: (nodes: WorkflowNode[], edges: WorkflowEdge[], activeCategoryId?: string, categories?: WorkflowCategory[]) => void;
 
   // --- NEW: Settings Actions ---
   toggleSettings: (isOpen?: boolean) => void;

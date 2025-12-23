@@ -4,7 +4,7 @@ import { useWorkflowStore } from './store/useWorkflowStore';
 import { WorkflowNodeType, WorkflowCategory } from '../../types';
 import { 
     X, Plus, Trash2, Check, Settings, Layout, 
-    Bot, CheckSquare, GitFork, GitMerge, Send, Database, Clock, Globe, Bell, Code, PlayCircle, StopCircle, Repeat
+    Bot, CheckSquare, GitFork, GitMerge, Send, Database, Clock, Globe, Bell, Code, PlayCircle, StopCircle, Repeat, BookOpen, FileText
 } from 'lucide-react';
 
 const NODE_META: Record<WorkflowNodeType, { label: string; icon: any; color: string }> = {
@@ -18,9 +18,12 @@ const NODE_META: Record<WorkflowNodeType, { label: string; icon: any; color: str
     [WorkflowNodeType.NOTIFICATION]: { label: '消息通知', icon: Bell, color: 'text-orange-500' },
     [WorkflowNodeType.DELAY]: { label: '延时等待', icon: Clock, color: 'text-yellow-500' },
     [WorkflowNodeType.DATA_OP]: { label: '数据操作', icon: Database, color: 'text-cyan-500' },
+    [WorkflowNodeType.SQL]: { label: 'SQL 节点', icon: Database, color: 'text-indigo-500' },
     [WorkflowNodeType.SCRIPT]: { label: '脚本代码', icon: Code, color: 'text-slate-700' },
     [WorkflowNodeType.LLM]: { label: 'LLM 模型', icon: Bot, color: 'text-fuchsia-500' },
-    [WorkflowNodeType.LOOP]: { label: '循环执行', icon: Repeat, color: 'text-indigo-600' },
+    [WorkflowNodeType.LOOP]: { label: '循环迭代', icon: Repeat, color: 'text-indigo-600' },
+    [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: { label: '知识库检索', icon: BookOpen, color: 'text-sky-600' },
+    [WorkflowNodeType.DOCUMENT_EXTRACTOR]: { label: '文档提取器', icon: FileText, color: 'text-amber-600' },
 };
 
 export const SettingsModal: React.FC = () => {
@@ -73,16 +76,17 @@ export const SettingsModal: React.FC = () => {
     };
 
     const toggleNodeType = (type: WorkflowNodeType) => {
-        const currentTypes = new Set(editForm.allowedNodeTypes || []);
+        const currentTypes = new Set<WorkflowNodeType>(editForm.allowedNodeTypes || []);
         if (currentTypes.has(type)) {
             currentTypes.delete(type);
         } else {
             currentTypes.add(type);
         }
-        setEditForm({ ...editForm, allowedNodeTypes: Array.from(currentTypes) });
+        const updatedTypes = Array.from(currentTypes);
+        setEditForm({ ...editForm, allowedNodeTypes: updatedTypes });
         // Auto save on toggle for better UX
         if (editingId) {
-            updateCategory(editingId, { allowedNodeTypes: Array.from(currentTypes) });
+            updateCategory(editingId, { allowedNodeTypes: updatedTypes });
         }
     };
 
@@ -213,6 +217,7 @@ export const SettingsModal: React.FC = () => {
                             <div className="grid grid-cols-3 gap-3">
                                 {Object.values(WorkflowNodeType).map(type => {
                                     const meta = NODE_META[type];
+                                    if (!meta) return null; // Safety check
                                     const isAllowed = editForm.allowedNodeTypes?.includes(type);
                                     
                                     return (

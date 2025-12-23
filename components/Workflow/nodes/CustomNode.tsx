@@ -102,13 +102,13 @@ const CustomNode = ({ id, data, type, selected, isConnectable }: NodeProps<NodeD
     const node = getNode(id);
     if (!node) return;
     
-    // Calculate position for the menu (centered below the node)
+    // Calculate position for the menu (to the right of the plus button)
     const width = node.width || 200;
     const height = node.height || 74; 
     
     const menuPos = {
-        x: node.position.x + width / 2,
-        y: node.position.y + height + 80 // Adjusted for new plus button position
+        x: node.position.x + width / 2 + 20, 
+        y: node.position.y + height + 30 
     };
     
     openNodeAppendMenu(id, menuPos);
@@ -126,8 +126,9 @@ const CustomNode = ({ id, data, type, selected, isConnectable }: NodeProps<NodeD
   };
 
   // Safe defaults for parallel branches
-  const parallelBranches = data.config?.branches && Array.isArray(data.config.branches) 
-    ? data.config.branches 
+  const config = data.config as any;
+  const parallelBranches = config?.branches && Array.isArray(config.branches) 
+    ? config.branches 
     : ['Branch 1', 'Branch 2'];
 
   return (

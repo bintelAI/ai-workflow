@@ -13,13 +13,21 @@ interface VariableBindModalProps {
     onClose: () => void;
     onSelect: (variable: string) => void;
     currentValue?: string;
+    /**
+     * Optional filter for nodes. 
+     * 'upstream' - show only upstream nodes (default)
+     * 'internal' - show only child nodes of the current node (useful for Loop output)
+     * 'all' - show all nodes
+     */
+    scope?: 'upstream' | 'internal' | 'all';
 }
 
 export const VariableBindModal: React.FC<VariableBindModalProps> = ({ 
     isOpen, 
     onClose, 
     onSelect,
-    currentValue 
+    currentValue,
+    scope = 'upstream'
 }) => {
     const { nodes, edges, selectedNodeId } = useWorkflowStore();
     const [searchTerm, setSearchTerm] = useState('');
@@ -32,7 +40,7 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
     // 1. Start Node Variables
     const startNode = nodes.find(n => n.type === WorkflowNodeType.START);
     const getStartNodeVariables = () => {
-        const devInput = startNode?.data.config?.devInput || DEFAULT_DEV_INPUT;
+        const devInput = (startNode?.data.config as any)?.devInput || DEFAULT_DEV_INPUT;
         let vars: any[] = [];
         try {
             const parsed = JSON.parse(devInput);
@@ -43,46 +51,40 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
         return vars.map(v => ({ ...v, source: 'global', nodeLabel: 'Start Node' }));
     };
 
-    // 2. Upstream Node Variables
-    const getUpstreamNodeVariables = () => {
+    // 2. Upstream or Internal Node Variables
+    const getNodeVariables = () => {
         if (!selectedNodeId) return [];
         
-        // Find all ancestor nodes (simple DFS/BFS or just direct parents? Usually need all upstream)
-        // For simplicity and standard workflow UI, we often just show *all* nodes that are *connected* upstream.
-        // But in a flow, any node reachable before this one is upstream.
-        // Let's stick to direct or reachable upstream. 
-        // A simple approach: find all nodes where there is a path to current node.
-        // For now, let's just take ALL nodes except current and those strictly downstream (if we can detect).
-        // Safest is "All Previous Nodes" in topological order, but ReactFlow doesn't give that cheap.
-        // Let's just list ALL other nodes for now, or filter by edges if possible.
+        let targetNodes: any[] = [];
         
-        // Better: Filter nodes that are "before" current node.
-        // Since we don't have a simple "upstream" list, let's just list ALL nodes except self.
-        // Users can pick, and runtime will fail if not available.
-        // Or we can traverse edges backwards.
-        
-        const upstreamNodes: any[] = [];
-        const visited = new Set<string>();
-        const queue = [selectedNodeId];
-        
-        // Backward traversal to find all upstream nodes
-        while (queue.length > 0) {
-            const curr = queue.shift()!;
-            const incomingEdges = edges.filter(e => e.target === curr);
-            for (const edge of incomingEdges) {
-                if (!visited.has(edge.source)) {
-                    visited.add(edge.source);
-                    queue.push(edge.source);
-                    // Add to list
-                    const sourceNode = nodes.find(n => n.id === edge.source);
-                    if (sourceNode) upstreamNodes.push(sourceNode);
+        if (scope === 'internal') {
+            // Find all child nodes of the current node
+            targetNodes = nodes.filter(n => n.parentNode === selectedNodeId);
+        } else if (scope === 'upstream') {
+            // Backward traversal to find all upstream nodes
+            const visited = new Set<string>();
+            const queue = [selectedNodeId];
+            
+            while (queue.length > 0) {
+                const curr = queue.shift()!;
+                const incomingEdges = edges.filter(e => e.target === curr);
+                for (const edge of incomingEdges) {
+                    if (!visited.has(edge.source)) {
+                        visited.add(edge.source);
+                        queue.push(edge.source);
+                        const sourceNode = nodes.find(n => n.id === edge.source);
+                        if (sourceNode) targetNodes.push(sourceNode);
+                    }
                 }
             }
+        } else {
+            // All other nodes
+            targetNodes = nodes.filter(n => n.id !== selectedNodeId);
         }
 
-        const upstreamVars: any[] = [];
+        const nodeVars: any[] = [];
         
-        upstreamNodes.forEach(node => {
+        targetNodes.forEach(node => {
             const nodeLabel = node.data.label || node.type;
             let outputVars: any[] = [];
             
@@ -99,6 +101,13 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
                     outputVars = [
                         { label: 'AI 回复 (Text)', path: `nodes.${node.id}.text`, type: 'string' },
                         { label: '完整响应', path: `nodes.${node.id}.response`, type: 'object' },
+                    ];
+                    break;
+                case WorkflowNodeType.SQL:
+                    outputVars = [
+                        { label: '查询结果 (Data)', path: `nodes.${node.id}.data`, type: 'array' },
+                        { label: '受影响行数', path: `nodes.${node.id}.affectedRows`, type: 'number' },
+                        { label: '完整执行结果', path: `nodes.${node.id}.output`, type: 'object' },
                     ];
                     break;
                 case WorkflowNodeType.SCRIPT:
@@ -121,6 +130,18 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
                         { label: '聚合结果', path: `nodes.${node.id}.result`, type: 'array' },
                     ];
                     break;
+                case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
+                    outputVars = [
+                        { label: '检索结果 (Result)', path: `nodes.${node.id}.result`, type: 'string' },
+                        { label: '上下文 (Context)', path: `nodes.${node.id}.context`, type: 'string' },
+                        { label: '引用列表 (References)', path: `nodes.${node.id}.references`, type: 'array' },
+                    ];
+                    break;
+                case WorkflowNodeType.DOCUMENT_EXTRACTOR:
+                    outputVars = [
+                        { label: '提取文本 (Text)', path: `nodes.${node.id}.text`, type: 'string' },
+                    ];
+                    break;
                 // Add more types as needed
                 default:
                     outputVars = [
@@ -131,7 +152,7 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
             // Check if node has custom output config
             // e.g., if APICall has a specific extract path, maybe we can hint it?
             
-            upstreamVars.push(...outputVars.map(v => ({
+            nodeVars.push(...outputVars.map(v => ({
                 ...v,
                 source: 'upstream',
                 nodeId: node.id,
@@ -140,7 +161,7 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
             })));
         });
         
-        return upstreamVars;
+        return nodeVars;
     };
 
     // 3. System Variables
@@ -150,10 +171,12 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
         { label: '执行 ID', path: 'system.execution_id', type: 'string', source: 'system' },
     ];
 
-    // 4. Loop Variables (if inside loop)
+    // 4. Loop Variables (if inside loop or IS a loop)
     const currentNode = nodes.find(n => n.id === selectedNodeId);
     const parentLoopNode = currentNode?.parentNode ? nodes.find(n => n.id === currentNode.parentNode && n.type === WorkflowNodeType.LOOP) : null;
-    const loopVars = parentLoopNode ? [
+    const isLoopNode = currentNode?.type === WorkflowNodeType.LOOP;
+    
+    const loopVars = (parentLoopNode || isLoopNode) ? [
         { label: '当前项 (Item)', path: 'loop.item', type: 'object', source: 'loop' },
         { label: '当前索引 (Index)', path: 'loop.index', type: 'number', source: 'loop' },
     ] : [];
@@ -161,7 +184,7 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
     const allVars = [
         ...loopVars,
         ...getStartNodeVariables(),
-        ...getUpstreamNodeVariables(),
+        ...getNodeVariables(),
         ...systemVars
     ];
 
@@ -266,7 +289,7 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
                                 <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{groupName}</span>
                             </div>
                             <div className="divide-y divide-slate-50">
-                                {vars.map((v: any, i) => (
+                                {(vars as any[]).map((v: any, i) => (
                                     <button
                                         key={i}
                                         onClick={() => {

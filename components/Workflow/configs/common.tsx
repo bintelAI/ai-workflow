@@ -45,9 +45,15 @@ export interface VariableSelectorProps {
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
+    scope?: 'upstream' | 'internal' | 'all';
 }
 
-export const VariableSelector: React.FC<VariableSelectorProps> = ({ value, onChange, placeholder = "选择变量..." }) => {
+export const VariableSelector: React.FC<VariableSelectorProps> = ({ 
+    value, 
+    onChange, 
+    placeholder = "选择变量...",
+    scope = 'upstream'
+}) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     return (
@@ -79,6 +85,7 @@ export const VariableSelector: React.FC<VariableSelectorProps> = ({ value, onCha
                     setIsModalOpen(false);
                 }}
                 currentValue={value}
+                scope={scope}
             />
         </>
     );
@@ -90,9 +97,16 @@ export interface VariableInputProps {
     onChange: (value: string) => void;
     placeholder?: string;
     className?: string;
+    scope?: 'upstream' | 'internal' | 'all';
 }
 
-export const VariableInput: React.FC<VariableInputProps> = ({ value, onChange, placeholder = "输入或插入变量...", className = "" }) => {
+export const VariableInput: React.FC<VariableInputProps> = ({ 
+    value, 
+    onChange, 
+    placeholder = "输入或插入变量...", 
+    className = "",
+    scope = 'upstream'
+}) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -140,6 +154,76 @@ export const VariableInput: React.FC<VariableInputProps> = ({ value, onChange, p
                 onClose={() => setIsModalOpen(false)}
                 onSelect={handleInsert}
                 currentValue={value}
+                scope={scope}
+            />
+        </div>
+    );
+};
+
+// --- Variable TextArea (Mixed Text + Variable Insertion) ---
+export interface VariableTextAreaProps {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    className?: string;
+    rows?: number;
+    scope?: 'upstream' | 'internal' | 'all';
+}
+
+export const VariableTextArea: React.FC<VariableTextAreaProps> = ({ 
+    value, 
+    onChange, 
+    placeholder = "输入或插入变量...", 
+    className = "",
+    rows = 4,
+    scope = 'upstream'
+}) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
+
+    const handleInsert = (variable: string) => {
+        const textarea = textAreaRef.current;
+        if (textarea) {
+            const start = textarea.selectionStart || 0;
+            const end = textarea.selectionEnd || 0;
+            const newValue = value.substring(0, start) + variable + value.substring(end);
+            onChange(newValue);
+            
+            setTimeout(() => {
+                textarea.focus();
+                const newCursorPos = start + variable.length;
+                textarea.setSelectionRange(newCursorPos, newCursorPos);
+            }, 0);
+        } else {
+            onChange(value + variable);
+        }
+        setIsModalOpen(false);
+    };
+
+    return (
+        <div className={`relative ${className}`}>
+            <textarea
+                ref={textAreaRef}
+                className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-md text-sm font-mono text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none resize-y min-h-[100px]"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
+                rows={rows}
+            />
+            <button
+                onClick={() => setIsModalOpen(true)}
+                className="absolute right-2 top-2 p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                title="插入变量"
+            >
+                <Braces size={14} />
+            </button>
+
+            <VariableBindModal 
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSelect={handleInsert}
+                currentValue={value}
+                scope={scope}
             />
         </div>
     );

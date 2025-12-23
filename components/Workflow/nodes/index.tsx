@@ -15,6 +15,9 @@ import ScriptNode from './ScriptNode';
 import ParallelNode from './ParallelNode';
 import LLMNode from './LLMNode';
 import LoopNode from './LoopNode';
+import SQLNode from './SQLNode';
+import KnowledgeRetrievalNode from './KnowledgeRetrievalNode';
+import DocumentExtractorNode from './DocumentExtractorNode';
 
 // 导出所有节点组件
 export {
@@ -38,4 +41,7 @@ export {
   ParallelNode,
   LLMNode,
   LoopNode,
+  SQLNode,
+  KnowledgeRetrievalNode,
+  DocumentExtractorNode,
 };

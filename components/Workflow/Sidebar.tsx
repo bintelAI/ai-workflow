@@ -14,8 +14,13 @@ import {
   GripVertical,
   GitMerge,
   Bot,
-  Repeat
+  Repeat,
+  Download,
+  Upload,
+  BookOpen,
+  FileText
 } from 'lucide-react';
+import { useReactFlow } from 'reactflow';
 import { WorkflowNodeType } from '../../types';
 import { useWorkflowStore } from './store/useWorkflowStore';
 import { SidebarProps } from './Workflow.types';
@@ -44,11 +49,70 @@ export const Sidebar: React.FC<SidebarProps> = () => {
   const [width, setWidth] = useState(260);
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { getViewport, setViewport } = useReactFlow();
 
   // Get store data for filtering
-  const { categories, activeCategoryId } = useWorkflowStore();
+  const { categories, activeCategoryId, nodes, edges, setWorkflow } = useWorkflowStore();
   const activeCategory = categories.find(c => c.id === activeCategoryId);
   const allowedNodes = new Set(activeCategory?.allowedNodeTypes || Object.values(WorkflowNodeType));
+
+  const handleExport = () => {
+    const data = {
+      nodes,
+      edges,
+      categories,
+      activeCategoryId,
+      viewport: getViewport(),
+      exportedAt: new Date().toISOString(),
+      version: '1.4'
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `workflow-export-${new Date().getTime()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const data = JSON.parse(content);
+        if (data.nodes && data.edges) {
+          setWorkflow(data.nodes, data.edges, data.activeCategoryId, data.categories);
+          
+          if (data.viewport) {
+            setTimeout(() => {
+                setViewport(data.viewport, { duration: 800 });
+            }, 100);
+          }
+          
+          alert('工作流导入成功！');
+        } else {
+          alert('无效的工作流文件格式');
+        }
+      } catch (err) {
+        console.error('Import failed:', err);
+        alert('导入失败，请检查文件格式');
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    event.target.value = '';
+  };
 
   const startResizing = useCallback(() => {
     setIsResizing(true);
@@ -97,7 +161,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         style={{ width: width }}
     >
       <div className="p-5 border-b border-slate-200 bg-white">
-        <h2 className="font-bold text-slate-800">组件库</h2>
+        <h2 className="font-bold text-slate-800">节点库</h2>
         <div className="flex items-center justify-between mt-1">
             <p className="text-xs text-slate-500">拖拽节点到画布</p>
             <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 truncate max-w-[100px]">
@@ -140,7 +204,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
             <div className="grid grid-cols-2 gap-3">
                 <RenderNode 
                     type={WorkflowNodeType.LOOP} 
-                    label="循环执行" 
+                    label="循环迭代" 
                     icon={Repeat} 
                     color="text-indigo-600" 
                 />
@@ -178,19 +242,49 @@ export const Sidebar: React.FC<SidebarProps> = () => {
             </div>
         )}
 
-        {/* Extension Nodes Group */}
+        {/* Automation Nodes Group */}
         {hasVisibleNodes([
-            WorkflowNodeType.LLM, WorkflowNodeType.DATA_OP, 
-            WorkflowNodeType.API_CALL, WorkflowNodeType.NOTIFICATION, WorkflowNodeType.SCRIPT
+            WorkflowNodeType.API_CALL, 
+            WorkflowNodeType.NOTIFICATION, 
+            WorkflowNodeType.DATA_OP, 
+            WorkflowNodeType.SCRIPT,
+            WorkflowNodeType.LLM,
+            WorkflowNodeType.SQL,
+            WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
+            WorkflowNodeType.DOCUMENT_EXTRACTOR
         ]) && (
-            <div>
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">功能扩展</h3>
+            <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">自动化节点</h3>
             <div className="grid grid-cols-2 gap-3">
                 <RenderNode 
                     type={WorkflowNodeType.LLM} 
-                    label="LLM 模型" 
+                    label="AI 模型" 
                     icon={Bot} 
                     color="text-fuchsia-500" 
+                />
+                <RenderNode 
+                    type={WorkflowNodeType.KNOWLEDGE_RETRIEVAL} 
+                    label="知识库检索" 
+                    icon={BookOpen} 
+                    color="text-sky-600" 
+                />
+                <RenderNode 
+                    type={WorkflowNodeType.DOCUMENT_EXTRACTOR} 
+                    label="文档提取器" 
+                    icon={FileText} 
+                    color="text-amber-600" 
+                />
+                <RenderNode 
+                    type={WorkflowNodeType.API_CALL} 
+                    label="API 调用" 
+                    icon={Send} 
+                    color="text-blue-500" 
+                />
+                <RenderNode 
+                    type={WorkflowNodeType.SQL} 
+                    label="SQL 执行" 
+                    icon={Database} 
+                    color="text-indigo-500" 
                 />
                 <RenderNode 
                     type={WorkflowNodeType.DATA_OP} 
@@ -199,22 +293,16 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                     color="text-cyan-500" 
                 />
                 <RenderNode 
-                    type={WorkflowNodeType.API_CALL} 
-                    label="API 调用" 
-                    icon={Globe} 
-                    color="text-violet-500" 
+                    type={WorkflowNodeType.SCRIPT} 
+                    label="脚本代码" 
+                    icon={Code} 
+                    color="text-slate-600" 
                 />
                 <RenderNode 
                     type={WorkflowNodeType.NOTIFICATION} 
                     label="消息通知" 
                     icon={Bell} 
                     color="text-orange-500" 
-                />
-                <RenderNode 
-                    type={WorkflowNodeType.SCRIPT} 
-                    label="脚本代码" 
-                    icon={Code} 
-                    color="text-slate-700" 
                 />
             </div>
             </div>
@@ -227,8 +315,30 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         )}
       </div>
 
-      <div className="p-4 border-t border-slate-200 bg-slate-50 text-center">
-         <p className="text-xs text-slate-400">FlowMaster v1.3</p>
+      <div className="p-4 border-t border-slate-200 bg-slate-50">
+         <div className="flex gap-2">
+            <button 
+              onClick={handleImportClick}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-all"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              导入
+            </button>
+            <button 
+              onClick={handleExport}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg text-xs font-medium text-indigo-600 hover:bg-indigo-100 hover:border-indigo-200 transition-all"
+            >
+              <Download className="w-3.5 h-3.5" />
+              导出
+            </button>
+         </div>
+         <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImportFile} 
+            accept=".json" 
+            className="hidden" 
+         />
       </div>
 
       {/* Resize Handle */}
