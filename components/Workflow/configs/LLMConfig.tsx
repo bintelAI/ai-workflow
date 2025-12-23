@@ -68,7 +68,7 @@ export const LLMConfig: React.FC<LLMConfigProps> = ({ config, onConfigChange, lo
                     <div className="w-full">
                         <VariableSelector 
                             value="" 
-                            onChange={(val) => onConfigChange('userPrompt', (config?.userPrompt || '') + ` {{${val}}}`)}
+                            onChange={(val) => onConfigChange('userPrompt', (config?.userPrompt || '') + ` ${val}`)}
                             placeholder="插入变量..." 
                         />
                     </div>
