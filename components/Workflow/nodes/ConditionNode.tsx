@@ -1,16 +1,18 @@
-import React, { memo } from 'react';
-import { NodeProps, Handle, Position } from 'reactflow';
-import { NodeData } from '../../../types';
-import { BaseNode } from './BaseNode';
+import React, { memo } from 'react'
+import { NodeProps, Handle, Position } from 'reactflow'
+import { NodeData } from '../../../types'
+import { BaseNode } from './BaseNode'
 
 const ConditionNode = (props: NodeProps<NodeData>) => {
-  const { isConnectable } = props;
+  const { isConnectable } = props
 
   const customHandles = (
     <>
       {/* Yes / True Handle */}
       <div className="absolute -bottom-6 left-1/4 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-        <span className="text-[10px] font-bold text-emerald-600 mb-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">是</span>
+        <span className="text-[10px] font-bold text-emerald-600 mb-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+          是
+        </span>
       </div>
       <Handle
         id="true"
@@ -23,7 +25,9 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
 
       {/* No / False Handle */}
       <div className="absolute -bottom-6 left-3/4 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-        <span className="text-[10px] font-bold text-rose-600 mb-1 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">否</span>
+        <span className="text-[10px] font-bold text-rose-600 mb-1 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
+          否
+        </span>
       </div>
       <Handle
         id="false"
@@ -34,7 +38,7 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
         style={{ left: '75%' }}
       />
     </>
-  );
+  )
 
   return (
     <BaseNode
@@ -43,7 +47,7 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
       showOutputHandle={false}
       showAddButton={false}
     />
-  );
-};
+  )
+}
 
-export default memo(ConditionNode);
+export default memo(ConditionNode)

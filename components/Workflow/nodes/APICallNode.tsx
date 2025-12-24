@@ -1,14 +1,10 @@
-import React, { memo } from 'react';
-import { NodeProps } from 'reactflow';
-import { NodeData } from '../../../types';
-import { BaseNode } from './BaseNode';
+import React, { memo } from 'react'
+import { NodeProps } from 'reactflow'
+import { NodeData } from '../../../types'
+import { BaseNode } from './BaseNode'
 
 const APICallNode = (props: NodeProps<NodeData>) => {
-  return (
-    <BaseNode
-      {...props}
-    />
-  );
-};
+  return <BaseNode {...props} />
+}
 
-export default memo(APICallNode);
+export default memo(APICallNode)

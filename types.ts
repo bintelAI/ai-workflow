@@ -1,5 +1,4 @@
-
-import { Node, Edge } from 'reactflow';
+import { Node, Edge } from 'reactflow'
 
 export enum WorkflowNodeType {
   START = 'start',
@@ -22,191 +21,206 @@ export enum WorkflowNodeType {
 
 // API Call Node Configuration Interfaces
 export interface AuthConfig {
-  type: 'none' | 'basic' | 'api_key' | 'bearer' | 'oauth2';
-  username?: string;
-  password?: string;
-  apiKey?: string;
-  apiKeyName?: string;
-  apiKeyLocation?: 'header' | 'query';
-  token?: string;
+  type: 'none' | 'basic' | 'api_key' | 'bearer' | 'oauth2'
+  username?: string
+  password?: string
+  apiKey?: string
+  apiKeyName?: string
+  apiKeyLocation?: 'header' | 'query'
+  token?: string
   oauth2Config?: {
-    clientId?: string;
-    clientSecret?: string;
-    tokenUrl?: string;
-    scope?: string;
-  };
+    clientId?: string
+    clientSecret?: string
+    tokenUrl?: string
+    scope?: string
+  }
 }
 
 export interface QueryParam {
-  key: string;
-  value: string;
-  enabled: boolean;
+  key: string
+  value: string
+  enabled: boolean
 }
 
 export interface HeaderParam {
-  key: string;
-  value: string;
-  enabled: boolean;
+  key: string
+  value: string
+  enabled: boolean
 }
 
 export interface RetryConfig {
-  enabled: boolean;
-  maxRetries: number;
-  delay: number; // ms
-  retryOnStatusCodes: number[];
+  enabled: boolean
+  maxRetries: number
+  delay: number // ms
+  retryOnStatusCodes: number[]
 }
 
 export interface ResponseHandling {
-  followRedirects: boolean;
-  parseResponse: boolean;
-  extractPath?: string;
-  statusCodeBranching: boolean;
+  followRedirects: boolean
+  parseResponse: boolean
+  extractPath?: string
+  statusCodeBranching: boolean
 }
 
 export interface APICallConfig {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS' | 'TRACE';
-  url: string;
-  queryParams: QueryParam[];
-  headers: HeaderParam[];
-  bodyType: 'none' | 'json' | 'form' | 'x-www-form-urlencoded' | 'raw' | 'binary';
-  body: string;
-  auth: AuthConfig;
-  timeout: number; // ms
-  retry: RetryConfig;
-  responseHandling: ResponseHandling;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS' | 'TRACE'
+  url: string
+  queryParams: QueryParam[]
+  headers: HeaderParam[]
+  bodyType: 'none' | 'json' | 'form' | 'x-www-form-urlencoded' | 'raw' | 'binary'
+  body: string
+  auth: AuthConfig
+  timeout: number // ms
+  retry: RetryConfig
+  responseHandling: ResponseHandling
 }
 
 export interface SQLConfig {
-  sql: string;
-  databaseId: string;
-  returnSingleRecord: boolean;
-  unsafeMode: boolean;
+  sql: string
+  databaseId: string
+  returnSingleRecord: boolean
+  unsafeMode: boolean
 }
 
 export interface NodeData {
-  label: string;
-  description?: string;
-  config?: APICallConfig | SQLConfig | Record<string, any>;
-  icon?: string;
-  status?: 'idle' | 'running' | 'completed' | 'error';
+  label: string
+  description?: string
+  config?: APICallConfig | SQLConfig | Record<string, any>
+  icon?: string
+  status?: 'idle' | 'running' | 'completed' | 'error'
 }
 
-export type WorkflowNode = Node<NodeData>;
-export type WorkflowEdge = Edge;
+export type WorkflowNode = Node<NodeData>
+export type WorkflowEdge = Edge
 
 // Edge Menu State Interface
 export interface EdgeMenuState {
-  isOpen: boolean;
-  edgeId: string | null;
-  position: { x: number; y: number } | null;
-  sourceId: string | null;
-  targetId: string | null;
+  isOpen: boolean
+  edgeId: string | null
+  position: { x: number; y: number } | null
+  sourceId: string | null
+  targetId: string | null
 }
 
 // Node Menu State (for appending after a node)
 export interface NodeMenuState {
-  isOpen: boolean;
-  sourceNodeId: string | null;
-  position: { x: number; y: number } | null; // This is menu display position (screen)
-  canvasPosition?: { x: number; y: number } | null; // This is new node position (canvas)
-  parentNodeId?: string | null;
+  isOpen: boolean
+  sourceNodeId: string | null
+  position: { x: number; y: number } | null // This is menu display position (screen)
+  canvasPosition?: { x: number; y: number } | null // This is new node position (canvas)
+  parentNodeId?: string | null
 }
 
 // Simulation Log Interface
 export interface SimulationLog {
-  stepId: string;
-  nodeId: string;
-  nodeType: WorkflowNodeType;
-  nodeLabel: string;
-  status: 'success' | 'running' | 'failed' | 'skipped';
-  timestamp: string;
-  duration: number; // ms
-  input: Record<string, any>;
-  output: Record<string, any>;
-  errorMessage?: string;
-  loopIndex?: number; // Added for loop iteration tracking
+  stepId: string
+  nodeId: string
+  nodeType: WorkflowNodeType
+  nodeLabel: string
+  status: 'success' | 'running' | 'failed' | 'skipped'
+  timestamp: string
+  duration: number // ms
+  input: Record<string, any>
+  output: Record<string, any>
+  errorMessage?: string
+  loopIndex?: number // Added for loop iteration tracking
 }
 
 // --- NEW: Workflow Category Definition ---
 export interface WorkflowCategory {
-    id: string;
-    name: string;
-    description: string;
-    allowedNodeTypes: WorkflowNodeType[];
-    isSystem?: boolean; // System types cannot be deleted
+  id: string
+  name: string
+  description: string
+  allowedNodeTypes: WorkflowNodeType[]
+  isSystem?: boolean // System types cannot be deleted
 }
 
 export interface WorkflowStoreState {
-  nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
-  selectedNodeId: string | null;
-  
+  nodes: WorkflowNode[]
+  edges: WorkflowEdge[]
+  selectedNodeId: string | null
+
   // Edge Menu State
-  edgeMenu: EdgeMenuState;
-  
+  edgeMenu: EdgeMenuState
+
   // Node Menu State
-  nodeMenu: NodeMenuState;
-  
+  nodeMenu: NodeMenuState
+
   // Simulation / Drawer State
-  isDrawerOpen: boolean;
-  simulationLogs: SimulationLog[];
-  nodeExecutionStatus: Record<string, 'success' | 'failed' | 'running' | 'idle'>; 
-  
+  isDrawerOpen: boolean
+  simulationLogs: SimulationLog[]
+  nodeExecutionStatus: Record<string, 'success' | 'failed' | 'running' | 'idle'>
+
   // AI State
-  isAIGenerating: boolean;
+  isAIGenerating: boolean
 
   // --- NEW: Node Output Tracking ---
-  nodeOutputs: Record<string, any>; // Store output data for each node
+  nodeOutputs: Record<string, any> // Store output data for each node
 
   // --- NEW: Settings & Categories State ---
-  isSettingsOpen: boolean;
-  categories: WorkflowCategory[];
-  activeCategoryId: string;
-  
-  onNodesChange: (changes: any) => void;
-  onEdgesChange: (changes: any) => void;
-  onConnect: (connection: any) => void;
-  addNode: (node: WorkflowNode) => void;
-  updateNodeData: (id: string, data: Partial<NodeData>) => void;
-  setSelectedNode: (id: string | null) => void;
-  deleteNode: (id: string) => void;
-  
+  isSettingsOpen: boolean
+  categories: WorkflowCategory[]
+  activeCategoryId: string
+
+  onNodesChange: (changes: any) => void
+  onEdgesChange: (changes: any) => void
+  onConnect: (connection: any) => void
+  addNode: (node: WorkflowNode) => void
+  updateNodeData: (id: string, data: Partial<NodeData>) => void
+  setSelectedNode: (id: string | null) => void
+  deleteNode: (id: string) => void
+
   // Drag Handling for Parenting
-  onNodeDragStop: (event: any, node: WorkflowNode, allNodes: WorkflowNode[]) => void;
+  onNodeDragStop: (event: any, node: WorkflowNode, allNodes: WorkflowNode[]) => void
 
   // Edge Menu Actions
-  openEdgeMenu: (edgeId: string, position: { x: number; y: number }, sourceId: string, targetId: string) => void;
-  closeEdgeMenu: () => void;
-  insertNodeBetween: (nodeType: WorkflowNodeType) => void;
-  
+  openEdgeMenu: (
+    edgeId: string,
+    position: { x: number; y: number },
+    sourceId: string,
+    targetId: string
+  ) => void
+  closeEdgeMenu: () => void
+  insertNodeBetween: (nodeType: WorkflowNodeType) => void
+
   // Node Menu Actions
-  openNodeAppendMenu: (sourceNodeId: string | null, position: { x: number; y: number }, parentNodeId?: string | null, canvasPosition?: { x: number; y: number }) => void;
-  closeNodeMenu: () => void;
-  appendNode: (nodeType: WorkflowNodeType) => void;
-  
+  openNodeAppendMenu: (
+    sourceNodeId: string | null,
+    position: { x: number; y: number },
+    parentNodeId?: string | null,
+    canvasPosition?: { x: number; y: number }
+  ) => void
+  closeNodeMenu: () => void
+  appendNode: (nodeType: WorkflowNodeType) => void
+
   // Validation
-  validateWorkflow: () => string[];
+  validateWorkflow: () => string[]
 
   // Simulation Actions
-  toggleDrawer: (isOpen?: boolean) => void;
-  runSimulation: (customInput?: string) => Promise<void>; 
-  resetSimulation: () => void; 
-  
+  toggleDrawer: (isOpen?: boolean) => void
+  runSimulation: (customInput?: string) => Promise<void>
+  resetSimulation: () => void
+
   // --- NEW: Node Output Actions ---
-  getNodeOutput: (nodeId: string) => any;
-  updateNodeOutput: (nodeId: string, output: any) => void;
-  
+  getNodeOutput: (nodeId: string) => any
+  updateNodeOutput: (nodeId: string, output: any) => void
+
   // AI Actions
-  generateWorkflowFromPrompt: (prompt: string) => Promise<void>;
-  aiAutocompleteConfig: (field: string, context: string) => Promise<string>;
+  generateWorkflowFromPrompt: (prompt: string) => Promise<void>
+  aiAutocompleteConfig: (field: string, context: string) => Promise<string>
 
   // --- NEW: Workflow Management ---
-  setWorkflow: (nodes: WorkflowNode[], edges: WorkflowEdge[], activeCategoryId?: string, categories?: WorkflowCategory[]) => void;
+  setWorkflow: (
+    nodes: WorkflowNode[],
+    edges: WorkflowEdge[],
+    activeCategoryId?: string,
+    categories?: WorkflowCategory[]
+  ) => void
 
   // --- NEW: Settings Actions ---
-  toggleSettings: (isOpen?: boolean) => void;
-  setActiveCategory: (id: string) => void;
-  addCategory: (category: WorkflowCategory) => void;
-  updateCategory: (id: string, updates: Partial<WorkflowCategory>) => void;
-  deleteCategory: (id: string) => void;
+  toggleSettings: (isOpen?: boolean) => void
+  setActiveCategory: (id: string) => void
+  addCategory: (category: WorkflowCategory) => void
+  updateCategory: (id: string, updates: Partial<WorkflowCategory>) => void
+  deleteCategory: (id: string) => void
 }

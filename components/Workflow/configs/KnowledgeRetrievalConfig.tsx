@@ -1,10 +1,10 @@
-import React from 'react';
-import { VariableInput } from './common';
-import { BookOpen, Settings2, Database } from 'lucide-react';
+import React from 'react'
+import { VariableInput } from './common'
+import { BookOpen, Settings2, Database } from 'lucide-react'
 
 interface KnowledgeRetrievalConfigProps {
-  config: any;
-  onConfigChange: (key: string, value: any) => void;
+  config: any
+  onConfigChange: (key: string, value: any) => void
 }
 
 const MOCK_DATASETS = [
@@ -12,23 +12,26 @@ const MOCK_DATASETS = [
   { id: 'ds_2', name: '公司内部政策' },
   { id: 'ds_3', name: '技术文档库' },
   { id: 'ds_4', name: '常见问题答疑' },
-];
+]
 
-const KnowledgeRetrievalConfig: React.FC<KnowledgeRetrievalConfigProps> = ({ config, onConfigChange }) => {
+const KnowledgeRetrievalConfig: React.FC<KnowledgeRetrievalConfigProps> = ({
+  config,
+  onConfigChange,
+}) => {
   const currentConfig = {
     query: config?.query || '',
     dataset_ids: config?.dataset_ids || [],
     top_k: config?.top_k || 3,
     score_threshold: config?.score_threshold || 0.5,
     retrieval_mode: config?.retrieval_mode || 'semantic',
-  };
+  }
 
   const handleDatasetChange = (datasetId: string) => {
     const newDatasetIds = currentConfig.dataset_ids.includes(datasetId)
       ? currentConfig.dataset_ids.filter((id: string) => id !== datasetId)
-      : [...currentConfig.dataset_ids, datasetId];
-    onConfigChange('dataset_ids', newDatasetIds);
-  };
+      : [...currentConfig.dataset_ids, datasetId]
+    onConfigChange('dataset_ids', newDatasetIds)
+  }
 
   return (
     <div className="space-y-4">
@@ -43,32 +46,37 @@ const KnowledgeRetrievalConfig: React.FC<KnowledgeRetrievalConfigProps> = ({ con
           <select
             className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
             value=""
-            onChange={(e) => {
-              if (e.target.value) handleDatasetChange(e.target.value);
+            onChange={e => {
+              if (e.target.value) handleDatasetChange(e.target.value)
             }}
           >
             <option value="">添加知识库...</option>
             {MOCK_DATASETS.filter(ds => !currentConfig.dataset_ids.includes(ds.id)).map(ds => (
-              <option key={ds.id} value={ds.id}>{ds.name}</option>
+              <option key={ds.id} value={ds.id}>
+                {ds.name}
+              </option>
             ))}
           </select>
         </div>
-        
+
         {/* Selected Datasets Tags */}
         <div className="flex flex-wrap gap-2 mt-2">
           {currentConfig.dataset_ids.map((dsId: string) => {
-            const ds = MOCK_DATASETS.find(d => d.id === dsId);
+            const ds = MOCK_DATASETS.find(d => d.id === dsId)
             return (
-              <div key={dsId} className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-xs">
+              <div
+                key={dsId}
+                className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-xs"
+              >
                 <span>{ds?.name || dsId}</span>
-                <button 
+                <button
                   onClick={() => handleDatasetChange(dsId)}
                   className="hover:text-indigo-900 font-bold"
                 >
                   ×
                 </button>
               </div>
-            );
+            )
           })}
         </div>
       </div>
@@ -83,12 +91,10 @@ const KnowledgeRetrievalConfig: React.FC<KnowledgeRetrievalConfigProps> = ({ con
         </label>
         <VariableInput
           value={currentConfig.query}
-          onChange={(val) => onConfigChange('query', val)}
+          onChange={val => onConfigChange('query', val)}
           placeholder="请输入用户问题或关键词..."
         />
-        <p className="text-xs text-slate-500">
-          检索模型将基于此输入在知识库中查找相关内容。
-        </p>
+        <p className="text-xs text-slate-500">检索模型将基于此输入在知识库中查找相关内容。</p>
       </div>
 
       <hr className="border-slate-100" />
@@ -106,7 +112,7 @@ const KnowledgeRetrievalConfig: React.FC<KnowledgeRetrievalConfigProps> = ({ con
           <select
             className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
             value={currentConfig.retrieval_mode}
-            onChange={(e) => onConfigChange('retrieval_mode', e.target.value)}
+            onChange={e => onConfigChange('retrieval_mode', e.target.value)}
           >
             <option value="semantic">语义检索 (Vector Search)</option>
             <option value="full_text">全文检索 (Full-Text Search)</option>
@@ -127,7 +133,7 @@ const KnowledgeRetrievalConfig: React.FC<KnowledgeRetrievalConfigProps> = ({ con
             step="1"
             className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
             value={currentConfig.top_k}
-            onChange={(e) => onConfigChange('top_k', parseInt(e.target.value))}
+            onChange={e => onConfigChange('top_k', parseInt(e.target.value))}
           />
         </div>
 
@@ -144,12 +150,12 @@ const KnowledgeRetrievalConfig: React.FC<KnowledgeRetrievalConfigProps> = ({ con
             step="0.01"
             className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
             value={currentConfig.score_threshold}
-            onChange={(e) => onConfigChange('score_threshold', parseFloat(e.target.value))}
+            onChange={e => onConfigChange('score_threshold', parseFloat(e.target.value))}
           />
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default KnowledgeRetrievalConfig;
+export default KnowledgeRetrievalConfig

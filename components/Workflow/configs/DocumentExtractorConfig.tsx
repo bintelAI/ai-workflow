@@ -1,17 +1,20 @@
-import React from 'react';
-import { VariableInput } from './common';
-import { Settings2 } from 'lucide-react';
+import React from 'react'
+import { VariableInput } from './common'
+import { Settings2 } from 'lucide-react'
 
 interface DocumentExtractorConfigProps {
-  config: any;
-  onConfigChange: (key: string, value: any) => void;
+  config: any
+  onConfigChange: (key: string, value: any) => void
 }
 
-const DocumentExtractorConfig: React.FC<DocumentExtractorConfigProps> = ({ config, onConfigChange }) => {
+const DocumentExtractorConfig: React.FC<DocumentExtractorConfigProps> = ({
+  config,
+  onConfigChange,
+}) => {
   const currentConfig = {
     file_url: config?.file_url || '',
     extraction_mode: config?.extraction_mode || 'text',
-  };
+  }
 
   return (
     <div className="space-y-4">
@@ -23,12 +26,10 @@ const DocumentExtractorConfig: React.FC<DocumentExtractorConfigProps> = ({ confi
         </label>
         <VariableInput
           value={currentConfig.file_url}
-          onChange={(val) => onConfigChange('file_url', val)}
+          onChange={val => onConfigChange('file_url', val)}
           placeholder="请输入文件URL或选择文件变量..."
         />
-        <p className="text-xs text-slate-500">
-          支持 PDF, DOCX, TXT, MD 等格式文件。
-        </p>
+        <p className="text-xs text-slate-500">支持 PDF, DOCX, TXT, MD 等格式文件。</p>
       </div>
 
       <hr className="border-slate-100" />
@@ -46,7 +47,7 @@ const DocumentExtractorConfig: React.FC<DocumentExtractorConfigProps> = ({ confi
           <select
             className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
             value={currentConfig.extraction_mode}
-            onChange={(e) => onConfigChange('extraction_mode', e.target.value)}
+            onChange={e => onConfigChange('extraction_mode', e.target.value)}
           >
             <option value="text">纯文本 (Plain Text)</option>
             <option value="markdown">Markdown 格式</option>
@@ -58,7 +59,7 @@ const DocumentExtractorConfig: React.FC<DocumentExtractorConfigProps> = ({ confi
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default DocumentExtractorConfig;
+export default DocumentExtractorConfig
