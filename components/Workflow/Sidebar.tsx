@@ -43,6 +43,47 @@ const DraggableNode = ({
     event.dataTransfer.effectAllowed = 'move'
   }
 
+  const getNodeBgColor = (type: WorkflowNodeType): string => {
+    switch (type) {
+      case WorkflowNodeType.START:
+        return 'bg-emerald-50 border-emerald-100'
+      case WorkflowNodeType.END:
+        return 'bg-rose-50 border-rose-100'
+      case WorkflowNodeType.CONDITION:
+        return 'bg-amber-50 border-amber-100'
+      case WorkflowNodeType.PARALLEL:
+        return 'bg-teal-50 border-teal-100'
+      case WorkflowNodeType.APPROVAL:
+        return 'bg-blue-50 border-blue-100'
+      case WorkflowNodeType.CC:
+        return 'bg-indigo-50 border-indigo-100'
+      case WorkflowNodeType.DELAY:
+        return 'bg-yellow-50 border-yellow-100'
+      case WorkflowNodeType.LOOP:
+        return 'bg-purple-50 border-purple-100'
+      case WorkflowNodeType.API_CALL:
+        return 'bg-blue-50 border-blue-100'
+      case WorkflowNodeType.NOTIFICATION:
+        return 'bg-orange-50 border-orange-100'
+      case WorkflowNodeType.DATA_OP:
+        return 'bg-cyan-50 border-cyan-100'
+      case WorkflowNodeType.SCRIPT:
+        return 'bg-slate-50 border-slate-200'
+      case WorkflowNodeType.LLM:
+        return 'bg-fuchsia-50 border-fuchsia-100'
+      case WorkflowNodeType.SQL:
+        return 'bg-indigo-50 border-indigo-100'
+      case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
+        return 'bg-sky-50 border-sky-100'
+      case WorkflowNodeType.DOCUMENT_EXTRACTOR:
+        return 'bg-amber-50 border-amber-100'
+      case WorkflowNodeType.CLOUD_PHONE:
+        return 'bg-green-50 border-green-100'
+      default:
+        return 'bg-slate-50 border-slate-100'
+    }
+  }
+
   return (
     <div
       className="flex flex-col items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl cursor-grab hover:shadow-md hover:border-indigo-300 transition-all active:cursor-grabbing group aspect-square"
@@ -50,7 +91,7 @@ const DraggableNode = ({
       draggable
     >
       <div
-        className={`p-2.5 rounded-lg bg-opacity-10 transition-transform group-hover:scale-110 ${color.replace('text-', 'bg-')}`}
+        className={`p-2.5 rounded-lg border transition-transform group-hover:scale-110 ${getNodeBgColor(type)}`}
       >
         <Icon className={`w-6 h-6 ${color}`} />
       </div>
