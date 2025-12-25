@@ -23,7 +23,7 @@ import {
   X,
 } from 'lucide-react'
 import { useReactFlow } from 'reactflow'
-import { WorkflowNodeType } from '../../types'
+import { WorkflowNodeType } from './types'
 import { useWorkflowStore } from './store/useWorkflowStore'
 import { SidebarProps } from './Workflow.types'
 
@@ -180,17 +180,12 @@ export const Sidebar: React.FC<SidebarProps> = () => {
   }, [resize, stopResizing])
 
   // Helper to render only if allowed
-  const RenderNode = ({
-    type,
-    label,
-    icon,
-    color,
-  }: {
+  const RenderNode: React.FC<{
     type: WorkflowNodeType
     label: string
     icon: any
     color: string
-  }) => {
+  }> = ({ type, label, icon, color }) => {
     if (!allowedNodes.has(type)) return null
     return <DraggableNode type={type} label={label} icon={icon} color={color} />
   }
@@ -260,6 +255,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 const metadata = nodeMetadata[type]
                 return (
                   <RenderNode
+                    key={type}
                     type={type}
                     label={metadata.label}
                     icon={metadata.icon}
@@ -296,6 +292,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 const metadata = nodeMetadata[type]
                 return (
                   <RenderNode
+                    key={type}
                     type={type}
                     label={metadata.label}
                     icon={metadata.icon}
@@ -336,6 +333,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 const metadata = nodeMetadata[type]
                 return (
                   <RenderNode
+                    key={type}
                     type={type}
                     label={metadata.label}
                     icon={metadata.icon}
@@ -358,6 +356,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 const metadata = nodeMetadata[type]
                 return (
                   <RenderNode
+                    key={type}
                     type={type}
                     label={metadata.label}
                     icon={metadata.icon}

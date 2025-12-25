@@ -1,5 +1,5 @@
 import { MarkerType } from 'reactflow'
-import { WorkflowNode, WorkflowNodeType, WorkflowEdge } from '../../../../types'
+import { WorkflowNode, WorkflowNodeType, WorkflowEdge } from '../../types'
 
 const getNodeLabel = (nodeType: WorkflowNodeType): string => {
   const labels: Record<WorkflowNodeType, string> = {
@@ -19,6 +19,7 @@ const getNodeLabel = (nodeType: WorkflowNodeType): string => {
     [WorkflowNodeType.SQL]: 'SQL 执行',
     [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: '知识库检索',
     [WorkflowNodeType.DOCUMENT_EXTRACTOR]: '文档提取',
+    [WorkflowNodeType.CLOUD_PHONE]: '云手机',
   }
   return labels[nodeType] || nodeType
 }

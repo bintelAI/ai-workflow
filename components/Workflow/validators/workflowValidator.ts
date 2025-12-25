@@ -1,4 +1,4 @@
-import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../../../types'
+import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../types'
 import { ValidationError, ValidationResult } from '../ValidationReportModal'
 
 export class WorkflowValidator {

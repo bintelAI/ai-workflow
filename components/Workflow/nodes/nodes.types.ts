@@ -1,7 +1,7 @@
 import { NodeProps } from 'reactflow'
-import { WorkflowNodeType } from '../../../types'
+import { WorkflowNodeType } from '../types'
 import { NodeData } from '../Workflow.types'
-
+import React from 'react'
 /**
  * 基础节点Props
  */

@@ -1,5 +1,5 @@
 import React from 'react'
-import { WorkflowNode, WorkflowNodeType } from '../../../types'
+import { WorkflowNode, WorkflowNodeType } from '../types'
 import { Box, Braces, FileText, ToggleLeft, Hash, List, Globe } from 'lucide-react'
 
 interface NodeOutputPreviewProps {

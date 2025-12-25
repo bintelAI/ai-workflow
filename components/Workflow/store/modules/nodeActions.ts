@@ -1,5 +1,5 @@
 import { NodeChange, applyNodeChanges } from 'reactflow'
-import { WorkflowNode, WorkflowNodeType } from '../../../../types'
+import { WorkflowNode, WorkflowNodeType } from '../../types'
 
 export interface NodeActions {
   onNodesChange: (changes: NodeChange[]) => void

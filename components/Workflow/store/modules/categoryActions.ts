@@ -1,4 +1,4 @@
-import { WorkflowCategory } from '../../../../types'
+import { WorkflowCategory } from '../../types'
 
 const DEFAULT_CATEGORIES: WorkflowCategory[] = [
   {

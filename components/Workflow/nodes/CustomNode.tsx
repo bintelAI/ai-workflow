@@ -17,7 +17,7 @@ import {
   GitMerge, // For Parallel
   Bot, // For LLM
 } from 'lucide-react'
-import { WorkflowNodeType, NodeData } from '../../../types'
+import { WorkflowNodeType, NodeData } from '../types'
 import { useWorkflowStore } from '../store/useWorkflowStore'
 
 const getNodeIcon = (type: string) => {

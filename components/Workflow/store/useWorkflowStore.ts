@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { WorkflowStoreState, WorkflowNode, WorkflowEdge } from '../../../types'
+import { WorkflowStoreState, WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../types'
 import {
   createNodeActions,
   createEdgeActions,
@@ -34,7 +34,7 @@ export const DEFAULT_DEV_INPUT = JSON.stringify(
 const initialNodes: WorkflowNode[] = [
   {
     id: '1',
-    type: 'START',
+    type: WorkflowNodeType.START,
     position: { x: 250, y: 50 },
     data: {
       label: '流程开始',

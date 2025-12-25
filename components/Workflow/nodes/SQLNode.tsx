@@ -1,6 +1,6 @@
 import React, { memo } from 'react'
 import { NodeProps } from 'reactflow'
-import { NodeData, SQLConfig } from '../../../types'
+import { NodeData, SQLConfig } from '../types'
 import { BaseNode } from './BaseNode'
 import { Database, Code } from 'lucide-react'
 

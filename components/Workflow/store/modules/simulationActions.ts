@@ -1,4 +1,4 @@
-import { WorkflowNode, WorkflowEdge, WorkflowNodeType, SimulationLog } from '../../../../types'
+import { WorkflowNode, WorkflowEdge, WorkflowNodeType, SimulationLog } from '../../types'
 import { runSimulationLogic } from '../simulationRunner'
 
 export interface SimulationActions {

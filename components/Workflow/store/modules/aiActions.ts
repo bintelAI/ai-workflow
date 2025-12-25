@@ -1,4 +1,4 @@
-import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../../../../types'
+import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../../types'
 
 const DEFAULT_DEV_INPUT = JSON.stringify(
   {

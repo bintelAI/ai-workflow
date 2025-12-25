@@ -12,7 +12,7 @@ import {
   Save,
 } from 'lucide-react'
 import { useWorkflowStore } from '../store/useWorkflowStore'
-import { WorkflowNodeType } from '../../../types'
+import { WorkflowNodeType } from '../types'
 
 interface ApprovalConfigProps {
   config: any

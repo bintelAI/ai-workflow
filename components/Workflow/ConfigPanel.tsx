@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useWorkflowStore } from './store/useWorkflowStore'
-import { WorkflowNodeType } from '../../types'
+import { WorkflowNodeType } from './types'
 import { X, Save, Trash2, Wand2 } from 'lucide-react'
 
 // Import configuration components

@@ -14,7 +14,7 @@ import {
   AlertTriangle,
   FileJson,
 } from 'lucide-react'
-import { WorkflowNodeType } from '../../types'
+import { WorkflowNodeType } from './types'
 import ValidationReportModal, { ValidationResult } from './ValidationReportModal'
 import { validateWorkflow } from './validators/workflowValidator'
 

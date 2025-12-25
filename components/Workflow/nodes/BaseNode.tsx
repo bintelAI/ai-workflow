@@ -21,7 +21,7 @@ import {
   FileText,
   Smartphone,
 } from 'lucide-react'
-import { WorkflowNodeType, NodeData } from '../../../types'
+import { WorkflowNodeType, NodeData } from '../types'
 import { useWorkflowStore } from '../store/useWorkflowStore'
 
 export const getNodeIcon = (type: string) => {

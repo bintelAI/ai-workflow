@@ -1,4 +1,4 @@
-import { WorkflowNodeType, SimulationLog, WorkflowNode, WorkflowEdge } from '../../../types'
+import { WorkflowNodeType, SimulationLog, WorkflowNode, WorkflowEdge } from '../types'
 
 const normalizeArray = (value: any): any[] => {
   if (Array.isArray(value)) return value

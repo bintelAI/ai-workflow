@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useWorkflowStore } from './store/useWorkflowStore'
-import { WorkflowNodeType, WorkflowCategory } from '../../types'
+import { WorkflowNodeType, WorkflowCategory } from './types'
 import {
   X,
   Plus,

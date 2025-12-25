@@ -1,7 +1,7 @@
 import React, { memo, useCallback } from 'react'
 import { Handle, Position, NodeProps, NodeResizer, useReactFlow } from 'reactflow'
 import { Repeat, PlayCircle, StopCircle, Plus } from 'lucide-react'
-import { NodeData } from '../../../types'
+import { NodeData } from '../types'
 import { useWorkflowStore } from '../store/useWorkflowStore'
 
 const LoopNode = ({ id, data, selected, isConnectable }: NodeProps<NodeData>) => {

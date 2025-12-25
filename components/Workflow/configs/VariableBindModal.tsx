@@ -18,7 +18,7 @@ import {
   Clock,
 } from 'lucide-react'
 import { useWorkflowStore, DEFAULT_DEV_INPUT } from '../store/useWorkflowStore'
-import { WorkflowNodeType } from '../../../types'
+import { WorkflowNodeType } from '../types'
 import { flattenObject } from './common'
 
 interface VariableBindModalProps {

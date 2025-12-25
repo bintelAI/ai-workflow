@@ -1,5 +1,5 @@
 import { NodeProps, Edge } from 'reactflow'
-import { WorkflowNodeType } from '../../../types'
+import { WorkflowNodeType } from './types'
 
 /**
  * 节点数据类型

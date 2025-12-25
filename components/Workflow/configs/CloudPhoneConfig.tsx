@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Smartphone, Clock, ChevronDown, ChevronUp } from 'lucide-react'
-import { CloudPhoneConfig as CloudPhoneConfigType } from '../../../types'
+import { CloudPhoneConfig as CloudPhoneConfigType } from '../types'
 import { VariableTextArea } from './common'
 
 interface CloudPhoneConfigProps {

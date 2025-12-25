@@ -1,6 +1,6 @@
 import React, { memo } from 'react'
 import { NodeProps, Handle, Position } from 'reactflow'
-import { NodeData } from '../../../types'
+import { NodeData } from '../types'
 import { BaseNode } from './BaseNode'
 
 const ParallelNode = (props: NodeProps<NodeData>) => {

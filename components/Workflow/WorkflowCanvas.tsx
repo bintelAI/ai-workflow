@@ -32,7 +32,7 @@ import {
   CloudPhoneNode,
 } from './nodes' // Import all node components
 import { CustomEdge } from './edges/CustomEdge'
-import { WorkflowNodeType } from '../../types'
+import { WorkflowNodeType } from './types'
 import { WorkflowCanvasProps } from './Workflow.types'
 import {
   CheckSquare,
