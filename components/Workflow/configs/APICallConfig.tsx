@@ -15,6 +15,7 @@ const defaultConfig: APICallConfigType = {
   headers: [],
   bodyType: 'none',
   body: '',
+  bodyParams: [],
   auth: {
     type: 'none',
   },
@@ -164,6 +165,7 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
       ...config,
       queryParams: normalizeArray(config?.queryParams),
       headers: normalizeArray(config?.headers),
+      bodyParams: normalizeArray(config?.bodyParams),
       auth: { ...defaultConfig.auth, ...config?.auth },
       retry: { ...defaultConfig.retry, ...config?.retry },
       responseHandling: { ...defaultConfig.responseHandling, ...config?.responseHandling },
@@ -182,6 +184,10 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
 
   const handleHeadersChange = (headers: HeaderParam[]) => {
     handleConfigChange('headers', headers)
+  }
+
+  const handleBodyParamsChange = (params: QueryParam[]) => {
+    handleConfigChange('bodyParams', params)
   }
 
   const handleAuthChange = (authKey: string, value: any) => {
@@ -299,16 +305,38 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
         !['GET', 'HEAD', 'OPTIONS'].includes(localConfig.method) &&
         localConfig.bodyType !== 'none'
       ) {
-        const rawBody = replaceVariables(localConfig.body || '')
-        body = rawBody
-
-        if (localConfig.bodyType === 'json') {
-          if (!headersObj['Content-Type']) {
-            headersObj['Content-Type'] = 'application/json'
-          }
+        if (localConfig.bodyType === 'form') {
+          const enabledBodyParams = (
+            Array.isArray(localConfig.bodyParams) ? localConfig.bodyParams : []
+          ).filter(param => param.enabled)
+          const formData = new FormData()
+          enabledBodyParams.forEach(param => {
+            if (param.key) {
+              formData.append(replaceVariables(param.key), replaceVariables(param.value))
+            }
+          })
+          body = formData
         } else if (localConfig.bodyType === 'x-www-form-urlencoded') {
+          const enabledBodyParams = (
+            Array.isArray(localConfig.bodyParams) ? localConfig.bodyParams : []
+          ).filter(param => param.enabled)
+          const params = new URLSearchParams()
+          enabledBodyParams.forEach(param => {
+            if (param.key) {
+              params.append(replaceVariables(param.key), replaceVariables(param.value))
+            }
+          })
+          body = params.toString()
           if (!headersObj['Content-Type']) {
             headersObj['Content-Type'] = 'application/x-www-form-urlencoded'
+          }
+        } else {
+          const rawBody = replaceVariables(localConfig.body || '')
+          body = rawBody
+          if (localConfig.bodyType === 'json') {
+            if (!headersObj['Content-Type']) {
+              headersObj['Content-Type'] = 'application/json'
+            }
           }
         }
       }
@@ -478,38 +506,22 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
                     请求体
                   </label>
                 </div>
-                {/* Use textarea for body, but we might want variable insertion here too.
-                                    VariableInput is single line. 
-                                    For Body, we usually want multi-line.
-                                    We can keep the "Input + Button" pattern for textarea or just use textarea.
-                                    The previous version had "Insert Variable" button.
-                                    I'll stick to textarea + VariableInput helper or just a button that opens modal?
-                                    Actually, VariableInput is for single line.
-                                    Let's keep the textarea and add a "Insert Variable" button.
-                                    Or I can make a `VariableTextArea`.
-                                    For now, let's just use `VariableInput` for short inputs, and for Body... 
-                                    I'll leave Body as textarea for now, but maybe add a helper button.
-                                    Wait, in my previous write, I had a VariableSelector helper.
-                                    I'll add a helper button that opens the modal and appends to body.
-                                */}
-                <div className="relative">
-                  <textarea
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono bg-slate-50 resize-y"
-                    rows={5}
-                    placeholder={localConfig.bodyType === 'json' ? '{ "key": "value" }' : ''}
-                    value={localConfig.body}
-                    onChange={e => handleConfigChange('body', e.target.value)}
+                {localConfig.bodyType === 'form' || localConfig.bodyType === 'x-www-form-urlencoded' ? (
+                  <ParamEditor
+                    params={localConfig.bodyParams}
+                    onParamsChange={handleBodyParamsChange}
                   />
-                  {/* Helper to insert variable */}
-                  {/* This is a bit tricky without a proper VariableTextArea component. 
-                                        I'll skip the helper for textarea for now to keep it simple, 
-                                        or use a simple VariableSelector that appends.
-                                    */}
-                  <div className="absolute right-2 top-2">
-                    {/* Simplified: just a small button to append variable */}
-                    {/* I'll use VariableInput with empty value just to trigger modal? No that's hacky. */}
+                ) : (
+                  <div className="relative">
+                    <textarea
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono bg-slate-50 resize-y"
+                      rows={5}
+                      placeholder={localConfig.bodyType === 'json' ? '{ "key": "value" }' : ''}
+                      value={localConfig.body}
+                      onChange={e => handleConfigChange('body', e.target.value)}
+                    />
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>

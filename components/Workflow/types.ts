@@ -71,6 +71,7 @@ export interface APICallConfig {
   headers: HeaderParam[]
   bodyType: 'none' | 'json' | 'form' | 'x-www-form-urlencoded' | 'raw' | 'binary'
   body: string
+  bodyParams: QueryParam[]
   auth: AuthConfig
   timeout: number // ms
   retry: RetryConfig
