@@ -808,6 +808,33 @@ export const runSimulationLogic = async (
 
       logInput = { file_url: fileUrl, mode }
       logOutput = outputData
+    } else if (node.type === WorkflowNodeType.CLOUD_PHONE) {
+      const phoneId = replaceVariables(config.phoneId || '', incomingData)
+      const operationContent = replaceVariables(config.operationContent || '', incomingData)
+      const timeout = config.timeout || 30000
+
+      const mockResult = {
+        phoneId: phoneId,
+        operation: operationContent,
+        status: 'success',
+        timestamp: new Date().toISOString(),
+        data: {
+          screenshot: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+          logs: [
+            { level: 'info', message: '操作开始执行' },
+            { level: 'info', message: '云手机连接成功' },
+            { level: 'success', message: '操作执行完成' },
+          ],
+        },
+      }
+
+      outputData = mockResult
+      duration = Math.floor(Math.random() * 1000) + 500
+      isSuccess = !!phoneId && !!operationContent
+      if (!isSuccess) errorMessage = '未提供有效的云手机ID或操作内容'
+
+      logInput = { phoneId, operationContent, timeout }
+      logOutput = outputData
     } else if (node.type === WorkflowNodeType.END) {
       // 处理结束节点：根据配置的输出变量提取数据
       const outputs = config.outputs || []

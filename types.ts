@@ -13,10 +13,11 @@ export enum WorkflowNodeType {
   SCRIPT = 'script',
   PARALLEL = 'parallel',
   LLM = 'llm',
-  KNOWLEDGE_RETRIEVAL = 'knowledge_retrieval', // Knowledge Retrieval Node
-  DOCUMENT_EXTRACTOR = 'document_extractor', // Document Extractor Node
-  LOOP = 'loop', // Added Loop Node
+  KNOWLEDGE_RETRIEVAL = 'knowledge_retrieval',
+  DOCUMENT_EXTRACTOR = 'document_extractor',
+  LOOP = 'loop',
   SQL = 'sql',
+  CLOUD_PHONE = 'cloud_phone',
 }
 
 // API Call Node Configuration Interfaces
@@ -82,10 +83,16 @@ export interface SQLConfig {
   unsafeMode: boolean
 }
 
+export interface CloudPhoneConfig {
+  phoneId: string
+  operationContent: string
+  timeout?: number
+}
+
 export interface NodeData {
   label: string
   description?: string
-  config?: APICallConfig | SQLConfig | Record<string, any>
+  config?: APICallConfig | SQLConfig | CloudPhoneConfig | Record<string, any>
   icon?: string
   status?: 'idle' | 'running' | 'completed' | 'error'
 }

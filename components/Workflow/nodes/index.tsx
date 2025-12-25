@@ -18,6 +18,7 @@ import LoopNode from './LoopNode'
 import SQLNode from './SQLNode'
 import KnowledgeRetrievalNode from './KnowledgeRetrievalNode'
 import DocumentExtractorNode from './DocumentExtractorNode'
+import CloudPhoneNode from './CloudPhoneNode'
 
 // 导出所有节点组件
 export {
@@ -44,4 +45,5 @@ export {
   SQLNode,
   KnowledgeRetrievalNode,
   DocumentExtractorNode,
+  CloudPhoneNode,
 }

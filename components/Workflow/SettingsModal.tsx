@@ -23,6 +23,7 @@ import {
   Repeat,
   BookOpen,
   FileText,
+  Smartphone,
 } from 'lucide-react'
 
 const NODE_META: Record<WorkflowNodeType, { label: string; icon: any; color: string }> = {
@@ -49,6 +50,11 @@ const NODE_META: Record<WorkflowNodeType, { label: string; icon: any; color: str
     label: '文档提取器',
     icon: FileText,
     color: 'text-amber-600',
+  },
+  [WorkflowNodeType.CLOUD_PHONE]: {
+    label: '云手机控制',
+    icon: Smartphone,
+    color: 'text-green-500',
   },
 }
 

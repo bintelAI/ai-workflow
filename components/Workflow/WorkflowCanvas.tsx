@@ -29,6 +29,7 @@ import {
   SQLNode,
   KnowledgeRetrievalNode,
   DocumentExtractorNode,
+  CloudPhoneNode,
 } from './nodes' // Import all node components
 import { CustomEdge } from './edges/CustomEdge'
 import { WorkflowNodeType } from '../../types'
@@ -45,9 +46,10 @@ import {
   X,
   GitMerge,
   Bot,
-  Repeat, // Loop Icon
+  Repeat,
   BookOpen,
   FileText,
+  Smartphone,
 } from 'lucide-react'
 
 // Register custom node types
@@ -68,6 +70,7 @@ const nodeTypes: NodeTypes = {
   [WorkflowNodeType.SQL]: SQLNode,
   [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: KnowledgeRetrievalNode,
   [WorkflowNodeType.DOCUMENT_EXTRACTOR]: DocumentExtractorNode,
+  [WorkflowNodeType.CLOUD_PHONE]: CloudPhoneNode,
 }
 
 // Register custom edge types
@@ -109,6 +112,8 @@ const getLabelForType = (type: WorkflowNodeType) => {
       return '知识库检索'
     case WorkflowNodeType.DOCUMENT_EXTRACTOR:
       return '文档提取器'
+    case WorkflowNodeType.CLOUD_PHONE:
+      return '云手机控制'
     default:
       return '新节点'
   }
@@ -158,8 +163,14 @@ const NodeAddMenu = () => {
       icon: FileText,
       color: 'text-amber-600',
     },
+    {
+      type: WorkflowNodeType.CLOUD_PHONE,
+      label: '云手机',
+      icon: Smartphone,
+      color: 'text-green-500',
+    },
     { type: WorkflowNodeType.SQL, label: 'SQL 节点', icon: Database, color: 'text-indigo-500' },
-    { type: WorkflowNodeType.LOOP, label: '循环迭代', icon: Repeat, color: 'text-indigo-600' }, // Added Loop
+    { type: WorkflowNodeType.LOOP, label: '循环迭代', icon: Repeat, color: 'text-indigo-600' },
     { type: WorkflowNodeType.APPROVAL, label: '审批', icon: CheckSquare, color: 'text-blue-500' },
     { type: WorkflowNodeType.CONDITION, label: '条件', icon: GitFork, color: 'text-amber-500' },
     { type: WorkflowNodeType.PARALLEL, label: '并行', icon: GitMerge, color: 'text-teal-500' },

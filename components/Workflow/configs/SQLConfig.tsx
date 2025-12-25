@@ -115,6 +115,20 @@ export const SQLConfig: React.FC<SQLConfigProps> = ({ config, onConfigChange }) 
           <span className="text-sm text-slate-700">仅返回第一条记录</span>
         </label>
 
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-slate-700 uppercase">返回的行数</label>
+          <input
+            type="number"
+            min="1"
+            max="10000"
+            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+            placeholder="默认: 100"
+            value={config.limitRows || ''}
+            onChange={e => onConfigChange('limitRows', e.target.value ? parseInt(e.target.value) : '')}
+          />
+          <p className="text-[10px] text-slate-400">限制返回的记录数量，留空则使用默认值 (100)</p>
+        </div>
+
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"

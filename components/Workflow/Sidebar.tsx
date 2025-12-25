@@ -18,6 +18,9 @@ import {
   Upload,
   BookOpen,
   FileText,
+  Smartphone,
+  Search,
+  X,
 } from 'lucide-react'
 import { useReactFlow } from 'reactflow'
 import { WorkflowNodeType } from '../../types'
@@ -59,6 +62,7 @@ const DraggableNode = ({
 export const Sidebar: React.FC<SidebarProps> = () => {
   const [width, setWidth] = useState(260)
   const [isResizing, setIsResizing] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const sidebarRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { getViewport, setViewport } = useReactFlow()
@@ -67,6 +71,27 @@ export const Sidebar: React.FC<SidebarProps> = () => {
   const { categories, activeCategoryId, nodes, edges, setWorkflow } = useWorkflowStore()
   const activeCategory = categories.find(c => c.id === activeCategoryId)
   const allowedNodes = new Set(activeCategory?.allowedNodeTypes || Object.values(WorkflowNodeType))
+
+  // Node metadata for search
+  const nodeMetadata: Record<WorkflowNodeType, { label: string; icon: any; color: string }> = {
+    [WorkflowNodeType.START]: { label: '开始', icon: PlayCircle, color: 'text-emerald-500' },
+    [WorkflowNodeType.END]: { label: '结束', icon: StopCircle, color: 'text-rose-500' },
+    [WorkflowNodeType.CONDITION]: { label: '条件分支', icon: GitFork, color: 'text-amber-500' },
+    [WorkflowNodeType.PARALLEL]: { label: '并行分支', icon: GitMerge, color: 'text-teal-500' },
+    [WorkflowNodeType.APPROVAL]: { label: '审批节点', icon: CheckSquare, color: 'text-blue-500' },
+    [WorkflowNodeType.CC]: { label: '抄送节点', icon: Send, color: 'text-indigo-500' },
+    [WorkflowNodeType.DELAY]: { label: '延时等待', icon: Clock, color: 'text-yellow-500' },
+    [WorkflowNodeType.LOOP]: { label: '循环迭代', icon: Repeat, color: 'text-indigo-600' },
+    [WorkflowNodeType.API_CALL]: { label: 'API 调用', icon: Send, color: 'text-blue-500' },
+    [WorkflowNodeType.NOTIFICATION]: { label: '消息通知', icon: Bell, color: 'text-orange-500' },
+    [WorkflowNodeType.DATA_OP]: { label: '数据操作', icon: Database, color: 'text-cyan-500' },
+    [WorkflowNodeType.SCRIPT]: { label: '脚本代码', icon: Code, color: 'text-slate-600' },
+    [WorkflowNodeType.LLM]: { label: 'AI 模型', icon: Bot, color: 'text-fuchsia-500' },
+    [WorkflowNodeType.SQL]: { label: 'SQL 执行', icon: Database, color: 'text-indigo-500' },
+    [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: { label: '知识库检索', icon: BookOpen, color: 'text-sky-600' },
+    [WorkflowNodeType.DOCUMENT_EXTRACTOR]: { label: '文档提取器', icon: FileText, color: 'text-amber-600' },
+    [WorkflowNodeType.CLOUD_PHONE]: { label: '云手机控制', icon: Smartphone, color: 'text-green-500' },
+  }
 
   const handleExport = () => {
     const data = {
@@ -170,9 +195,21 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     return <DraggableNode type={type} label={label} icon={icon} color={color} />
   }
 
+  // Helper to check if a node matches search query
+  const nodeMatchesSearch = (type: WorkflowNodeType): boolean => {
+    if (!searchQuery.trim()) return true
+    const metadata = nodeMetadata[type]
+    return metadata?.label.toLowerCase().includes(searchQuery.toLowerCase()) ?? false
+  }
+
   // Helper to check if a group has any visible children
   const hasVisibleNodes = (types: WorkflowNodeType[]) => {
-    return types.some(t => allowedNodes.has(t))
+    return types.some(t => allowedNodes.has(t) && nodeMatchesSearch(t))
+  }
+
+  // Get filtered nodes for a group
+  const getFilteredNodes = (types: WorkflowNodeType[]) => {
+    return types.filter(t => allowedNodes.has(t) && nodeMatchesSearch(t))
   }
 
   return (
@@ -189,6 +226,26 @@ export const Sidebar: React.FC<SidebarProps> = () => {
             {activeCategory?.name || 'General'}
           </span>
         </div>
+        
+        {/* Search Box */}
+        <div className="mt-4 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="搜索节点..."
+            className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-md transition-colors"
+            >
+              <X className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="p-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200">
@@ -199,18 +256,17 @@ export const Sidebar: React.FC<SidebarProps> = () => {
               基础节点
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              <RenderNode
-                type={WorkflowNodeType.START}
-                label="开始"
-                icon={PlayCircle}
-                color="text-emerald-500"
-              />
-              <RenderNode
-                type={WorkflowNodeType.END}
-                label="结束"
-                icon={StopCircle}
-                color="text-rose-500"
-              />
+              {getFilteredNodes([WorkflowNodeType.START, WorkflowNodeType.END]).map(type => {
+                const metadata = nodeMetadata[type]
+                return (
+                  <RenderNode
+                    type={type}
+                    label={metadata.label}
+                    icon={metadata.icon}
+                    color={metadata.color}
+                  />
+                )
+              })}
             </div>
           </div>
         )}
@@ -229,42 +285,24 @@ export const Sidebar: React.FC<SidebarProps> = () => {
               逻辑控制
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              <RenderNode
-                type={WorkflowNodeType.LOOP}
-                label="循环迭代"
-                icon={Repeat}
-                color="text-indigo-600"
-              />
-              <RenderNode
-                type={WorkflowNodeType.CONDITION}
-                label="条件分支"
-                icon={GitFork}
-                color="text-amber-500"
-              />
-              <RenderNode
-                type={WorkflowNodeType.PARALLEL}
-                label="并行分支"
-                icon={GitMerge}
-                color="text-teal-500"
-              />
-              <RenderNode
-                type={WorkflowNodeType.APPROVAL}
-                label="审批节点"
-                icon={CheckSquare}
-                color="text-blue-500"
-              />
-              <RenderNode
-                type={WorkflowNodeType.CC}
-                label="抄送节点"
-                icon={Send}
-                color="text-indigo-500"
-              />
-              <RenderNode
-                type={WorkflowNodeType.DELAY}
-                label="延时等待"
-                icon={Clock}
-                color="text-yellow-500"
-              />
+              {getFilteredNodes([
+                WorkflowNodeType.LOOP,
+                WorkflowNodeType.CONDITION,
+                WorkflowNodeType.PARALLEL,
+                WorkflowNodeType.APPROVAL,
+                WorkflowNodeType.CC,
+                WorkflowNodeType.DELAY,
+              ]).map(type => {
+                const metadata = nodeMetadata[type]
+                return (
+                  <RenderNode
+                    type={type}
+                    label={metadata.label}
+                    icon={metadata.icon}
+                    color={metadata.color}
+                  />
+                )
+              })}
             </div>
           </div>
         )}
@@ -285,60 +323,56 @@ export const Sidebar: React.FC<SidebarProps> = () => {
               自动化节点
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              <RenderNode
-                type={WorkflowNodeType.LLM}
-                label="AI 模型"
-                icon={Bot}
-                color="text-fuchsia-500"
-              />
-              <RenderNode
-                type={WorkflowNodeType.KNOWLEDGE_RETRIEVAL}
-                label="知识库检索"
-                icon={BookOpen}
-                color="text-sky-600"
-              />
-              <RenderNode
-                type={WorkflowNodeType.DOCUMENT_EXTRACTOR}
-                label="文档提取器"
-                icon={FileText}
-                color="text-amber-600"
-              />
-              <RenderNode
-                type={WorkflowNodeType.API_CALL}
-                label="API 调用"
-                icon={Send}
-                color="text-blue-500"
-              />
-              <RenderNode
-                type={WorkflowNodeType.SQL}
-                label="SQL 执行"
-                icon={Database}
-                color="text-indigo-500"
-              />
-              <RenderNode
-                type={WorkflowNodeType.DATA_OP}
-                label="数据操作"
-                icon={Database}
-                color="text-cyan-500"
-              />
-              <RenderNode
-                type={WorkflowNodeType.SCRIPT}
-                label="脚本代码"
-                icon={Code}
-                color="text-slate-600"
-              />
-              <RenderNode
-                type={WorkflowNodeType.NOTIFICATION}
-                label="消息通知"
-                icon={Bell}
-                color="text-orange-500"
-              />
+              {getFilteredNodes([
+                WorkflowNodeType.LLM,
+                WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
+                WorkflowNodeType.DOCUMENT_EXTRACTOR,
+                WorkflowNodeType.API_CALL,
+                WorkflowNodeType.SQL,
+                WorkflowNodeType.DATA_OP,
+                WorkflowNodeType.SCRIPT,
+                WorkflowNodeType.NOTIFICATION,
+              ]).map(type => {
+                const metadata = nodeMetadata[type]
+                return (
+                  <RenderNode
+                    type={type}
+                    label={metadata.label}
+                    icon={metadata.icon}
+                    color={metadata.color}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Industry Nodes Group */}
+        {hasVisibleNodes([WorkflowNodeType.CLOUD_PHONE]) && (
+          <div className="mb-6">
+            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+              行业节点
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              {getFilteredNodes([WorkflowNodeType.CLOUD_PHONE]).map(type => {
+                const metadata = nodeMetadata[type]
+                return (
+                  <RenderNode
+                    type={type}
+                    label={metadata.label}
+                    icon={metadata.icon}
+                    color={metadata.color}
+                  />
+                )
+              })}
             </div>
           </div>
         )}
 
         {!hasVisibleNodes(Object.values(WorkflowNodeType)) && (
-          <div className="text-center p-4 text-slate-400 text-xs">当前模式未配置任何可用节点</div>
+          <div className="text-center p-4 text-slate-400 text-xs">
+            {searchQuery ? '未找到匹配的节点' : '当前模式未配置任何可用节点'}
+          </div>
         )}
       </div>
 
