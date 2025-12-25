@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { HardDrive, Cloud, Globe, Folder, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { StorageConfig, StorageProvider } from '../types'
+import { VariableInput } from './common'
 
 interface StorageConfigProps {
   config: any
@@ -65,34 +66,28 @@ const AliyunConfigForm = ({ config, onChange }: { config: any; onChange: (config
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Access Key ID</label>
-          <input
-            type="text"
+          <VariableInput
             value={config.accessKeyId || ''}
-            onChange={e => handleChange('accessKeyId', e.target.value)}
-            placeholder="LTAI..."
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('accessKeyId', value)}
+            placeholder="LTAI... 或选择变量"
           />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Access Key Secret</label>
-          <input
-            type="password"
+          <VariableInput
             value={config.accessKeySecret || ''}
-            onChange={e => handleChange('accessKeySecret', e.target.value)}
-            placeholder="••••••••"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('accessKeySecret', value)}
+            placeholder="•••••••• 或选择变量"
           />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Bucket 名称</label>
-          <input
-            type="text"
+          <VariableInput
             value={config.bucket || ''}
-            onChange={e => handleChange('bucket', e.target.value)}
-            placeholder="my-bucket"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('bucket', value)}
+            placeholder="my-bucket 或选择变量"
           />
         </div>
         <div>
@@ -116,12 +111,10 @@ const AliyunConfigForm = ({ config, onChange }: { config: any; onChange: (config
       </div>
       <div>
         <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Endpoint（可选）</label>
-        <input
-          type="text"
+        <VariableInput
           value={config.endpoint || ''}
-          onChange={e => handleChange('endpoint', e.target.value)}
-          placeholder="https://oss-cn-hangzhou.aliyuncs.com"
-          className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+          onChange={value => handleChange('endpoint', value)}
+          placeholder="https://oss-cn-hangzhou.aliyuncs.com 或选择变量"
         />
       </div>
     </div>
@@ -138,34 +131,28 @@ const TencentConfigForm = ({ config, onChange }: { config: any; onChange: (confi
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Secret ID</label>
-          <input
-            type="text"
+          <VariableInput
             value={config.secretId || ''}
-            onChange={e => handleChange('secretId', e.target.value)}
-            placeholder="AKID..."
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('secretId', value)}
+            placeholder="AKID... 或选择变量"
           />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Secret Key</label>
-          <input
-            type="password"
+          <VariableInput
             value={config.secretKey || ''}
-            onChange={e => handleChange('secretKey', e.target.value)}
-            placeholder="••••••••"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('secretKey', value)}
+            placeholder="•••••••• 或选择变量"
           />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Bucket 名称</label>
-          <input
-            type="text"
+          <VariableInput
             value={config.bucket || ''}
-            onChange={e => handleChange('bucket', e.target.value)}
-            placeholder="my-bucket-1234567890"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('bucket', value)}
+            placeholder="my-bucket-1234567890 或选择变量"
           />
         </div>
         <div>
@@ -200,44 +187,36 @@ const QiniuConfigForm = ({ config, onChange }: { config: any; onChange: (config:
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Access Key</label>
-          <input
-            type="text"
+          <VariableInput
             value={config.accessKey || ''}
-            onChange={e => handleChange('accessKey', e.target.value)}
-            placeholder="AK..."
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('accessKey', value)}
+            placeholder="AK... 或选择变量"
           />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Secret Key</label>
-          <input
-            type="password"
+          <VariableInput
             value={config.secretKey || ''}
-            onChange={e => handleChange('secretKey', e.target.value)}
-            placeholder="••••••••"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('secretKey', value)}
+            placeholder="•••••••• 或选择变量"
           />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">Bucket 名称</label>
-          <input
-            type="text"
+          <VariableInput
             value={config.bucket || ''}
-            onChange={e => handleChange('bucket', e.target.value)}
-            placeholder="my-bucket"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('bucket', value)}
+            placeholder="my-bucket 或选择变量"
           />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">访问域名</label>
-          <input
-            type="text"
+          <VariableInput
             value={config.domain || ''}
-            onChange={e => handleChange('domain', e.target.value)}
-            placeholder="https://cdn.example.com"
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono"
+            onChange={value => handleChange('domain', value)}
+            placeholder="https://cdn.example.com 或选择变量"
           />
         </div>
       </div>
