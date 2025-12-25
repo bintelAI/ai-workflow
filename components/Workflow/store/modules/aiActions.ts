@@ -43,7 +43,8 @@ export interface AIActions {
     nodes: WorkflowNode[],
     edges: WorkflowEdge[],
     activeCategoryId?: string,
-    categories?: any[]
+    categories?: any[],
+    globalVariables?: any[]
   ) => void
   aiAutocompleteConfig: (field: string, context: string) => Promise<string>
 }
@@ -217,13 +218,21 @@ export const createAIActions = (set: any, get: any): AIActions => ({
     nodes: WorkflowNode[],
     edges: WorkflowEdge[],
     activeCategoryId?: string,
-    categories?: any[]
+    categories?: any[],
+    globalVariables?: any[]
   ) => {
     set((state: any) => ({
       nodes,
       edges,
       activeCategoryId: activeCategoryId || state.activeCategoryId,
       categories: categories || state.categories,
+      globalVariables: globalVariables || state.globalVariables,
     }))
+  },
+
+  aiAutocompleteConfig: async (field: string, context: string) => {
+    // Placeholder implementation for AI autocomplete
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return 'AI generated content for ' + field
   },
 })

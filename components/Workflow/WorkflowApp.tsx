@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import { WorkflowCanvas, Sidebar, ConfigPanel, DataDrawer, AICommandCenter, SettingsModal } from '.'
-import { Layers, Share2, Settings, ShieldCheck, Eye } from 'lucide-react'
+import GlobalConfigModal from './GlobalConfigModal'
+import { Layers, Share2, Settings, ShieldCheck, Eye, Database } from 'lucide-react'
 import { useWorkflowStore } from './store/useWorkflowStore'
 import ValidationReportModal, { ValidationResult } from './ValidationReportModal'
 import { validateWorkflow } from './validators/workflowValidator'
@@ -12,6 +13,7 @@ const App: React.FC = () => {
     toggleDrawer,
     runSimulation,
     toggleSettings,
+    toggleGlobalConfig,
     categories,
     activeCategoryId,
     nodes,
@@ -56,6 +58,12 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => toggleGlobalConfig(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+            >
+              <Database size={16} /> 全局配置
+            </button>
             <button
               onClick={() => toggleSettings(true)}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
@@ -102,6 +110,7 @@ const App: React.FC = () => {
           <ConfigPanel />
           <DataDrawer />
           <SettingsModal />
+          <GlobalConfigModal />
           <ValidationReportModal
             isOpen={isValidationModalOpen}
             onClose={() => setIsValidationModalOpen(false)}

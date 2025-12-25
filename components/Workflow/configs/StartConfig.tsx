@@ -1,5 +1,6 @@
 import React from 'react'
 import { Bug } from 'lucide-react'
+import { VariableConfigEditor } from './common/VariableConfigEditor'
 
 interface StartConfigProps {
   config: any
@@ -9,22 +10,17 @@ interface StartConfigProps {
 export const StartConfig: React.FC<StartConfigProps> = ({ config, onConfigChange }) => {
   return (
     <>
-      <div>
-        <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">触发类型</label>
-        <select
-          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white"
-          value={config?.triggerType || 'webhook'}
-          onChange={e => onConfigChange('triggerType', e.target.value)}
-        >
-          <option value="webhook">Webhook 调用</option>
-          <option value="schedule">定时任务</option>
-        </select>
+      <div className="pt-4 mt-4 border-t border-slate-100">
+        <VariableConfigEditor
+          variables={config?.variables || []}
+          onVariablesChange={(variables) => onConfigChange('variables', variables)}
+        />
       </div>
       <div className="pt-4 mt-4 border-t border-slate-100">
         <div className="flex items-center justify-between mb-3">
           <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
             <Bug size={14} className="text-indigo-500" />
-            模拟数据 / 全局变量 (Dev Data)
+            模拟数据 (Dev Data)
           </label>
           <div
             onClick={() => onConfigChange('devMode', !config?.devMode)}

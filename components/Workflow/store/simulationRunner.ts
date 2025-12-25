@@ -222,6 +222,81 @@ export const runSimulationLogic = async (
       initialPayload = JSON.parse((startNode.data.config as any).devInput)
     } catch (e) {}
   }
+  
+  // Merge variables from start node config
+  const variablesConfig = (startNode.data.config as any)?.variables || []
+  const variablesFromConfig: any = {}
+  
+  variablesConfig.forEach((variable: any) => {
+    // Only add variable if it's not already in initialPayload
+    if (!(variable.name in initialPayload)) {
+      // Set default value based on variable type
+      let defaultValue = variable.defaultValue
+      if (defaultValue === undefined) {
+        switch (variable.type) {
+          case 'text':
+          case 'paragraph':
+          case 'dropdown':
+            defaultValue = ''
+            break
+          case 'number':
+            defaultValue = 0
+            break
+          case 'checkbox':
+            defaultValue = false
+            break
+          case 'file':
+            defaultValue = null
+            break
+          case 'file_list':
+            defaultValue = []
+            break
+          default:
+            defaultValue = null
+        }
+      }
+      variablesFromConfig[variable.name] = defaultValue
+    }
+  })
+  
+  // Merge variables from start node config
+  initialPayload = {
+    ...variablesFromConfig,
+    ...initialPayload
+  }
+  
+  // Add global variables to context for all nodes to use
+  const globalVariables = (startNode.data.config as any)?.globalVariables || []
+  const globalVariablesObj: any = {}
+  
+  globalVariables.forEach((variable: any) => {
+    // Set default value based on variable type
+    let defaultValue = variable.defaultValue
+    if (defaultValue === undefined) {
+      switch (variable.type) {
+        case 'text':
+        case 'paragraph':
+        case 'dropdown':
+          defaultValue = ''
+          break
+        case 'number':
+          defaultValue = 0
+          break
+        case 'checkbox':
+          defaultValue = false
+          break
+        case 'file':
+          defaultValue = null
+          break
+        case 'file_list':
+          defaultValue = []
+          break
+        default:
+          defaultValue = null
+      }
+    }
+    globalVariablesObj[variable.name] = defaultValue
+  })
 
   // Initial Data Context
   const globalContext = {
@@ -834,6 +909,23 @@ export const runSimulationLogic = async (
       if (!isSuccess) errorMessage = '未提供有效的云手机ID或操作内容'
 
       logInput = { phoneId, operationContent, timeout }
+      logOutput = outputData
+    } else if (node.type === WorkflowNodeType.STORAGE) {
+      const provider = config.provider || 'local'
+      const fileExtension = config.fileExtension || 'jpg'
+
+      const mockUrl = provider === 'local' 
+        ? `https://example.com/files/upload_${Date.now()}.${fileExtension}`
+        : `https://${provider}.example.com/files/upload_${Date.now()}.${fileExtension}`
+
+      outputData = {
+        url: mockUrl,
+      }
+
+      duration = Math.floor(Math.random() * 300) + 100
+      isSuccess = true
+
+      logInput = { provider, fileExtension }
       logOutput = outputData
     } else if (node.type === WorkflowNodeType.END) {
       // 处理结束节点：根据配置的输出变量提取数据

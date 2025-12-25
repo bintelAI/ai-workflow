@@ -20,6 +20,7 @@ import { SQLConfig } from './configs/SQLConfig'
 import KnowledgeRetrievalConfig from './configs/KnowledgeRetrievalConfig'
 import DocumentExtractorConfig from './configs/DocumentExtractorConfig'
 import { CloudPhoneConfig } from './configs/CloudPhoneConfig'
+import { StorageConfigPanel } from './configs/StorageConfig'
 import { NodeOutputPreview } from './configs/NodeOutputPreview'
 
 // Import common components from configs/common.tsx
@@ -110,6 +111,8 @@ const ConfigPanel: React.FC = () => {
         return <DocumentExtractorConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.CLOUD_PHONE:
         return <CloudPhoneConfig config={config} onConfigChange={handleConfigChange} />
+      case WorkflowNodeType.STORAGE:
+        return <StorageConfigPanel config={config} onConfigChange={handleConfigChange} />
       default:
         return (
           <div className="p-3 bg-slate-50 rounded border border-slate-100 text-xs text-slate-500 flex items-center gap-2">

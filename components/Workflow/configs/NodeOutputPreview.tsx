@@ -133,6 +133,15 @@ export const NodeOutputPreview: React.FC<NodeOutputPreviewProps> = ({ node }) =>
           },
         ]
 
+      case WorkflowNodeType.STORAGE:
+        return [
+          {
+            name: 'url',
+            type: 'string',
+            description: '文件存储后的访问地址 (File URL)',
+          },
+        ]
+
       case WorkflowNodeType.END:
         return [] // End nodes don't produce outputs for other nodes
 

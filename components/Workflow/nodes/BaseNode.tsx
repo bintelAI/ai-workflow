@@ -20,6 +20,7 @@ import {
   BookOpen,
   FileText,
   Smartphone,
+  HardDrive,
 } from 'lucide-react'
 import { WorkflowNodeType, NodeData } from '../types'
 import { useWorkflowStore } from '../store/useWorkflowStore'
@@ -60,6 +61,8 @@ export const getNodeIcon = (type: string) => {
       return <FileText className="w-5 h-5 text-amber-600" />
     case WorkflowNodeType.CLOUD_PHONE:
       return <Smartphone className="w-5 h-5 text-green-500" />
+    case WorkflowNodeType.STORAGE:
+      return <HardDrive className="w-5 h-5 text-emerald-500" />
     default:
       return <CheckSquare className="w-5 h-5 text-gray-500" />
   }
@@ -101,6 +104,8 @@ export const getNodeTypeLabel = (type: string) => {
       return '文档提取器'
     case WorkflowNodeType.CLOUD_PHONE:
       return '云手机控制'
+    case WorkflowNodeType.STORAGE:
+      return '文件存储'
     default:
       return '未知节点'
   }
@@ -142,6 +147,8 @@ export const getNodeIconBgColor = (type: string) => {
       return 'bg-amber-50 border-amber-100'
     case WorkflowNodeType.CLOUD_PHONE:
       return 'bg-green-50 border-green-100'
+    case WorkflowNodeType.STORAGE:
+      return 'bg-emerald-50 border-emerald-100'
     default:
       return 'bg-slate-50 border-slate-100'
   }

@@ -24,6 +24,7 @@ import {
   BookOpen,
   FileText,
   Smartphone,
+  HardDrive,
 } from 'lucide-react'
 
 const NODE_META: Record<WorkflowNodeType, { label: string; icon: any; color: string }> = {
@@ -55,6 +56,11 @@ const NODE_META: Record<WorkflowNodeType, { label: string; icon: any; color: str
     label: '云手机控制',
     icon: Smartphone,
     color: 'text-green-500',
+  },
+  [WorkflowNodeType.STORAGE]: {
+    label: '文件存储',
+    icon: HardDrive,
+    color: 'text-emerald-500',
   },
 }
 

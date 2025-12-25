@@ -30,6 +30,7 @@ import {
   KnowledgeRetrievalNode,
   DocumentExtractorNode,
   CloudPhoneNode,
+  StorageNode,
 } from './nodes' // Import all node components
 import { CustomEdge } from './edges/CustomEdge'
 import { WorkflowNodeType } from './types'
@@ -71,6 +72,7 @@ const nodeTypes: NodeTypes = {
   [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: KnowledgeRetrievalNode,
   [WorkflowNodeType.DOCUMENT_EXTRACTOR]: DocumentExtractorNode,
   [WorkflowNodeType.CLOUD_PHONE]: CloudPhoneNode,
+  [WorkflowNodeType.STORAGE]: StorageNode,
 }
 
 // Register custom edge types
@@ -114,6 +116,8 @@ const getLabelForType = (type: WorkflowNodeType) => {
       return '文档提取器'
     case WorkflowNodeType.CLOUD_PHONE:
       return '云手机控制'
+    case WorkflowNodeType.STORAGE:
+      return '文件存储'
     default:
       return '新节点'
   }
@@ -296,6 +300,8 @@ const WorkflowCanvasInner: React.FC = () => {
         description = '添加知识库检索'
       } else if (type === WorkflowNodeType.DOCUMENT_EXTRACTOR) {
         description = '从文档中提取内容'
+      } else if (type === WorkflowNodeType.STORAGE) {
+        description = '将文件上传到存储服务'
       }
 
       if (type === WorkflowNodeType.START) {
@@ -340,6 +346,8 @@ const WorkflowCanvasInner: React.FC = () => {
         config = { operation: 'map', mapping: {} }
       } else if (type === WorkflowNodeType.CC) {
         config = { recipients: '', message: '' }
+      } else if (type === WorkflowNodeType.STORAGE) {
+        config = { provider: 'local', fileExtension: 'jpg' }
       }
 
       const newNode = {

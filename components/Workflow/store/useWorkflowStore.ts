@@ -74,6 +74,8 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
       isAIGenerating: false,
       nodeOutputs: {},
       isSettingsOpen: false,
+      isGlobalConfigOpen: false,
+      globalVariables: [],
       categories: DEFAULT_CATEGORIES,
       activeCategoryId: 'general',
 
@@ -84,6 +86,16 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
       ...createCategoryActions(set, get),
       ...createNodeOutputActions(set, get),
       ...createAIActions(set, get),
+
+      // Global Config Actions
+      toggleGlobalConfig: (isOpen?: boolean) => {
+        set(state => ({
+          isGlobalConfigOpen: isOpen !== undefined ? isOpen : !state.isGlobalConfigOpen,
+        }))
+      },
+      setGlobalVariables: (variables) => {
+        set({ globalVariables: variables })
+      },
     }),
     {
       name: 'workflow-storage',
@@ -93,6 +105,7 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
         edges: state.edges,
         categories: state.categories,
         activeCategoryId: state.activeCategoryId,
+        globalVariables: state.globalVariables,
       }),
     }
   )

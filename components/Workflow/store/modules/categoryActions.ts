@@ -1,4 +1,4 @@
-import { WorkflowCategory } from '../../types'
+import { WorkflowCategory, WorkflowNodeType } from '../../types'
 
 const DEFAULT_CATEGORIES: WorkflowCategory[] = [
   {
@@ -6,7 +6,7 @@ const DEFAULT_CATEGORIES: WorkflowCategory[] = [
     name: '全功能模式',
     description: '包含所有可用节点，适用于复杂混合场景。',
     isSystem: true,
-    allowedNodeTypes: [],
+    allowedNodeTypes: Object.values(WorkflowNodeType),
   },
   {
     id: 'business_approval',

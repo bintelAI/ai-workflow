@@ -42,7 +42,7 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
   currentValue,
   scope = 'upstream',
 }) => {
-  const { nodes, edges, selectedNodeId } = useWorkflowStore()
+  const { nodes, edges, selectedNodeId, globalVariables } = useWorkflowStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'upstream' | 'global' | 'system'>('all')
 
@@ -53,15 +53,80 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
   // 1. Start Node Variables
   const startNode = nodes.find(n => n.type === WorkflowNodeType.START)
   const getStartNodeVariables = () => {
-    const devInput = (startNode?.data.config as any)?.devInput || DEFAULT_DEV_INPUT
     let vars: any[] = []
+    
+    // Get variables from devInput (backward compatibility)
+    const devInput = (startNode?.data.config as any)?.devInput || DEFAULT_DEV_INPUT
     try {
       const parsed = JSON.parse(devInput)
       vars = flattenObject(parsed)
     } catch (e) {
-      vars.push({ label: '(JSON Error)', path: 'payload', type: 'error' })
+      // If JSON parse fails, don't add error variable
     }
-    return vars.map(v => ({ ...v, source: 'global', nodeLabel: 'Start Node' }))
+    
+    // Get variables from new variables config
+    const variablesConfig = (startNode?.data.config as any)?.variables || []
+    variablesConfig.forEach((variable: any) => {
+      const displayPath = `payload.${variable.name}`
+      vars.push({
+        label: variable.displayName || variable.name,
+        path: displayPath,
+        type: variable.type,
+        source: 'global',
+        nodeLabel: 'Start Node',
+        required: variable.required,
+        hidden: variable.hidden
+      })
+      
+      // If it's a dropdown type, add options as subvariables (for reference)
+      if (variable.type === 'dropdown' && variable.options) {
+        variable.options.forEach((option: any, index: number) => {
+          vars.push({
+            label: `${variable.displayName || variable.name} - ${option.label}`,
+            path: `${displayPath}.options.${index}`,
+            type: 'string',
+            value: option.value,
+            source: 'global',
+            nodeLabel: 'Start Node'
+          })
+        })
+      }
+    })
+    
+    // Get variables from global configuration
+    globalVariables.forEach((variable: any) => {
+      const displayPath = `global.${variable.name}`
+      vars.push({
+        label: variable.displayName || variable.name,
+        path: displayPath,
+        type: variable.type,
+        source: 'global',
+        nodeLabel: 'Global Config',
+        required: variable.required,
+        hidden: variable.hidden
+      })
+      
+      // If it's a dropdown type, add options as subvariables (for reference)
+      if (variable.type === 'dropdown' && variable.options) {
+        variable.options.forEach((option: any, index: number) => {
+          vars.push({
+            label: `${variable.displayName || variable.name} - ${option.label}`,
+            path: `${displayPath}.options.${index}`,
+            type: 'string',
+            value: option.value,
+            source: 'global',
+            nodeLabel: 'Global Config'
+          })
+        })
+      }
+    })
+    
+    // If no variables, add a placeholder
+    if (vars.length === 0) {
+      vars.push({ label: 'No global variables defined', path: 'payload', type: 'object', source: 'global', nodeLabel: 'Start Node' })
+    }
+    
+    return vars.map(v => ({ ...v, source: 'global', nodeLabel: v.nodeLabel || 'Start Node' }))
   }
 
   // 2. Upstream or Internal Node Variables

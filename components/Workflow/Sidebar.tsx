@@ -19,6 +19,7 @@ import {
   BookOpen,
   FileText,
   Smartphone,
+  HardDrive,
   Search,
   X,
 } from 'lucide-react'
@@ -109,9 +110,13 @@ export const Sidebar: React.FC<SidebarProps> = () => {
   const { getViewport, setViewport } = useReactFlow()
 
   // Get store data for filtering
-  const { categories, activeCategoryId, nodes, edges, setWorkflow } = useWorkflowStore()
+  const { categories, activeCategoryId, nodes, edges, setWorkflow, globalVariables } = useWorkflowStore()
   const activeCategory = categories.find(c => c.id === activeCategoryId)
-  const allowedNodes = new Set(activeCategory?.allowedNodeTypes || Object.values(WorkflowNodeType))
+  const allowedNodes = new Set(
+    (!activeCategory?.allowedNodeTypes || activeCategory.allowedNodeTypes.length === 0)
+      ? Object.values(WorkflowNodeType)
+      : activeCategory.allowedNodeTypes
+  )
 
   // Node metadata for search
   const nodeMetadata: Record<WorkflowNodeType, { label: string; icon: any; color: string }> = {
@@ -132,6 +137,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: { label: '知识库检索', icon: BookOpen, color: 'text-sky-600' },
     [WorkflowNodeType.DOCUMENT_EXTRACTOR]: { label: '文档提取器', icon: FileText, color: 'text-amber-600' },
     [WorkflowNodeType.CLOUD_PHONE]: { label: '云手机控制', icon: Smartphone, color: 'text-green-500' },
+    [WorkflowNodeType.STORAGE]: { label: '文件存储', icon: HardDrive, color: 'text-emerald-500' },
   }
 
   const handleExport = () => {
@@ -140,6 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
       edges,
       categories,
       activeCategoryId,
+      globalVariables,
       viewport: getViewport(),
       exportedAt: new Date().toISOString(),
       version: '1.4',
@@ -169,7 +176,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         const content = e.target?.result as string
         const data = JSON.parse(content)
         if (data.nodes && data.edges) {
-          setWorkflow(data.nodes, data.edges, data.activeCategoryId, data.categories)
+          setWorkflow(data.nodes, data.edges, data.activeCategoryId, data.categories, data.globalVariables)
 
           if (data.viewport) {
             setTimeout(() => {
@@ -387,13 +394,13 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         )}
 
         {/* Industry Nodes Group */}
-        {hasVisibleNodes([WorkflowNodeType.CLOUD_PHONE]) && (
+        {hasVisibleNodes([WorkflowNodeType.CLOUD_PHONE, WorkflowNodeType.STORAGE]) && (
           <div className="mb-6">
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
               行业节点
             </h3>
             <div className="grid grid-cols-2 gap-3">
-              {getFilteredNodes([WorkflowNodeType.CLOUD_PHONE]).map(type => {
+              {getFilteredNodes([WorkflowNodeType.CLOUD_PHONE, WorkflowNodeType.STORAGE]).map(type => {
                 const metadata = nodeMetadata[type]
                 return (
                   <RenderNode

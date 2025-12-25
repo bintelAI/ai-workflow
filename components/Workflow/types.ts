@@ -18,6 +18,7 @@ export enum WorkflowNodeType {
   LOOP = 'loop',
   SQL = 'sql',
   CLOUD_PHONE = 'cloud_phone',
+  STORAGE = 'storage',
 }
 
 // API Call Node Configuration Interfaces
@@ -89,10 +90,42 @@ export interface CloudPhoneConfig {
   timeout?: number
 }
 
+export type StorageProvider = 'local' | 'aliyun' | 'tencent' | 'aws' | 'qiniu'
+
+export interface StorageConfig {
+  provider: StorageProvider
+  fileExtensions: string[]
+  aliyunConfig?: {
+    accessKeyId: string
+    accessKeySecret: string
+    bucket: string
+    region: string
+    endpoint?: string
+  }
+  tencentConfig?: {
+    secretId: string
+    secretKey: string
+    bucket: string
+    region: string
+  }
+  awsConfig?: {
+    accessKeyId: string
+    secretAccessKey: string
+    bucket: string
+    region: string
+  }
+  qiniuConfig?: {
+    accessKey: string
+    secretKey: string
+    bucket: string
+    domain: string
+  }
+}
+
 export interface NodeData {
   label: string
   description?: string
-  config?: APICallConfig | SQLConfig | CloudPhoneConfig | Record<string, any>
+  config?: APICallConfig | SQLConfig | CloudPhoneConfig | StorageConfig | Record<string, any>
   icon?: string
   status?: 'idle' | 'running' | 'completed' | 'error'
 }
@@ -133,6 +166,35 @@ export interface SimulationLog {
   loopIndex?: number // Added for loop iteration tracking
 }
 
+// Variable Configuration Interfaces
+export type VariableType = 'text' | 'paragraph' | 'dropdown' | 'number' | 'checkbox' | 'file' | 'file_list'
+
+export interface VariableOption {
+  label: string
+  value: string
+}
+
+export interface VariableConfig {
+  name: string
+  displayName: string
+  type: VariableType
+  required: boolean
+  hidden: boolean
+  defaultValue?: any
+  maxLength?: number
+  options?: VariableOption[]
+  // File-specific configuration
+  allowedFileTypes?: {
+    document?: boolean
+    image?: boolean
+    audio?: boolean
+    video?: boolean
+    other?: boolean
+    customExtensions?: string[]
+  }
+  uploadType?: 'local' | 'url' | 'both'
+}
+
 // --- NEW: Workflow Category Definition ---
 export interface WorkflowCategory {
   id: string
@@ -168,6 +230,10 @@ export interface WorkflowStoreState {
   isSettingsOpen: boolean
   categories: WorkflowCategory[]
   activeCategoryId: string
+
+  // --- NEW: Global Configuration ---
+  isGlobalConfigOpen: boolean
+  globalVariables: VariableConfig[]
 
   onNodesChange: (changes: any) => void
   onEdgesChange: (changes: any) => void
@@ -221,7 +287,8 @@ export interface WorkflowStoreState {
     nodes: WorkflowNode[],
     edges: WorkflowEdge[],
     activeCategoryId?: string,
-    categories?: WorkflowCategory[]
+    categories?: WorkflowCategory[],
+    globalVariables?: VariableConfig[]
   ) => void
 
   // --- NEW: Settings Actions ---
@@ -230,4 +297,8 @@ export interface WorkflowStoreState {
   addCategory: (category: WorkflowCategory) => void
   updateCategory: (id: string, updates: Partial<WorkflowCategory>) => void
   deleteCategory: (id: string) => void
+
+  // --- NEW: Global Configuration Actions ---
+  toggleGlobalConfig: (isOpen?: boolean) => void
+  setGlobalVariables: (variables: VariableConfig[]) => void
 }
