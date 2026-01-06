@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import { WorkflowCanvas, Sidebar, ConfigPanel, DataDrawer, AICommandCenter, SettingsModal } from '.'
 import GlobalConfigModal from './GlobalConfigModal'
@@ -6,8 +6,19 @@ import { Layers, Share2, Settings, ShieldCheck, Eye, Database } from 'lucide-rea
 import { useWorkflowStore } from './store/useWorkflowStore'
 import ValidationReportModal, { ValidationResult } from './ValidationReportModal'
 import { validateWorkflow } from './validators/workflowValidator'
+import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from './types'
 
-const App: React.FC = () => {
+interface WorkflowAppProps {
+  initialNodes?: WorkflowNode[]
+  initialEdges?: WorkflowEdge[]
+  allowedNodeTypes?: WorkflowNodeType[]
+}
+
+const App: React.FC<WorkflowAppProps> = ({ 
+  initialNodes, 
+  initialEdges,
+  allowedNodeTypes 
+}) => {
   const {
     validateWorkflow: storeValidateWorkflow,
     toggleDrawer,
@@ -18,10 +29,30 @@ const App: React.FC = () => {
     activeCategoryId,
     nodes,
     edges,
+    setWorkflow,
+    updateCategory,
   } = useWorkflowStore()
 
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false)
+
+  // 初始化节点和连线
+  useEffect(() => {
+    if (initialNodes || initialEdges) {
+      setWorkflow(
+        initialNodes || [],
+        initialEdges || []
+      )
+    }
+  }, [initialNodes, initialEdges, setWorkflow])
+
+  // 初始化允许使用的节点类型
+  useEffect(() => {
+    if (allowedNodeTypes && allowedNodeTypes.length > 0) {
+      // 更新当前激活模式的允许节点类型，或者更新 'general' 模式
+      updateCategory('general', { allowedNodeTypes })
+    }
+  }, [allowedNodeTypes, updateCategory])
 
   const activeCategoryName = categories.find(c => c.id === activeCategoryId)?.name || '未命名模式'
 

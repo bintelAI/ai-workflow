@@ -94,7 +94,9 @@ pnpm install
 创建 `.env.local` 文件并设置以下变量：
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o-mini
 ```
 
 ### 启动开发服务器
