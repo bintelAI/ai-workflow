@@ -20,7 +20,20 @@ const DEFAULT_CATEGORIES: WorkflowCategory[] = [
     name: 'AI Agent 编排',
     description: '专注于 LLM 调用、数据处理和 API 集成。屏蔽人工审批节点。',
     isSystem: true,
-    allowedNodeTypes: [],
+    allowedNodeTypes: [
+      WorkflowNodeType.START,
+      WorkflowNodeType.END,
+      WorkflowNodeType.LLM,
+      WorkflowNodeType.QUESTION_CLASSIFIER,
+      WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
+      WorkflowNodeType.DOCUMENT_EXTRACTOR,
+      WorkflowNodeType.API_CALL,
+      WorkflowNodeType.DATA_OP,
+      WorkflowNodeType.SCRIPT,
+      WorkflowNodeType.CONDITION,
+      WorkflowNodeType.LOOP,
+      WorkflowNodeType.DELAY,
+    ],
   },
 ]
 

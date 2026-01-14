@@ -22,6 +22,7 @@ import {
   HardDrive,
   Search,
   X,
+  Split,
 } from 'lucide-react'
 import { useReactFlow } from 'reactflow'
 import { WorkflowNodeType } from './types'
@@ -52,6 +53,8 @@ const DraggableNode = ({
         return 'bg-rose-50 border-rose-100'
       case WorkflowNodeType.CONDITION:
         return 'bg-amber-50 border-amber-100'
+      case WorkflowNodeType.QUESTION_CLASSIFIER:
+        return 'bg-indigo-50 border-indigo-100'
       case WorkflowNodeType.PARALLEL:
         return 'bg-teal-50 border-teal-100'
       case WorkflowNodeType.APPROVAL:
@@ -112,8 +115,10 @@ export const Sidebar: React.FC<SidebarProps> = () => {
   // Get store data for filtering
   const { categories, activeCategoryId, nodes, edges, setWorkflow, globalVariables } = useWorkflowStore()
   const activeCategory = categories.find(c => c.id === activeCategoryId)
+  
+  // If in general mode, always allow all nodes, otherwise use allowedNodeTypes
   const allowedNodes = new Set(
-    (!activeCategory?.allowedNodeTypes || activeCategory.allowedNodeTypes.length === 0)
+    (activeCategoryId === 'general' || !activeCategory?.allowedNodeTypes || activeCategory.allowedNodeTypes.length === 0)
       ? Object.values(WorkflowNodeType)
       : activeCategory.allowedNodeTypes
   )
@@ -123,6 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     [WorkflowNodeType.START]: { label: '开始', icon: PlayCircle, color: 'text-emerald-500' },
     [WorkflowNodeType.END]: { label: '结束', icon: StopCircle, color: 'text-rose-500' },
     [WorkflowNodeType.CONDITION]: { label: '条件分支', icon: GitFork, color: 'text-amber-500' },
+    [WorkflowNodeType.QUESTION_CLASSIFIER]: { label: '问题分类', icon: Split, color: 'text-indigo-500' },
     [WorkflowNodeType.PARALLEL]: { label: '并行分支', icon: GitMerge, color: 'text-teal-500' },
     [WorkflowNodeType.APPROVAL]: { label: '审批节点', icon: CheckSquare, color: 'text-blue-500' },
     [WorkflowNodeType.CC]: { label: '抄送节点', icon: Send, color: 'text-indigo-500' },
@@ -318,6 +324,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         {/* Logic Nodes Group */}
         {hasVisibleNodes([
           WorkflowNodeType.CONDITION,
+          WorkflowNodeType.QUESTION_CLASSIFIER,
           WorkflowNodeType.PARALLEL,
           WorkflowNodeType.APPROVAL,
           WorkflowNodeType.CC,
@@ -332,6 +339,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
               {getFilteredNodes([
                 WorkflowNodeType.LOOP,
                 WorkflowNodeType.CONDITION,
+                WorkflowNodeType.QUESTION_CLASSIFIER,
                 WorkflowNodeType.PARALLEL,
                 WorkflowNodeType.APPROVAL,
                 WorkflowNodeType.CC,

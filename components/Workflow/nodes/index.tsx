@@ -20,6 +20,7 @@ import KnowledgeRetrievalNode from './KnowledgeRetrievalNode'
 import DocumentExtractorNode from './DocumentExtractorNode'
 import CloudPhoneNode from './CloudPhoneNode'
 import StorageNode from './StorageNode'
+import QuestionClassifierNode from './QuestionClassifierNode'
 
 // 导出所有节点组件
 export {
@@ -48,4 +49,5 @@ export {
   DocumentExtractorNode,
   CloudPhoneNode,
   StorageNode,
+  QuestionClassifierNode,
 }

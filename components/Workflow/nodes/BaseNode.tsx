@@ -21,6 +21,7 @@ import {
   FileText,
   Smartphone,
   HardDrive,
+  Split,
 } from 'lucide-react'
 import { WorkflowNodeType, NodeData } from '../types'
 import { useWorkflowStore } from '../store/useWorkflowStore'
@@ -53,6 +54,8 @@ export const getNodeIcon = (type: string) => {
       return <Bot className="w-5 h-5 text-fuchsia-500" />
     case WorkflowNodeType.LOOP:
       return <GitFork className="w-5 h-5 text-purple-500" />
+    case WorkflowNodeType.QUESTION_CLASSIFIER:
+      return <Split className="w-5 h-5 text-indigo-500" />
     case WorkflowNodeType.SQL:
       return <Database className="w-5 h-5 text-indigo-500" />
     case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
@@ -98,6 +101,8 @@ export const getNodeTypeLabel = (type: string) => {
       return '循环节点'
     case WorkflowNodeType.SQL:
       return 'SQL 节点'
+    case WorkflowNodeType.QUESTION_CLASSIFIER:
+      return '问题分类器'
     case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
       return '知识库检索'
     case WorkflowNodeType.DOCUMENT_EXTRACTOR:
@@ -123,6 +128,8 @@ export const getNodeIconBgColor = (type: string) => {
       return 'bg-indigo-50 border-indigo-100'
     case WorkflowNodeType.CONDITION:
       return 'bg-amber-50 border-amber-100'
+    case WorkflowNodeType.QUESTION_CLASSIFIER:
+      return 'bg-indigo-50 border-indigo-100'
     case WorkflowNodeType.PARALLEL:
       return 'bg-teal-50 border-teal-100'
     case WorkflowNodeType.API_CALL:

@@ -21,6 +21,7 @@ import KnowledgeRetrievalConfig from './configs/KnowledgeRetrievalConfig'
 import DocumentExtractorConfig from './configs/DocumentExtractorConfig'
 import { CloudPhoneConfig } from './configs/CloudPhoneConfig'
 import { StorageConfigPanel } from './configs/StorageConfig'
+import { QuestionClassifierConfig } from './configs/QuestionClassifierConfig'
 import { NodeOutputPreview } from './configs/NodeOutputPreview'
 
 // Import common components from configs/common.tsx
@@ -75,6 +76,23 @@ const ConfigPanel: React.FC = () => {
     })
   }
 
+  const handleAIGenerate = async (field: string, isConfig: boolean) => {
+    setLoadingField(field)
+    try {
+      const context = isConfig
+        ? JSON.stringify(selectedNode.data.config || {})
+        : selectedNode.data.label || selectedNode.type || ''
+      const result = await aiAutocompleteConfig(field, context)
+      if (isConfig) {
+        handleConfigChange(field, result)
+      } else {
+        handleChange(field, result)
+      }
+    } finally {
+      setLoadingField(null)
+    }
+  }
+
   const renderAdvancedConfig = () => {
     const config = selectedNode.data.config || {}
 
@@ -86,9 +104,23 @@ const ConfigPanel: React.FC = () => {
       case WorkflowNodeType.END:
         return <EndConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.SCRIPT:
-        return <ScriptConfig config={config} onConfigChange={handleConfigChange} />
+        return (
+          <ScriptConfig
+            config={config}
+            onConfigChange={handleConfigChange}
+            loadingField={loadingField}
+            onAIGenerate={handleAIGenerate}
+          />
+        )
       case WorkflowNodeType.LLM:
-        return <LLMConfig config={config} onConfigChange={handleConfigChange} />
+        return (
+          <LLMConfig
+            config={config}
+            onConfigChange={handleConfigChange}
+            loadingField={loadingField}
+            onAIGenerate={handleAIGenerate}
+          />
+        )
       case WorkflowNodeType.API_CALL:
         return <APICallConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.CONDITION:
@@ -113,6 +145,8 @@ const ConfigPanel: React.FC = () => {
         return <CloudPhoneConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.STORAGE:
         return <StorageConfigPanel config={config} onConfigChange={handleConfigChange} />
+      case WorkflowNodeType.QUESTION_CLASSIFIER:
+        return <QuestionClassifierConfig config={config as any} onConfigChange={handleConfigChange} />
       default:
         return (
           <div className="p-3 bg-slate-50 rounded border border-slate-100 text-xs text-slate-500 flex items-center gap-2">

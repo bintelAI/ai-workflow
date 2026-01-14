@@ -31,6 +31,7 @@ import {
   DocumentExtractorNode,
   CloudPhoneNode,
   StorageNode,
+  QuestionClassifierNode,
 } from './nodes' // Import all node components
 import { CustomEdge } from './edges/CustomEdge'
 import { WorkflowNodeType } from './types'
@@ -73,6 +74,7 @@ const nodeTypes: NodeTypes = {
   [WorkflowNodeType.DOCUMENT_EXTRACTOR]: DocumentExtractorNode,
   [WorkflowNodeType.CLOUD_PHONE]: CloudPhoneNode,
   [WorkflowNodeType.STORAGE]: StorageNode,
+  [WorkflowNodeType.QUESTION_CLASSIFIER]: QuestionClassifierNode,
 }
 
 // Register custom edge types
@@ -94,6 +96,8 @@ const getLabelForType = (type: WorkflowNodeType) => {
       return '抄送节点'
     case WorkflowNodeType.CONDITION:
       return '条件节点'
+    case WorkflowNodeType.QUESTION_CLASSIFIER:
+      return '问题分类'
     case WorkflowNodeType.PARALLEL:
       return '并行节点'
     case WorkflowNodeType.API_CALL:
@@ -155,6 +159,12 @@ const NodeAddMenu = () => {
 
   const quickAddOptions = [
     { type: WorkflowNodeType.LLM, label: 'LLM 模型', icon: Bot, color: 'text-fuchsia-500' },
+    {
+      type: WorkflowNodeType.QUESTION_CLASSIFIER,
+      label: '问题分类',
+      icon: GitFork,
+      color: 'text-indigo-500',
+    },
     {
       type: WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
       label: '知识检索',
@@ -313,6 +323,16 @@ const WorkflowCanvasInner: React.FC = () => {
         }
       } else if (type === WorkflowNodeType.LLM) {
         config = { model: 'gpt-4', temperature: 0.7, systemPrompt: '', userPrompt: '' }
+      } else if (type === WorkflowNodeType.QUESTION_CLASSIFIER) {
+        config = {
+          model: 'gpt-4',
+          temperature: 0.7,
+          inputVariable: '',
+          categories: [
+            { id: `cat_1_${Date.now()}`, name: '分类 1', description: '' },
+            { id: `cat_2_${Date.now()}`, name: '分类 2', description: '' },
+          ],
+        }
       } else if (type === WorkflowNodeType.PARALLEL) {
         config = { branches: ['分支 1', '分支 2'] }
       } else if (type === WorkflowNodeType.LOOP) {

@@ -1,4 +1,10 @@
-import { WorkflowNodeType, SimulationLog, WorkflowNode, WorkflowEdge } from '../types'
+import {
+  WorkflowNodeType,
+  SimulationLog,
+  WorkflowNode,
+  WorkflowEdge,
+  QuestionClassifierCategory,
+} from '../types'
 
 const normalizeArray = (value: any): any[] => {
   if (Array.isArray(value)) return value
@@ -757,7 +763,8 @@ export const runSimulationLogic = async (
         config.expression,
         incomingData
       )
-      isSuccess = !!conditionResult
+      isSuccess = true // Evaluation was successful
+      const selectedHandleId = conditionResult ? 'true' : 'false'
       duration = Date.now() - nodeStartTime
 
       // 增强条件节点的输入输出监控
@@ -773,8 +780,9 @@ export const runSimulationLogic = async (
       }
 
       logOutput = {
-        result: isSuccess,
-        next_path: isSuccess ? 'true' : 'false',
+        result: !!conditionResult,
+        next_path: selectedHandleId,
+        selected_handle: selectedHandleId,
         condition_result: conditionResult,
         evaluation_context: {
           payload_keys: Object.keys(incomingData.payload),
@@ -927,6 +935,41 @@ export const runSimulationLogic = async (
 
       logInput = { provider, fileExtension }
       logOutput = outputData
+    } else if (node.type === WorkflowNodeType.QUESTION_CLASSIFIER) {
+      // 问题分类器模拟逻辑
+      const inputVal = getVariableValue(incomingData, config.inputVariable || '')
+      const categories = config.categories || []
+
+      // Mock 模拟分类：如果输入包含分类名称，则选择该分类，否则随机或走其他
+      let selectedCategory = categories.find(
+        (c: QuestionClassifierCategory) =>
+          inputVal &&
+          typeof inputVal === 'string' &&
+          (inputVal.toLowerCase().includes(c.name.toLowerCase()) ||
+            (c.description && inputVal.toLowerCase().includes(c.description.toLowerCase())))
+      )
+
+      const selectedHandleId = selectedCategory?.id || 'others'
+
+      outputData = {
+        category_id: selectedHandleId,
+        category_name: selectedCategory?.name || '其他',
+        input_value: inputVal,
+      }
+
+      duration = Math.floor(Math.random() * 800) + 400
+      isSuccess = true
+
+      logInput = {
+        input_variable: config.inputVariable,
+        input_value: inputVal,
+        categories: categories.map((c: QuestionClassifierCategory) => ({ name: c.name, id: c.id })),
+      }
+      logOutput = {
+        ...outputData,
+        selected_handle: selectedHandleId,
+        metrics: { processing_time: duration },
+      }
     } else if (node.type === WorkflowNodeType.END) {
       // 处理结束节点：根据配置的输出变量提取数据
       const outputs = config.outputs || []
@@ -1007,7 +1050,14 @@ export const runSimulationLogic = async (
       }
 
       const outgoingEdges = edges.filter(e => e.source === nodeId)
-      outgoingEdges.forEach(edge => {
+      
+      // Handle branching nodes: only follow the matching handle
+      const selectedHandle = logOutput?.selected_handle
+      const filteredEdges = selectedHandle 
+        ? outgoingEdges.filter(e => e.sourceHandle === selectedHandle)
+        : outgoingEdges
+
+      filteredEdges.forEach(edge => {
         // Avoid adding nodes that are inside the loop if we are currently "outside" processing
         // But here edges are explicit.
         queue.push({ nodeId: edge.target, incomingData: nextData })

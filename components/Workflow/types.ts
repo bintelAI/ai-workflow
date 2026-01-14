@@ -19,6 +19,21 @@ export enum WorkflowNodeType {
   SQL = 'sql',
   CLOUD_PHONE = 'cloud_phone',
   STORAGE = 'storage',
+  QUESTION_CLASSIFIER = 'question_classifier',
+}
+
+// Question Classifier Node Configuration Interfaces
+export interface QuestionClassifierCategory {
+  id: string
+  name: string
+  description?: string
+}
+
+export interface QuestionClassifierConfig {
+  model: string
+  temperature: number
+  inputVariable: string
+  categories: QuestionClassifierCategory[]
 }
 
 // API Call Node Configuration Interfaces
@@ -126,7 +141,13 @@ export interface StorageConfig {
 export interface NodeData {
   label: string
   description?: string
-  config?: APICallConfig | SQLConfig | CloudPhoneConfig | StorageConfig | Record<string, any>
+  config?:
+    | APICallConfig
+    | SQLConfig
+    | CloudPhoneConfig
+    | StorageConfig
+    | QuestionClassifierConfig
+    | Record<string, any>
   icon?: string
   status?: 'idle' | 'running' | 'completed' | 'error'
 }
