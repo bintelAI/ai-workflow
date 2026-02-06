@@ -120,6 +120,16 @@ export const runSimulationLogic = async (
     return replaceVariables(processed, context)
   }
 
+  // Helper to convert dot path to safe JS access
+  const toSafeJSPath = (path: string) => {
+    if (!path) return path
+    return path.split('.').reduce((acc, part, index) => {
+      if (index === 0) return part
+      const safePart = part.replace(/'/g, "\\'")
+      return `${acc}?.['${safePart}']`
+    }, '')
+  }
+
   // Helper to evaluate conditions
   const evaluateConditions = (
     conditionGroups: any[],
@@ -134,23 +144,21 @@ export const runSimulationLogic = async (
           let { variable, operator, value } = cond
           if (!variable) return 'true'
 
-          const cleanVariable = variable.replace(/\{\{(.*?)\}\}/g, '$1')
+          const cleanVariable = variable.replace(/\{\{(.*?)\}\}/g, '$1').trim()
+          const safeVariable = toSafeJSPath(cleanVariable)
 
           let val = value
           if (typeof value === 'string') {
-            if (value.startsWith('{{')) {
-              val = value.replace(/\{\{(.*?)\}\}/g, '$1')
+            if (value.includes('{{')) {
+              val = value.replace(/\{\{(.*?)\}\}/g, (match, p1) => {
+                return toSafeJSPath(p1.trim())
+              })
             } else if (!isNaN(Number(value)) && value.trim() !== '') {
               val = Number(value)
             } else {
               val = `'${value}'`
             }
           }
-
-          const safeVariable = cleanVariable.split('.').reduce((acc, part, index) => {
-            if (index === 0) return part
-            return `${acc}?.['${part}']`
-          }, '')
 
           switch (operator) {
             case '==':
@@ -941,18 +949,27 @@ export const runSimulationLogic = async (
       const categories = config.categories || []
 
       // Mock 模拟分类：如果输入包含分类名称，则选择该分类，否则随机或走其他
+      let selectedIndex = -1
       let selectedCategory = categories.find(
-        (c: QuestionClassifierCategory) =>
-          inputVal &&
+        (c: QuestionClassifierCategory, index: number) => {
+          const matched = inputVal &&
           typeof inputVal === 'string' &&
           (inputVal.toLowerCase().includes(c.name.toLowerCase()) ||
             (c.description && inputVal.toLowerCase().includes(c.description.toLowerCase())))
+          
+          if (matched) {
+            selectedIndex = index
+            return true
+          }
+          return false
+        }
       )
 
-      const selectedHandleId = selectedCategory?.id || 'others'
+      // UPDATE: Match backend handle IDs (source-{index} or source-else)
+      const selectedHandleId = selectedIndex >= 0 ? `source-${selectedIndex}` : 'source-else'
 
       outputData = {
-        category_id: selectedHandleId,
+        category_id: selectedCategory?.id || 'others',
         category_name: selectedCategory?.name || '其他',
         input_value: inputVal,
       }

@@ -15,7 +15,7 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
         </span>
       </div>
       <Handle
-        id="true"
+        id="source-if"
         type="source"
         position={Position.Bottom}
         isConnectable={isConnectable}
@@ -30,7 +30,7 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
         </span>
       </div>
       <Handle
-        id="false"
+        id="source-else"
         type="source"
         position={Position.Bottom}
         isConnectable={isConnectable}

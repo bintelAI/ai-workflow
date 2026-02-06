@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Plus, Trash2, ListPlus, ChevronDown, Variable, Braces } from 'lucide-react'
+import { Plus, Trash2, ListPlus, ChevronDown, Variable, Braces, X, Check, Search } from 'lucide-react'
 import { VariableBindModal } from './VariableBindModal'
 
 // --- Helper: Flatten JSON object to dot notation ---
@@ -319,6 +319,127 @@ export const KeyValueEditor: React.FC<KeyValueEditorProps> = ({
       >
         <Plus size={12} /> {addButtonLabel}
       </button>
+    </div>
+  )
+}
+
+// --- MultiSelect Component ---
+export interface MultiSelectProps {
+  value: string[]
+  onChange: (value: string[]) => void
+  options: { label: string; value: string }[]
+  placeholder?: string
+  className?: string
+}
+
+export const MultiSelect: React.FC<MultiSelectProps> = ({
+  value = [],
+  onChange,
+  options,
+  placeholder = 'Select...',
+  className = '',
+}) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  // Close when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const filteredOptions = options.filter(opt =>
+    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const handleSelect = (val: string) => {
+    if (value.includes(val)) {
+      onChange(value.filter(v => v !== val))
+    } else {
+      onChange([...value, val])
+    }
+  }
+
+  const handleRemove = (val: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    onChange(value.filter(v => v !== val))
+  }
+
+  return (
+    <div className={`relative ${className}`} ref={containerRef}>
+      <div
+        className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white cursor-pointer min-h-[38px] flex flex-wrap gap-1 items-center hover:border-indigo-400 hover:shadow-sm transition-all"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {value.length > 0 ? (
+          value.map(val => {
+            const label = options.find(o => o.value === val)?.label || val
+            return (
+              <span
+                key={val}
+                className="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded text-xs flex items-center gap-1 border border-indigo-100"
+              >
+                {label}
+                <button
+                  onClick={(e) => handleRemove(val, e)}
+                  className="hover:text-indigo-900"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            )
+          })
+        ) : (
+          <span className="text-slate-400 text-xs">{placeholder}</span>
+        )}
+        <div className="ml-auto">
+           <ChevronDown size={14} className="text-slate-400" />
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-hidden flex flex-col">
+          <div className="p-2 border-b border-slate-100 relative">
+            <Search size={12} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              className="w-full pl-7 pr-2 py-1 text-xs border border-slate-200 rounded bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none"
+              placeholder="搜索..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              onClick={e => e.stopPropagation()}
+            />
+          </div>
+          <div className="overflow-y-auto flex-1 p-1">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map(opt => (
+                <div
+                  key={opt.value}
+                  className={`px-2 py-1.5 text-xs rounded cursor-pointer flex items-center justify-between ${
+                    value.includes(opt.value)
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'hover:bg-slate-50 text-slate-700'
+                  }`}
+                  onClick={() => handleSelect(opt.value)}
+                >
+                  <span>{opt.label}</span>
+                  {value.includes(opt.value) && <Check size={12} />}
+                </div>
+              ))
+            ) : (
+              <div className="px-2 py-2 text-xs text-slate-400 text-center">
+                无匹配项
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

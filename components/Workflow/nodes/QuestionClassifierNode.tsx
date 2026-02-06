@@ -31,7 +31,7 @@ const QuestionClassifierNode = (props: NodeProps<NodeData>) => {
               </span>
             </div>
             <Handle
-              id={category.id}
+              id={`source-${index}`}
               type="source"
               position={Position.Bottom}
               isConnectable={isConnectable}
@@ -57,7 +57,7 @@ const QuestionClassifierNode = (props: NodeProps<NodeData>) => {
               </span>
             </div>
             <Handle
-              id="others"
+              id="source-else"
               type="source"
               position={Position.Bottom}
               isConnectable={isConnectable}

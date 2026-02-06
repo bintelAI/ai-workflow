@@ -1,6 +1,6 @@
 import React from 'react'
 import { Bot } from 'lucide-react'
-import { VariableSelector } from './common'
+import { VariableSelector, MultiSelect } from './common'
 import { AIButton } from './common'
 
 interface LLMConfigProps {
@@ -30,6 +30,22 @@ export const LLMConfig: React.FC<LLMConfigProps> = ({
           <option value="claude-3">Claude 3 Opus</option>
           <option value="gemini-pro">Gemini Pro</option>
         </select>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">技能 (Skills)</label>
+        <MultiSelect
+          value={config?.skills || []}
+          onChange={val => onConfigChange('skills', val)}
+          options={[
+            { label: 'AI 学习助手', value: 'ai_learning_assistant' },
+            { label: '流程审批专家', value: 'process_approval_expert' },
+            { label: '代码审查员', value: 'code_reviewer' },
+            { label: '文档编写专家', value: 'documentation_expert' },
+            { label: '数据分析师', value: 'data_analyst' },
+            { label: '翻译专家', value: 'translation_expert' },
+          ]}
+          placeholder="选择技能..."
+        />
       </div>
       <div>
         <label className="block text-xs font-medium text-slate-500 mb-2 uppercase flex items-center justify-between">

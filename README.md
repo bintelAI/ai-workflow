@@ -1,8 +1,20 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
 
-🌐 官网: [www.bintelai.com](https://www.bintelai.com)
+
+[方块智联AI 团队开发](https://www.bintelai.com)
+
+## 智能运维模块
+
+智能运维系统是一个 AI 无缝全面融入的系统，基于各个模块拆分开发，通过微服务整合，实现高可用、可扩展、可维护的运维管理。
+
+[aissh助手](https://github.com/bintelAI/aissh)
+
+[机房视图模块](https://github.com/flyowl/smart-flow)
+
+[AI工作流模块](https://github.com/bintelAI/ai-workflow)
+
+[AI报表模块](https://github.com/bintelAI/ai-report)
+
+
 
 ## 📸 功能截图
 
