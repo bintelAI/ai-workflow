@@ -1,6 +1,6 @@
 import React from 'react'
 import { Trash2, Plus, Layers, Settings2, AlertCircle } from 'lucide-react'
-import { VariableSelector, VariableInput } from './common'
+import { VariableSelector, VariableInput } from './common/index'
 
 export interface Condition {
   variable: string

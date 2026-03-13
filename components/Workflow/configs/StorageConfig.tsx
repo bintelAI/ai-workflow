@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { HardDrive, Cloud, Globe, Folder, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 import { StorageConfig, StorageProvider } from '../types'
-import { VariableInput } from './common'
+import { VariableInput } from './common/index'
 
 interface StorageConfigProps {
   config: any

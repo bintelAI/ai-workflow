@@ -1,65 +1,199 @@
-import React from 'react'
-import { VariableInput } from './common'
-import { Settings2 } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react';
+import { Select, Input, Button, Divider, Alert, Empty, Popover, Spin } from 'antd';
+import { 
+  FileTextOutlined, 
+  SearchOutlined, 
+  CheckOutlined, 
+  DownOutlined 
+} from '@ant-design/icons';
+import { InputParams, OutputParams } from './common/index';
+import { flowConfigApi } from '@/src/api/flow';
+import { useWorkflowStore } from '../store/useWorkflowStore';
+import type { FlowField } from '@/src/types/flow';
+import './DocumentExtractorConfig.css';
 
 interface DocumentExtractorConfigProps {
-  config: any
-  onConfigChange: (key: string, value: any) => void
+  config: {
+    inputParams?: FlowField[];
+    outputParams?: FlowField[];
+    model?: string;
+  };
+  onConfigChange: (key: string, value: any) => void;
+  variables?: Array<{
+    id: string;
+    type?: string;
+    label?: string;
+    params: FlowField[];
+  }>;
+}
+
+interface ModelGroup {
+  id: number;
+  title: string;
+  type: string;
+  select: string[];
 }
 
 const DocumentExtractorConfig: React.FC<DocumentExtractorConfigProps> = ({
   config,
   onConfigChange,
+  variables = [],
 }) => {
-  const currentConfig = {
-    file_url: config?.file_url || '',
-    extraction_mode: config?.extraction_mode || 'text',
-  }
+  const teamId = useWorkflowStore(state => state.teamId)
+  const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState('');
+
+  useEffect(() => {
+    if (teamId) {
+      loadModels();
+    }
+  }, [teamId]);
+
+  const loadModels = async () => {
+    if (!teamId) return;
+    setModelLoading(true);
+    try {
+      const res = await flowConfigApi.getModels(teamId);
+      const groups: ModelGroup[] = (res.data as any[] || []).map((e: any) => ({
+        id: e.id,
+        title: e.name,
+        type: e.type,
+        select: e.options?.options?.find((o: any) => o.field === 'model')?.select || [],
+      }));
+      setModelGroups(groups);
+      
+      if (!config.model && groups.length > 0 && groups[0].select.length > 0) {
+        onConfigChange('model', groups[0].select[0]);
+      }
+    } catch (error) {
+      console.error('Failed to load models:', error);
+    } finally {
+      setModelLoading(false);
+    }
+  };
+
+  const handleInputParamsChange = useCallback(
+    (params: FlowField[]) => {
+      onConfigChange('inputParams', params);
+    },
+    [onConfigChange]
+  );
+
+  const handleOutputParamsChange = useCallback(
+    (params: FlowField[]) => {
+      onConfigChange('outputParams', params);
+    },
+    [onConfigChange]
+  );
+
+  const handleModelSelect = (modelName: string) => {
+    onConfigChange('model', modelName);
+    setModelPopoverOpen(false);
+  };
+
+  const filteredGroups = modelGroups.filter(g =>
+    g.title.toLowerCase().includes(modelSearch.toLowerCase()) ||
+    g.select.some(m => m.toLowerCase().includes(modelSearch.toLowerCase()))
+  );
 
   return (
-    <div className="space-y-4">
-      {/* File Input */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-          输入文件
-          <span className="text-xs text-rose-500">*</span>
-        </label>
-        <VariableInput
-          value={currentConfig.file_url}
-          onChange={val => onConfigChange('file_url', val)}
-          placeholder="请输入文件URL或选择文件变量..."
+    <div className="document-extractor-config">
+      <Alert
+        type="info"
+        icon={<FileTextOutlined />}
+        message="智能解析节点"
+        description="使用 AI 模型智能提取内容的关键信息，支持自定义输出字段。"
+        showIcon
+        className="extractor-alert"
+      />
+
+      <Divider />
+
+      <div className="config-section">
+        <label className="config-label">输入变量</label>
+        <InputParams
+          value={config.inputParams || [{ field: 'text' }]}
+          onChange={handleInputParamsChange}
+          fieldPrefix="text"
+          variables={variables}
+          editField={false}
+          disabled
         />
-        <p className="text-xs text-slate-500">支持 PDF, DOCX, TXT, MD 等格式文件。</p>
       </div>
 
-      <hr className="border-slate-100" />
+      <Divider />
 
-      {/* Extraction Settings */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <Settings2 size={16} />
-          <span>提取设置</span>
-        </div>
+      <div className="config-section">
+        <label className="config-label">模型</label>
+        <Popover
+          open={modelPopoverOpen}
+          onOpenChange={setModelPopoverOpen}
+          trigger="click"
+          placement="bottomLeft"
+          overlayClassName="model-selector-popover"
+          arrow={false}
+          content={
+            <Spin spinning={modelLoading}>
+              <div className="model-selector">
+                <div className="model-search">
+                  <Input
+                    prefix={<SearchOutlined />}
+                    placeholder="搜索模型"
+                    value={modelSearch}
+                    onChange={e => setModelSearch(e.target.value)}
+                    allowClear
+                  />
+                </div>
+                <div className="model-list">
+                  {filteredGroups.length === 0 ? (
+                    <Empty description="未找到匹配项" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  ) : (
+                    filteredGroups.map(group => (
+                      <div key={group.id} className="model-group">
+                        <div className="model-group-label">{group.title}</div>
+                        {group.select.map(model => (
+                          <div
+                            key={model}
+                            className={`model-item ${config.model === model ? 'active' : ''}`}
+                            onClick={() => handleModelSelect(model)}
+                          >
+                            <span>{model}</span>
+                            {config.model === model && <CheckOutlined className="check-icon" />}
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </Spin>
+          }
+        >
+          <div className="model-selector-trigger">
+            <span className={config.model ? '' : 'placeholder'}>
+              {config.model || '选择模型'}
+            </span>
+            <DownOutlined className="arrow-icon" />
+          </div>
+        </Popover>
+      </div>
 
-        {/* Mode */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-slate-600">提取模式</label>
-          <select
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-            value={currentConfig.extraction_mode}
-            onChange={e => onConfigChange('extraction_mode', e.target.value)}
-          >
-            <option value="text">纯文本 (Plain Text)</option>
-            <option value="markdown">Markdown 格式</option>
-            <option value="json">结构化数据 (JSON)</option>
-          </select>
-          <p className="text-xs text-slate-400">
-            选择提取后的数据格式。Markdown 模式将保留标题、列表等格式。
-          </p>
+      <Divider />
+
+      <div className="config-section">
+        <label className="config-label">输出变量</label>
+        <OutputParams
+          value={config.outputParams || [{ field: 'result', type: 'string', label: '解析结果' }]}
+          onChange={handleOutputParamsChange}
+        />
+        <div className="output-hint">
+          <p>定义需要提取的字段，AI 将根据字段名称智能提取内容</p>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default DocumentExtractorConfig
+export default DocumentExtractorConfig;

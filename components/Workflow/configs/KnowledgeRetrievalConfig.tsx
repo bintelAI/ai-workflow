@@ -1,161 +1,213 @@
-import React from 'react'
-import { VariableInput } from './common'
-import { BookOpen, Settings2, Database } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react';
+import { Select, InputNumber, Slider, Divider, Alert, Tag, Empty, Spin } from 'antd';
+import { DatabaseOutlined, SettingOutlined } from '@ant-design/icons';
+import { InputParams } from './common/index';
+import { flowConfigApi } from '@/src/api/flow';
+import { useWorkflowStore } from '../store/useWorkflowStore';
+import type { FlowField, KnowOptions } from '@/src/types/flow';
+import './KnowledgeRetrievalConfig.css';
 
 interface KnowledgeRetrievalConfigProps {
-  config: any
-  onConfigChange: (key: string, value: any) => void
+  config: {
+    inputParams?: FlowField[];
+    knowIds?: number[];
+    size?: number;
+    minScore?: number;
+  };
+  onConfigChange: (key: string, value: any) => void;
+  variables?: Array<{
+    id: string;
+    type?: string;
+    label?: string;
+    params: FlowField[];
+  }>;
 }
 
-const MOCK_DATASETS = [
-  { id: 'ds_1', name: '产品使用手册' },
-  { id: 'ds_2', name: '公司内部政策' },
-  { id: 'ds_3', name: '技术文档库' },
-  { id: 'ds_4', name: '常见问题答疑' },
-]
+interface KnowledgeItem {
+  id: number;
+  name: string;
+  description?: string;
+}
 
 const KnowledgeRetrievalConfig: React.FC<KnowledgeRetrievalConfigProps> = ({
   config,
   onConfigChange,
+  variables = [],
 }) => {
-  const currentConfig = {
-    query: config?.query || '',
-    dataset_ids: config?.dataset_ids || [],
-    top_k: config?.top_k || 3,
-    score_threshold: config?.score_threshold || 0.5,
-    retrieval_mode: config?.retrieval_mode || 'semantic',
-  }
+  const teamId = useWorkflowStore(state => state.teamId)
+  const [knowledgeList, setKnowledgeList] = useState<KnowledgeItem[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const handleDatasetChange = (datasetId: string) => {
-    const newDatasetIds = currentConfig.dataset_ids.includes(datasetId)
-      ? currentConfig.dataset_ids.filter((id: string) => id !== datasetId)
-      : [...currentConfig.dataset_ids, datasetId]
-    onConfigChange('dataset_ids', newDatasetIds)
-  }
+  useEffect(() => {
+    if (teamId) {
+      loadKnowledgeList();
+    }
+  }, [teamId]);
+
+  const loadKnowledgeList = async () => {
+    if (!teamId) return;
+    setLoading(true);
+    try {
+      const res = await flowConfigApi.getKnowledges(teamId);
+      setKnowledgeList(res.data?.options || []);
+    } catch (error) {
+      console.error('Failed to load knowledge list:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputParamsChange = useCallback(
+    (params: FlowField[]) => {
+      onConfigChange('inputParams', params);
+    },
+    [onConfigChange]
+  );
+
+  const handleKnowledgeSelect = (knowId: number) => {
+    const currentIds = config.knowIds || [];
+    if (!currentIds.includes(knowId)) {
+      onConfigChange('knowIds', [...currentIds, knowId]);
+    }
+  };
+
+  const handleKnowledgeRemove = (knowId: number) => {
+    const currentIds = config.knowIds || [];
+    onConfigChange('knowIds', currentIds.filter(id => id !== knowId));
+  };
+
+  const getSelectedKnowledge = () => {
+    const ids = config.knowIds || [];
+    return knowledgeList.filter(k => ids.includes(k.id));
+  };
+
+  const getAvailableKnowledge = () => {
+    const ids = config.knowIds || [];
+    return knowledgeList.filter(k => !ids.includes(k.id));
+  };
 
   return (
-    <div className="space-y-4">
-      {/* Dataset Selection */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-          <Database size={16} className="text-indigo-500" />
-          选择知识库
-          <span className="text-xs text-rose-500">*</span>
-        </label>
-        <div className="grid grid-cols-1 gap-2">
-          <select
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-            value=""
-            onChange={e => {
-              if (e.target.value) handleDatasetChange(e.target.value)
-            }}
-          >
-            <option value="">添加知识库...</option>
-            {MOCK_DATASETS.filter(ds => !currentConfig.dataset_ids.includes(ds.id)).map(ds => (
-              <option key={ds.id} value={ds.id}>
-                {ds.name}
-              </option>
-            ))}
-          </select>
-        </div>
+    <div className="knowledge-config">
+      <Alert
+        type="info"
+        icon={<DatabaseOutlined />}
+        message="知识库检索节点"
+        description="从知识库中检索出相关的内容，支持语义检索和全文检索。"
+        showIcon
+        className="knowledge-alert"
+      />
 
-        {/* Selected Datasets Tags */}
-        <div className="flex flex-wrap gap-2 mt-2">
-          {currentConfig.dataset_ids.map((dsId: string) => {
-            const ds = MOCK_DATASETS.find(d => d.id === dsId)
-            return (
-              <div
-                key={dsId}
-                className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-xs"
-              >
-                <span>{ds?.name || dsId}</span>
-                <button
-                  onClick={() => handleDatasetChange(dsId)}
-                  className="hover:text-indigo-900 font-bold"
-                >
-                  ×
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <Divider />
 
-      <hr className="border-slate-100" />
-
-      {/* Query Input */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-          查询关键词
-          <span className="text-xs text-rose-500">*</span>
-        </label>
-        <VariableInput
-          value={currentConfig.query}
-          onChange={val => onConfigChange('query', val)}
-          placeholder="请输入用户问题或关键词..."
+      <div className="config-section">
+        <label className="config-label">输入变量</label>
+        <InputParams
+          value={config.inputParams || [{ field: 'text' }]}
+          onChange={handleInputParamsChange}
+          fieldPrefix="text"
+          variables={variables}
+          editField={false}
+          disabled
         />
-        <p className="text-xs text-slate-500">检索模型将基于此输入在知识库中查找相关内容。</p>
       </div>
 
-      <hr className="border-slate-100" />
+      <Divider />
 
-      {/* Retrieval Settings */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-          <Settings2 size={16} />
-          <span>检索设置</span>
-        </div>
-
-        {/* Retrieval Mode */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-slate-600">检索模式</label>
-          <select
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-            value={currentConfig.retrieval_mode}
-            onChange={e => onConfigChange('retrieval_mode', e.target.value)}
+      <div className="config-section">
+        <label className="config-label">
+          <DatabaseOutlined style={{ marginRight: 4 }} />
+          选择知识库
+          <span className="required">*</span>
+        </label>
+        
+        <Spin spinning={loading}>
+          <Select
+            placeholder="添加知识库..."
+            onChange={handleKnowledgeSelect}
+            style={{ width: '100%' }}
+            allowClear
           >
-            <option value="semantic">语义检索 (Vector Search)</option>
-            <option value="full_text">全文检索 (Full-Text Search)</option>
-            <option value="hybrid">混合检索 (Hybrid Search)</option>
-          </select>
-        </div>
+            {getAvailableKnowledge().map(k => (
+              <Select.Option key={k.id} value={k.id}>
+                {k.name}
+              </Select.Option>
+            ))}
+          </Select>
+        </Spin>
 
-        {/* Top K */}
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <label className="text-xs font-medium text-slate-600">Top K</label>
-            <span className="text-xs text-slate-500">{currentConfig.top_k}</span>
+        <div className="selected-knowledge">
+          {getSelectedKnowledge().length === 0 ? (
+            <Empty description="请选择知识库" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          ) : (
+            getSelectedKnowledge().map(k => (
+              <Tag
+                key={k.id}
+                closable
+                onClose={() => handleKnowledgeRemove(k.id)}
+                color="blue"
+              >
+                {k.name}
+              </Tag>
+            ))
+          )}
+        </div>
+      </div>
+
+      <Divider />
+
+      <div className="config-section">
+        <label className="config-label">
+          <SettingOutlined style={{ marginRight: 4 }} />
+          检索设置
+        </label>
+
+        <div className="setting-item">
+          <div className="setting-label">
+            <span>结果条数 (Top K)</span>
+            <span className="setting-value">{config.size || 30}</span>
           </div>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            step="1"
-            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-            value={currentConfig.top_k}
-            onChange={e => onConfigChange('top_k', parseInt(e.target.value))}
+          <Slider
+            min={1}
+            max={100}
+            value={config.size || 30}
+            onChange={val => onConfigChange('size', val)}
           />
         </div>
 
-        {/* Score Threshold */}
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <label className="text-xs font-medium text-slate-600">相似度阈值</label>
-            <span className="text-xs text-slate-500">{currentConfig.score_threshold}</span>
+        <div className="setting-item">
+          <div className="setting-label">
+            <span>相似度阈值 (Min Score)</span>
+            <span className="setting-value">{config.minScore || 0}</span>
           </div>
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-            value={currentConfig.score_threshold}
-            onChange={e => onConfigChange('score_threshold', parseFloat(e.target.value))}
+          <Slider
+            min={0}
+            max={1}
+            step={0.001}
+            value={config.minScore || 0}
+            onChange={val => onConfigChange('minScore', val)}
           />
+        </div>
+      </div>
+
+      <Divider />
+
+      <div className="config-section">
+        <label className="config-label">输出变量</label>
+        <div className="output-info">
+          <div className="output-item">
+            <span className="output-name">documents</span>
+            <span className="output-type">object[]</span>
+            <span className="output-desc">文档列表</span>
+          </div>
+          <div className="output-item">
+            <span className="output-name">text</span>
+            <span className="output-type">string</span>
+            <span className="output-desc">文档内容</span>
+          </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default KnowledgeRetrievalConfig
+export default KnowledgeRetrievalConfig;

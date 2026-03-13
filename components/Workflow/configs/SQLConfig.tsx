@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Database, Play, AlertCircle } from 'lucide-react'
-import { VariableTextArea, AIButton } from './common'
+import { VariableTextArea, AIButton } from './common/index'
 
 export interface SQLConfigProps {
   config: any

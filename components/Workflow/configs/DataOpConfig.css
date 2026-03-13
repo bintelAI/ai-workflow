@@ -1,0 +1,65 @@
+.data-op-config {
+  padding: 8px 0;
+}
+
+.data-op-alert {
+  margin-bottom: 16px;
+}
+
+.data-op-alert .ant-alert-message {
+  font-weight: 500;
+}
+
+.config-section {
+  margin-bottom: 16px;
+}
+
+.config-section:last-child {
+  margin-bottom: 0;
+}
+
+.config-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.section-header .config-label {
+  margin-bottom: 0;
+}
+
+.code-textarea {
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border-radius: 6px;
+}
+
+.code-textarea:focus {
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.code-textarea::placeholder {
+  color: #6a9955;
+}
+
+.code-hint {
+  margin-top: 8px;
+}
+
+.code-hint p {
+  font-size: 11px;
+  color: #8c8c8c;
+  margin: 0;
+}

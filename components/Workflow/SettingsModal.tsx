@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useWorkflowStore } from './store/useWorkflowStore'
-import { WorkflowNodeType, WorkflowCategory } from './types'
+import { WorkflowNodeType, WorkflowCategory, LayoutDirection } from './types'
 import {
   X,
   Plus,
@@ -25,6 +25,8 @@ import {
   FileText,
   Smartphone,
   HardDrive,
+  ArrowDown,
+  ArrowRight,
 } from 'lucide-react'
 
 const NODE_META: Record<WorkflowNodeType, { label: string; icon: any; color: string }> = {
@@ -74,6 +76,7 @@ export const SettingsModal: React.FC = () => {
     addCategory,
     updateCategory,
     deleteCategory,
+    applyAutoLayout,
   } = useWorkflowStore()
 
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -257,6 +260,46 @@ export const SettingsModal: React.FC = () => {
                   }}
                   disabled={editForm.isSystem}
                 />
+              </div>
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2">
+                  {editForm.layoutDirection === 'horizontal' ? (
+                    <ArrowRight size={16} className="text-indigo-500" />
+                  ) : (
+                    <ArrowDown size={16} className="text-indigo-500" />
+                  )}
+                  <span className="text-sm font-medium text-slate-700">画布布局方向</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-xs ${editForm.layoutDirection !== 'horizontal' ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}
+                  >
+                    纵向
+                  </span>
+                  <button
+                    onClick={() => {
+                      const newDirection: LayoutDirection =
+                        editForm.layoutDirection === 'horizontal' ? 'vertical' : 'horizontal'
+                      setEditForm({ ...editForm, layoutDirection: newDirection })
+                      updateCategory(editingId!, { layoutDirection: newDirection })
+                      applyAutoLayout(newDirection)
+                    }}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${
+                      editForm.layoutDirection === 'horizontal' ? 'bg-indigo-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                        editForm.layoutDirection === 'horizontal' ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <span
+                    className={`text-xs ${editForm.layoutDirection === 'horizontal' ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}
+                  >
+                    横向
+                  </span>
+                </div>
               </div>
             </div>
 

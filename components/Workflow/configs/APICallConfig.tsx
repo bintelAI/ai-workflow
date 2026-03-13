@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Globe, Plus, Trash2, ChevronDown, ChevronUp, RefreshCcw } from 'lucide-react'
 import { APICallConfig as APICallConfigType, QueryParam, HeaderParam } from '../types'
-import { VariableInput } from './common'
+import { VariableInput } from './common/index'
 
 interface APICallConfigProps {
   config: any

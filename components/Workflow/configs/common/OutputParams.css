@@ -1,0 +1,40 @@
+.output-params {
+  width: 100%;
+}
+
+.output-params .add-btn {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.output-params-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.output-params-item:last-child {
+  margin-bottom: 0;
+}
+
+.output-params-item .field-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.output-params-item .field-type {
+  flex: 0 0 100px;
+}
+
+.output-params-item .field-label {
+  flex: 0 0 100px;
+}
+
+.output-params-item .delete-btn {
+  flex-shrink: 0;
+}
+
+.output-params .ant-empty {
+  margin: 8px 0;
+}

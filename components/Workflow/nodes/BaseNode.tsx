@@ -22,8 +22,12 @@ import {
   Smartphone,
   HardDrive,
   Split,
+  Braces,
+  Sparkles,
+  Workflow,
+  Settings,
 } from 'lucide-react'
-import { WorkflowNodeType, NodeData } from '../types'
+import { WorkflowNodeType, NodeData, LayoutDirection } from '../types'
 import { useWorkflowStore } from '../store/useWorkflowStore'
 
 export const getNodeIcon = (type: string) => {
@@ -66,6 +70,14 @@ export const getNodeIcon = (type: string) => {
       return <Smartphone className="w-5 h-5 text-green-500" />
     case WorkflowNodeType.STORAGE:
       return <HardDrive className="w-5 h-5 text-emerald-500" />
+    case WorkflowNodeType.JSON_PARSE:
+      return <Braces className="w-5 h-5 text-green-500" />
+    case WorkflowNodeType.SMART_PARSE:
+      return <Sparkles className="w-5 h-5 text-orange-500" />
+    case WorkflowNodeType.FLOW_CALL:
+      return <Workflow className="w-5 h-5 text-purple-500" />
+    case WorkflowNodeType.VARIABLE:
+      return <Settings className="w-5 h-5 text-teal-500" />
     default:
       return <CheckSquare className="w-5 h-5 text-gray-500" />
   }
@@ -111,6 +123,14 @@ export const getNodeTypeLabel = (type: string) => {
       return '云手机控制'
     case WorkflowNodeType.STORAGE:
       return '文件存储'
+    case WorkflowNodeType.JSON_PARSE:
+      return 'JSON解析'
+    case WorkflowNodeType.SMART_PARSE:
+      return '智能解析'
+    case WorkflowNodeType.FLOW_CALL:
+      return '流程调用'
+    case WorkflowNodeType.VARIABLE:
+      return '变量处理'
     default:
       return '未知节点'
   }
@@ -156,6 +176,14 @@ export const getNodeIconBgColor = (type: string) => {
       return 'bg-green-50 border-green-100'
     case WorkflowNodeType.STORAGE:
       return 'bg-emerald-50 border-emerald-100'
+    case WorkflowNodeType.JSON_PARSE:
+      return 'bg-green-50 border-green-100'
+    case WorkflowNodeType.SMART_PARSE:
+      return 'bg-orange-50 border-orange-100'
+    case WorkflowNodeType.FLOW_CALL:
+      return 'bg-purple-50 border-purple-100'
+    case WorkflowNodeType.VARIABLE:
+      return 'bg-teal-50 border-teal-100'
     default:
       return 'bg-slate-50 border-slate-100'
   }
@@ -193,11 +221,19 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
   showAddButton = true,
   customHandles,
 }) => {
-  const { openNodeAppendMenu, deleteNode, nodeExecutionStatus } = useWorkflowStore()
+  const { openNodeAppendMenu, deleteNode, nodeExecutionStatus, categories, activeCategoryId } =
+    useWorkflowStore()
   const { getNode } = useReactFlow()
 
   const [showMenu, setShowMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const activeCategory = categories.find(c => c.id === activeCategoryId)
+  const layoutDirection: LayoutDirection = activeCategory?.layoutDirection || 'vertical'
+  const isHorizontal = layoutDirection === 'horizontal'
+
+  const inputPosition = isHorizontal ? Position.Left : Position.Top
+  const outputPosition = isHorizontal ? Position.Right : Position.Bottom
 
   // Get Execution Status from Global Store
   const status = nodeExecutionStatus ? nodeExecutionStatus[id] : undefined
@@ -263,9 +299,11 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       {showInputHandle && (
         <Handle
           type="target"
-          position={Position.Top}
+          position={inputPosition}
           isConnectable={isConnectable}
-          className="!bg-slate-400 hover:!bg-indigo-500 !w-3 !h-3 !-top-1.5 z-10"
+          className={`!bg-slate-400 hover:!bg-indigo-500 !w-3 !h-3 z-10 ${
+            isHorizontal ? '!-left-1.5 !top-1/2 !-translate-y-1/2' : '!-top-1.5 !left-1/2 !-translate-x-1/2'
+          }`}
         />
       )}
 
@@ -320,26 +358,51 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       {showOutputHandle && !customHandles && (
         <Handle
           type="source"
-          position={Position.Bottom}
+          position={outputPosition}
           isConnectable={isConnectable}
-          className="!bg-slate-400 hover:!bg-indigo-500 !w-3 !h-3 !-bottom-1.5 z-10"
+          className={`!bg-slate-400 hover:!bg-indigo-500 !w-3 !h-3 z-10 ${
+            isHorizontal
+              ? '!-right-1.5 !top-1/2 !-translate-y-1/2'
+              : '!-bottom-1.5 !left-1/2 !-translate-x-1/2'
+          }`}
         />
       )}
 
       {/* Custom Handles */}
       {customHandles}
 
-      {/* Add Button (Bottom Center) */}
+      {/* Add Button */}
       {showAddButton && !customHandles && (
-        <div className="absolute -bottom-14 left-1/2 -translate-x-1/2 z-20 opacity-0 group-hover:opacity-100 transition-all duration-200">
-          <div className="h-8 w-px bg-gradient-to-b from-slate-300 to-transparent mx-auto mb-[-4px]"></div>
-          <button
-            onClick={onAddClick}
-            className="bg-indigo-600 text-white rounded-full p-1.5 shadow-md hover:scale-110 hover:bg-indigo-700 transition-all cursor-pointer border-2 border-white"
-            title="追加节点"
-          >
-            <Plus size={14} strokeWidth={3} />
-          </button>
+        <div
+          className={`absolute z-20 opacity-0 group-hover:opacity-100 transition-all duration-200 ${
+            isHorizontal
+              ? '-right-14 top-1/2 -translate-y-1/2'
+              : '-bottom-14 left-1/2 -translate-x-1/2'
+          }`}
+        >
+          {isHorizontal ? (
+            <>
+              <div className="w-8 h-px bg-gradient-to-r from-slate-300 to-transparent my-auto mr-[-4px]"></div>
+              <button
+                onClick={onAddClick}
+                className="bg-indigo-600 text-white rounded-full p-1.5 shadow-md hover:scale-110 hover:bg-indigo-700 transition-all cursor-pointer border-2 border-white"
+                title="追加节点"
+              >
+                <Plus size={14} strokeWidth={3} />
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="h-8 w-px bg-gradient-to-b from-slate-300 to-transparent mx-auto mb-[-4px]"></div>
+              <button
+                onClick={onAddClick}
+                className="bg-indigo-600 text-white rounded-full p-1.5 shadow-md hover:scale-110 hover:bg-indigo-700 transition-all cursor-pointer border-2 border-white"
+                title="追加节点"
+              >
+                <Plus size={14} strokeWidth={3} />
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

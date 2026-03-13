@@ -1,0 +1,91 @@
+.condition-config {
+  padding: 8px 0;
+}
+
+.condition-alert {
+  margin-bottom: 16px;
+}
+
+.condition-alert .ant-alert-message {
+  font-weight: 500;
+}
+
+.condition-list {
+  margin-bottom: 12px;
+}
+
+.condition-item {
+  margin-bottom: 8px;
+  padding-bottom: 40px;
+  position: relative;
+}
+
+.condition-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.condition-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.condition-variable {
+  flex: 1;
+  min-width: 0;
+}
+
+.condition-operator {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+}
+
+.add-condition-btn {
+  width: 100%;
+}
+
+.config-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.condition-output {
+  margin-top: 8px;
+}
+
+.output-info {
+  background: #f8fafc;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.output-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.output-name {
+  font-weight: 500;
+  color: #1890ff;
+}
+
+.output-type {
+  color: #8c8c8c;
+  background: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.output-desc {
+  color: #64748b;
+}

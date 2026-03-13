@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { useWorkflowStore, DEFAULT_DEV_INPUT } from '../store/useWorkflowStore'
 import { WorkflowNodeType } from '../types'
-import { flattenObject } from './common'
+import { flattenObject } from './common/index'
 
 interface VariableBindModalProps {
   isOpen: boolean

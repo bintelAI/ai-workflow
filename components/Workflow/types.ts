@@ -20,6 +20,10 @@ export enum WorkflowNodeType {
   CLOUD_PHONE = 'cloud_phone',
   STORAGE = 'storage',
   QUESTION_CLASSIFIER = 'question_classifier',
+  JSON_PARSE = 'json_parse',
+  SMART_PARSE = 'smart_parse',
+  FLOW_CALL = 'flow_call',
+  VARIABLE = 'variable',
 }
 
 // Question Classifier Node Configuration Interfaces
@@ -217,13 +221,16 @@ export interface VariableConfig {
   uploadType?: 'local' | 'url' | 'both'
 }
 
+export type LayoutDirection = 'vertical' | 'horizontal'
+
 // --- NEW: Workflow Category Definition ---
 export interface WorkflowCategory {
   id: string
   name: string
   description: string
   allowedNodeTypes: WorkflowNodeType[]
-  isSystem?: boolean // System types cannot be deleted
+  isSystem?: boolean
+  layoutDirection?: LayoutDirection
 }
 
 export interface WorkflowStoreState {
@@ -256,6 +263,17 @@ export interface WorkflowStoreState {
   // --- NEW: Global Configuration ---
   isGlobalConfigOpen: boolean
   globalVariables: VariableConfig[]
+
+  // --- NEW: Flow State ---
+  flowInfo: import('../../src/types/flow').FlowInfoEntity | null
+  flowList: import('../../src/types/flow').FlowInfoEntity[]
+  isFlowLoading: boolean
+  isFlowSaving: boolean
+  isExecuting: boolean
+  executionResult: any
+  executionLogs: import('./store/modules/executionActions').ExecutionLog[]
+  currentRequestId: string | null
+  teamId: string | null
 
   onNodesChange: (changes: any) => void
   onEdgesChange: (changes: any) => void
@@ -323,4 +341,26 @@ export interface WorkflowStoreState {
   // --- NEW: Global Configuration Actions ---
   toggleGlobalConfig: (isOpen?: boolean) => void
   setGlobalVariables: (variables: VariableConfig[]) => void
+
+  // --- NEW: Flow Actions ---
+  loadFlow: (flowId: number, teamId?: string) => Promise<void>
+  saveFlow: () => Promise<void>
+  loadFlowList: (params?: { page?: number; size?: number; teamId?: string }) => Promise<void>
+  createFlow: (data: Partial<import('../../src/types/flow').FlowInfoEntity> & { teamId?: string }) => Promise<import('../../src/types/flow').FlowInfoEntity>
+  updateFlow: (data: Partial<import('../../src/types/flow').FlowInfoEntity> & { teamId?: string }) => Promise<void>
+  deleteFlow: (id: number, teamId?: string) => Promise<void>
+  releaseFlow: () => Promise<void>
+  setFlowInfo: (info: import('../../src/types/flow').FlowInfoEntity | null) => void
+  setExecuting: (isExecuting: boolean) => void
+  setExecutionResult: (result: any) => void
+  setTeamId: (teamId: string | null) => void
+
+  // --- NEW: Execution Actions ---
+  runFlow: (params?: { params?: Record<string, any>; nodeId?: string }) => Promise<void>
+  stopExecution: () => void
+  clearExecutionLogs: () => void
+  getExecutionLog: (nodeId: string) => import('./store/modules/executionActions').ExecutionLog | undefined
+
+  // --- NEW: Layout Actions ---
+  applyAutoLayout: (direction: LayoutDirection) => void
 }

@@ -1,0 +1,40 @@
+.input-params {
+  width: 100%;
+}
+
+.input-params .add-btn {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.input-params-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.input-params-item:last-child {
+  margin-bottom: 0;
+}
+
+.input-params-item .field-name {
+  flex: 0 0 120px;
+}
+
+.input-params-item .field-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.input-params-item .delete-btn {
+  flex-shrink: 0;
+}
+
+.input-params-item.error .field-name .ant-input {
+  border-color: #ff4d4f;
+}
+
+.input-params .ant-empty {
+  margin: 8px 0;
+}

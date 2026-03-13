@@ -23,6 +23,10 @@ import {
   Search,
   X,
   Split,
+  Braces,
+  Sparkles,
+  Workflow,
+  Settings,
 } from 'lucide-react'
 import { useReactFlow } from 'reactflow'
 import { WorkflowNodeType } from './types'
@@ -83,6 +87,16 @@ const DraggableNode = ({
         return 'bg-amber-50 border-amber-100'
       case WorkflowNodeType.CLOUD_PHONE:
         return 'bg-green-50 border-green-100'
+      case WorkflowNodeType.STORAGE:
+        return 'bg-emerald-50 border-emerald-100'
+      case WorkflowNodeType.JSON_PARSE:
+        return 'bg-green-50 border-green-100'
+      case WorkflowNodeType.SMART_PARSE:
+        return 'bg-orange-50 border-orange-100'
+      case WorkflowNodeType.FLOW_CALL:
+        return 'bg-purple-50 border-purple-100'
+      case WorkflowNodeType.VARIABLE:
+        return 'bg-teal-50 border-teal-100'
       default:
         return 'bg-slate-50 border-slate-100'
     }
@@ -144,6 +158,10 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     [WorkflowNodeType.DOCUMENT_EXTRACTOR]: { label: '文档提取器', icon: FileText, color: 'text-amber-600' },
     [WorkflowNodeType.CLOUD_PHONE]: { label: '云手机控制', icon: Smartphone, color: 'text-green-500' },
     [WorkflowNodeType.STORAGE]: { label: '文件存储', icon: HardDrive, color: 'text-emerald-500' },
+    [WorkflowNodeType.JSON_PARSE]: { label: 'JSON解析', icon: Braces, color: 'text-green-500' },
+    [WorkflowNodeType.SMART_PARSE]: { label: '智能解析', icon: Sparkles, color: 'text-orange-500' },
+    [WorkflowNodeType.FLOW_CALL]: { label: '流程调用', icon: Workflow, color: 'text-purple-500' },
+    [WorkflowNodeType.VARIABLE]: { label: '变量处理', icon: Settings, color: 'text-teal-500' },
   }
 
   const handleExport = () => {
@@ -370,6 +388,10 @@ export const Sidebar: React.FC<SidebarProps> = () => {
           WorkflowNodeType.SQL,
           WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
           WorkflowNodeType.DOCUMENT_EXTRACTOR,
+          WorkflowNodeType.JSON_PARSE,
+          WorkflowNodeType.SMART_PARSE,
+          WorkflowNodeType.FLOW_CALL,
+          WorkflowNodeType.VARIABLE,
         ]) && (
           <div className="mb-6">
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
@@ -380,6 +402,10 @@ export const Sidebar: React.FC<SidebarProps> = () => {
                 WorkflowNodeType.LLM,
                 WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
                 WorkflowNodeType.DOCUMENT_EXTRACTOR,
+                WorkflowNodeType.SMART_PARSE,
+                WorkflowNodeType.JSON_PARSE,
+                WorkflowNodeType.FLOW_CALL,
+                WorkflowNodeType.VARIABLE,
                 WorkflowNodeType.API_CALL,
                 WorkflowNodeType.SQL,
                 WorkflowNodeType.DATA_OP,

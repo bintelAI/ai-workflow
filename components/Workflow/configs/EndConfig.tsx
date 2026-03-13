@@ -1,6 +1,6 @@
 import React from 'react'
 import { StopCircle, LogOut } from 'lucide-react'
-import { KeyValueEditor } from './common'
+import { KeyValueEditor } from './common/index'
 
 interface EndConfigProps {
   config: any

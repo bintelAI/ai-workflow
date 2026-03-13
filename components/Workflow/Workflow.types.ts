@@ -36,8 +36,8 @@ export interface ConfigPanelProps {
  * 侧边栏Props
  */
 export interface SidebarProps {
-  isCollapsed: boolean
-  onToggle: () => void
+  isCollapsed?: boolean
+  onToggle?: () => void
 }
 
 /**

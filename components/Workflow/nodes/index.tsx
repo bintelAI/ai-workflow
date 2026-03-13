@@ -21,6 +21,10 @@ import DocumentExtractorNode from './DocumentExtractorNode'
 import CloudPhoneNode from './CloudPhoneNode'
 import StorageNode from './StorageNode'
 import QuestionClassifierNode from './QuestionClassifierNode'
+import JSONParseNode from './JSONParseNode'
+import SmartParseNode from './SmartParseNode'
+import FlowCallNode from './FlowCallNode'
+import VariableNode from './VariableNode'
 
 // 导出所有节点组件
 export {
@@ -50,4 +54,8 @@ export {
   CloudPhoneNode,
   StorageNode,
   QuestionClassifierNode,
+  JSONParseNode,
+  SmartParseNode,
+  FlowCallNode,
+  VariableNode,
 }

@@ -32,6 +32,10 @@ import {
   CloudPhoneNode,
   StorageNode,
   QuestionClassifierNode,
+  JSONParseNode,
+  SmartParseNode,
+  FlowCallNode,
+  VariableNode,
 } from './nodes' // Import all node components
 import { CustomEdge } from './edges/CustomEdge'
 import { WorkflowNodeType } from './types'
@@ -52,6 +56,7 @@ import {
   BookOpen,
   FileText,
   Smartphone,
+  LayoutGrid,
 } from 'lucide-react'
 
 // Register custom node types
@@ -75,6 +80,10 @@ const nodeTypes: NodeTypes = {
   [WorkflowNodeType.CLOUD_PHONE]: CloudPhoneNode,
   [WorkflowNodeType.STORAGE]: StorageNode,
   [WorkflowNodeType.QUESTION_CLASSIFIER]: QuestionClassifierNode,
+  [WorkflowNodeType.JSON_PARSE]: JSONParseNode,
+  [WorkflowNodeType.SMART_PARSE]: SmartParseNode,
+  [WorkflowNodeType.FLOW_CALL]: FlowCallNode,
+  [WorkflowNodeType.VARIABLE]: VariableNode,
 }
 
 // Register custom edge types
@@ -274,9 +283,19 @@ const WorkflowCanvasInner: React.FC = () => {
     closeEdgeMenu,
     closeNodeMenu,
     onNodeDragStop,
+    applyAutoLayout,
+    categories,
+    activeCategoryId,
   } = useWorkflowStore()
 
-  const { project, getNodes } = useReactFlow()
+  const { project, getNodes, fitView } = useReactFlow()
+
+  const handleAutoLayout = useCallback(() => {
+    const activeCategory = categories.find(c => c.id === activeCategoryId)
+    const direction = activeCategory?.layoutDirection || 'vertical'
+    applyAutoLayout(direction)
+    setTimeout(() => fitView({ padding: 0.2 }), 100)
+  }, [categories, activeCategoryId, applyAutoLayout, fitView])
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault()
@@ -450,9 +469,19 @@ const WorkflowCanvasInner: React.FC = () => {
         />
         <Panel
           position="top-right"
-          className="bg-white/80 backdrop-blur-sm p-2 rounded-lg border border-slate-200 shadow-sm text-xs text-slate-500"
+          className="flex items-center gap-2"
         >
-          {nodes.length} 个节点 • {edges.length} 条连线
+          <div className="bg-white/80 backdrop-blur-sm p-2 rounded-lg border border-slate-200 shadow-sm text-xs text-slate-500">
+            {nodes.length} 个节点 • {edges.length} 条连线
+          </div>
+          <button
+            onClick={handleAutoLayout}
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-xs font-medium transition-colors shadow-sm"
+            title="一键整理工作流节点布局"
+          >
+            <LayoutGrid size={14} />
+            一键整理
+          </button>
         </Panel>
 
         {/* Render the unified menu */}

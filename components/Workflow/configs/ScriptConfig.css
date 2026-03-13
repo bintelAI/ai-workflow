@@ -1,0 +1,75 @@
+.script-config {
+  padding: 8px 0;
+}
+
+.script-alert {
+  margin-bottom: 16px;
+}
+
+.script-alert .ant-alert-message {
+  font-weight: 500;
+}
+
+.config-section {
+  margin-bottom: 16px;
+}
+
+.config-section:last-child {
+  margin-bottom: 0;
+}
+
+.config-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.code-editor {
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.code-textarea {
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: none;
+  resize: vertical;
+}
+
+.code-textarea:focus {
+  box-shadow: none;
+}
+
+.code-textarea::placeholder {
+  color: #6a9955;
+}
+
+.code-library {
+  padding: 8px 0;
+}
+
+.code-preview {
+  margin-top: 16px;
+}
+
+.code-preview-content {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: 6px;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.script-config .ant-tabs-content {
+  min-height: 300px;
+}

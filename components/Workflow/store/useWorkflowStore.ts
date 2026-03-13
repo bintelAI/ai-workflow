@@ -9,6 +9,9 @@ import {
   createCategoryActions,
   createNodeOutputActions,
   createAIActions,
+  createFlowActions,
+  createExecutionActions,
+  createLayoutActions,
   DEFAULT_CATEGORIES,
 } from './modules'
 
@@ -78,6 +81,10 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
       globalVariables: [],
       categories: DEFAULT_CATEGORIES,
       activeCategoryId: 'general',
+      teamId: (() => {
+        const stored = localStorage.getItem('workflow_teamId')
+        return stored || '1'
+      })(),
 
       ...createNodeActions(set, get),
       ...createEdgeActions(set, get),
@@ -86,8 +93,10 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
       ...createCategoryActions(set, get),
       ...createNodeOutputActions(set, get),
       ...createAIActions(set, get),
+      ...createFlowActions(set, get),
+      ...createExecutionActions(set, get),
+      ...createLayoutActions(set, get, {}),
 
-      // Global Config Actions
       toggleGlobalConfig: (isOpen?: boolean) => {
         set(state => ({
           isGlobalConfigOpen: isOpen !== undefined ? isOpen : !state.isGlobalConfigOpen,
@@ -106,6 +115,7 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
         categories: state.categories,
         activeCategoryId: state.activeCategoryId,
         globalVariables: state.globalVariables,
+        teamId: state.teamId,
       }),
     }
   )

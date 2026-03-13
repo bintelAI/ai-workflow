@@ -1,0 +1,85 @@
+.loop-config {
+  padding: 8px 0;
+}
+
+.loop-alert {
+  margin-bottom: 16px;
+}
+
+.loop-alert .ant-alert-message {
+  font-weight: 500;
+}
+
+.config-section {
+  margin-bottom: 16px;
+}
+
+.config-section:last-child {
+  margin-bottom: 0;
+}
+
+.config-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.selected-flow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 6px;
+}
+
+.flow-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-name {
+  font-weight: 500;
+  color: #0369a1;
+}
+
+.flow-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.empty-flow {
+  text-align: center;
+  padding: 16px;
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.empty-flow:hover {
+  border-color: #4096ff;
+  background: #f0f9ff;
+}
+
+.empty-text {
+  color: #bfbfbf;
+}
+
+.empty-action {
+  color: #1890ff;
+  cursor: pointer;
+}
+
+.row-selected {
+  background-color: #e6f4ff;
+}
+
+.row-selected:hover > td {
+  background-color: #e6f4ff !important;
+}

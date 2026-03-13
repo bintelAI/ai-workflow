@@ -4,24 +4,28 @@ import { WorkflowNodeType } from './types'
 import { X, Save, Trash2, Wand2 } from 'lucide-react'
 
 // Import configuration components
-import { LoopConfig } from './configs/LoopConfig'
-import { StartConfig } from './configs/StartConfig'
+import LoopConfig from './configs/LoopConfig'
+import StartConfig from './configs/StartConfig'
 import { EndConfig } from './configs/EndConfig'
-import { ScriptConfig } from './configs/ScriptConfig'
-import { LLMConfig } from './configs/LLMConfig'
+import ScriptConfig from './configs/ScriptConfig'
+import LLMConfig from './configs/LLMConfig'
 import { APICallConfig } from './configs/APICallConfig'
-import { ConditionConfig } from './configs/ConditionConfig'
+import ConditionConfig from './configs/ConditionConfig'
 import { DelayConfig } from './configs/DelayConfig'
 import { NotificationConfig } from './configs/NotificationConfig'
 import { ApprovalConfig } from './configs/ApprovalConfig'
-import { DataOpConfig } from './configs/DataOpConfig'
+import DataOpConfig from './configs/DataOpConfig'
 import { CCConfig } from './configs/CCConfig'
 import { SQLConfig } from './configs/SQLConfig'
 import KnowledgeRetrievalConfig from './configs/KnowledgeRetrievalConfig'
 import DocumentExtractorConfig from './configs/DocumentExtractorConfig'
 import { CloudPhoneConfig } from './configs/CloudPhoneConfig'
 import { StorageConfigPanel } from './configs/StorageConfig'
-import { QuestionClassifierConfig } from './configs/QuestionClassifierConfig'
+import QuestionClassifierConfig from './configs/QuestionClassifierConfig'
+import JSONParseConfig from './configs/JSONParseConfig'
+import SmartParseConfig from './configs/SmartParseConfig'
+import FlowCallConfig from './configs/FlowCallConfig'
+import VariableConfig from './configs/VariableConfig'
 import { NodeOutputPreview } from './configs/NodeOutputPreview'
 
 // Import common components from configs/common.tsx
@@ -94,7 +98,7 @@ const ConfigPanel: React.FC = () => {
   }
 
   const renderAdvancedConfig = () => {
-    const config = selectedNode.data.config || {}
+    const config: any = selectedNode.data.config || {}
 
     switch (selectedNode.type) {
       case WorkflowNodeType.LOOP:
@@ -146,7 +150,15 @@ const ConfigPanel: React.FC = () => {
       case WorkflowNodeType.STORAGE:
         return <StorageConfigPanel config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.QUESTION_CLASSIFIER:
-        return <QuestionClassifierConfig config={config as any} onConfigChange={handleConfigChange} />
+        return <QuestionClassifierConfig config={config} onConfigChange={handleConfigChange} />
+      case WorkflowNodeType.JSON_PARSE:
+        return <JSONParseConfig config={config} onConfigChange={handleConfigChange} />
+      case WorkflowNodeType.SMART_PARSE:
+        return <SmartParseConfig config={config} onConfigChange={handleConfigChange} />
+      case WorkflowNodeType.FLOW_CALL:
+        return <FlowCallConfig config={config} onConfigChange={handleConfigChange} />
+      case WorkflowNodeType.VARIABLE:
+        return <VariableConfig config={config} onConfigChange={handleConfigChange} />
       default:
         return (
           <div className="p-3 bg-slate-50 rounded border border-slate-100 text-xs text-slate-500 flex items-center gap-2">

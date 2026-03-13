@@ -2,22 +2,25 @@ import React, { useState, useEffect } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import { WorkflowCanvas, Sidebar, ConfigPanel, DataDrawer, AICommandCenter, SettingsModal } from '.'
 import GlobalConfigModal from './GlobalConfigModal'
-import { Layers, Share2, Settings, ShieldCheck, Eye, Database } from 'lucide-react'
+import { Layers, Share2, Settings, ShieldCheck, Eye, Database, Save } from 'lucide-react'
 import { useWorkflowStore } from './store/useWorkflowStore'
 import ValidationReportModal, { ValidationResult } from './ValidationReportModal'
 import { validateWorkflow } from './validators/workflowValidator'
 import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from './types'
+import { message } from '@/components/common/AntdStaticFunction'
 
 interface WorkflowAppProps {
   initialNodes?: WorkflowNode[]
   initialEdges?: WorkflowEdge[]
   allowedNodeTypes?: WorkflowNodeType[]
+  teamId?: string
 }
 
 const App: React.FC<WorkflowAppProps> = ({ 
   initialNodes, 
   initialEdges,
-  allowedNodeTypes 
+  allowedNodeTypes,
+  teamId: propTeamId 
 }) => {
   const {
     validateWorkflow: storeValidateWorkflow,
@@ -31,12 +34,46 @@ const App: React.FC<WorkflowAppProps> = ({
     edges,
     setWorkflow,
     updateCategory,
+    saveFlow,
+    isFlowSaving,
+    flowInfo,
+    teamId: storeTeamId,
+    setTeamId,
   } = useWorkflowStore()
 
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false)
 
-  // 初始化节点和连线
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const urlTeamId = urlParams.get('teamId')
+    
+    // 优先级: props > URL参数 > localStorage > 默认值1
+    let finalTeamId = propTeamId
+    
+    if (!finalTeamId && urlTeamId) {
+      finalTeamId = urlTeamId
+    }
+    
+    if (!finalTeamId) {
+      const storedTeamId = localStorage.getItem('workflow_teamId')
+      if (storedTeamId) {
+        finalTeamId = storedTeamId
+      }
+    }
+    
+    // 如果都没有，使用默认值 '1'
+    if (!finalTeamId) {
+      finalTeamId = '1'
+    }
+    
+    console.log('[WorkflowApp] Setting teamId:', finalTeamId, 'current storeTeamId:', storeTeamId)
+    
+    // 始终更新 teamId（即使值相同），确保 store 和 localStorage 同步
+    setTeamId(finalTeamId)
+    localStorage.setItem('workflow_teamId', finalTeamId)
+  }, [propTeamId, setTeamId, storeTeamId])
+
   useEffect(() => {
     if (initialNodes || initialEdges) {
       setWorkflow(
@@ -46,10 +83,8 @@ const App: React.FC<WorkflowAppProps> = ({
     }
   }, [initialNodes, initialEdges, setWorkflow])
 
-  // 初始化允许使用的节点类型
   useEffect(() => {
     if (allowedNodeTypes && allowedNodeTypes.length > 0) {
-      // 更新当前激活模式的允许节点类型，或者更新 'general' 模式
       updateCategory('general', { allowedNodeTypes })
     }
   }, [allowedNodeTypes, updateCategory])
@@ -66,10 +101,22 @@ const App: React.FC<WorkflowAppProps> = ({
     toggleDrawer(true)
   }
 
+  const handleSave = async () => {
+    if (!flowInfo?.id) {
+      message.warning('请先加载工作流')
+      return
+    }
+    try {
+      await saveFlow()
+      message.success('保存成功')
+    } catch (error) {
+      message.error('保存失败')
+    }
+  }
+
   return (
     <ReactFlowProvider>
       <div className="h-screen w-screen flex flex-col overflow-hidden bg-slate-50 text-slate-900 font-sans">
-        {/* Header */}
         <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shadow-sm shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-200">
@@ -108,13 +155,20 @@ const App: React.FC<WorkflowAppProps> = ({
               <ShieldCheck size={16} /> 智能验证
             </button>
             <div className="h-5 w-px bg-slate-200 mx-1"></div>
+            <button 
+              onClick={handleSave}
+              disabled={isFlowSaving || !flowInfo?.id}
+              className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save size={16} className={isFlowSaving ? 'animate-pulse' : ''} /> 
+              {isFlowSaving ? '保存中...' : '保存'}
+            </button>
             <button className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md shadow-sm shadow-indigo-200 transition-colors">
               <Share2 size={16} /> 发布流程
             </button>
           </div>
         </header>
 
-        {/* Main Content */}
         <div className="flex-1 flex overflow-hidden relative">
           <Sidebar />
 
@@ -122,10 +176,8 @@ const App: React.FC<WorkflowAppProps> = ({
             <div className="flex-1 relative">
               <WorkflowCanvas />
 
-              {/* AI Command Center (Floating) */}
               <AICommandCenter />
 
-              {/* Bottom Monitor Trigger (moved slightly down/styled to avoid collision) */}
               <div className="absolute bottom-4 left-4 z-10">
                 <button
                   onClick={handleOpenDrawer}

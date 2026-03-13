@@ -1,146 +1,272 @@
-import React from 'react'
-import { Plus, Trash2, HelpCircle } from 'lucide-react'
-import { VariableSelector } from './common'
-import { QuestionClassifierConfig as IQuestionClassifierConfig, QuestionClassifierCategory } from '../types'
+import React, { useState, useEffect, useCallback } from 'react';
+import { Select, Input, Button, Divider, Alert, Empty, Popover, Spin } from 'antd';
+import { PlusOutlined, DeleteOutlined, SearchOutlined, CheckOutlined, DownOutlined, TagsOutlined } from '@ant-design/icons';
+import { InputParams } from './common/index';
+import { flowConfigApi } from '@/src/api/flow';
+import { useWorkflowStore } from '../store/useWorkflowStore';
+import type { FlowField, FlowModelOption, ClassifyOptions } from '@/src/types/flow';
+import './QuestionClassifierConfig.css';
 
 interface QuestionClassifierConfigProps {
-  config: IQuestionClassifierConfig
-  onConfigChange: (key: string, value: any) => void
+  config: {
+    inputParams?: FlowField[];
+    model?: string;
+    types?: string[];
+    descriptions?: string[];
+  };
+  onConfigChange: (key: string, value: any) => void;
+  variables?: Array<{
+    id: string;
+    type?: string;
+    label?: string;
+    params: FlowField[];
+  }>;
 }
 
-export const QuestionClassifierConfig: React.FC<QuestionClassifierConfigProps> = ({
+interface ModelGroup {
+  id: number;
+  title: string;
+  type: string;
+  select: string[];
+}
+
+const QuestionClassifierConfig: React.FC<QuestionClassifierConfigProps> = ({
   config,
   onConfigChange,
+  variables = [],
 }) => {
-  const categories = config?.categories || []
+  const teamId = useWorkflowStore(state => state.teamId)
+  const [modelGroups, setModelGroups] = useState<ModelGroup[]>([]);
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState('');
 
-  const handleAddCategory = () => {
-    const newCategory: QuestionClassifierCategory = {
-      id: `category_${Date.now()}`,
-      name: `分类 ${categories.length + 1}`,
-      description: '',
+  const types = config.types || [''];
+  const descriptions = config.descriptions || [''];
+
+  useEffect(() => {
+    if (teamId) {
+      loadModels();
     }
-    onConfigChange('categories', [...categories, newCategory])
-  }
+  }, [teamId]);
 
-  const handleRemoveCategory = (id: string) => {
-    onConfigChange('categories', categories.filter(c => c.id !== id))
-  }
+  const loadModels = async () => {
+    if (!teamId) return;
+    setModelLoading(true);
+    try {
+      const res = await flowConfigApi.getModels(teamId);
+      const groups: ModelGroup[] = (res.data as any[] || []).map((e: any) => ({
+        id: e.id,
+        title: e.name,
+        type: e.type,
+        select: e.options?.options?.find((o: any) => o.field === 'model')?.select || [],
+      }));
+      setModelGroups(groups);
+      
+      if (!config.model && groups.length > 0 && groups[0].select.length > 0) {
+        onConfigChange('model', groups[0].select[0]);
+      }
+    } catch (error) {
+      console.error('Failed to load models:', error);
+    } finally {
+      setModelLoading(false);
+    }
+  };
 
-  const handleUpdateCategory = (id: string, updates: Partial<QuestionClassifierCategory>) => {
-    onConfigChange(
-      'categories',
-      categories.map(c => (c.id === id ? { ...c, ...updates } : c))
-    )
-  }
+  const handleInputParamsChange = useCallback(
+    (params: FlowField[]) => {
+      onConfigChange('inputParams', params);
+    },
+    [onConfigChange]
+  );
+
+  const handleAddType = () => {
+    onConfigChange('types', [...types, '']);
+    onConfigChange('descriptions', [...descriptions, '']);
+  };
+
+  const handleRemoveType = (index: number) => {
+    const newTypes = types.filter((_, i) => i !== index);
+    const newDescriptions = descriptions.filter((_, i) => i !== index);
+    onConfigChange('types', newTypes);
+    onConfigChange('descriptions', newDescriptions);
+  };
+
+  const handleTypeChange = (index: number, value: string) => {
+    const newTypes = [...types];
+    newTypes[index] = value;
+    onConfigChange('types', newTypes);
+  };
+
+  const handleDescriptionChange = (index: number, value: string) => {
+    const newDescriptions = [...descriptions];
+    newDescriptions[index] = value;
+    onConfigChange('descriptions', newDescriptions);
+  };
+
+  const handleModelSelect = (modelName: string, group: ModelGroup) => {
+    onConfigChange('model', modelName);
+    setModelPopoverOpen(false);
+  };
+
+  const filteredGroups = modelGroups.filter(g =>
+    g.title.toLowerCase().includes(modelSearch.toLowerCase()) ||
+    g.select.some(m => m.toLowerCase().includes(modelSearch.toLowerCase()))
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Model Selection */}
-      <div className="space-y-2">
-        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-          模型选择
-        </label>
-        <select
-          className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-          value={config?.model || 'gpt-4'}
-          onChange={e => onConfigChange('model', e.target.value)}
-        >
-          <option value="gpt-4">GPT-4 Turbo</option>
-          <option value="gpt-3.5">GPT-3.5 Turbo</option>
-          <option value="claude-3">Claude 3 Opus</option>
-          <option value="gemini-pro">Gemini Pro</option>
-        </select>
+    <div className="question-classifier-config">
+      <Alert
+        type="info"
+        icon={<TagsOutlined />}
+        message="分类器节点"
+        description="根据内容调用 LLM 进行智能分类，每个分类对应一个输出分支。"
+        showIcon
+        className="classifier-alert"
+      />
+
+      <Divider />
+
+      <div className="config-section">
+        <label className="config-label">输入变量</label>
+        <InputParams
+          value={config.inputParams || [{ field: 'content', type: 'string' }]}
+          onChange={handleInputParamsChange}
+          fieldPrefix="content"
+          variables={variables}
+          editField={false}
+          disabled
+        />
       </div>
 
-      {/* Input Variable */}
-      <div className="space-y-2">
-        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-          输入变量
-        </label>
-        <div className="flex flex-col gap-2">
-          <div className="w-full">
-            <VariableSelector
-              value={config?.inputVariable || ''}
-              onChange={val => onConfigChange('inputVariable', val)}
-              placeholder="选择需要分类的变量..."
-            />
-          </div>
-          <p className="text-[10px] text-slate-400">
-            AI 将根据此变量的内容进行分类。
-          </p>
-        </div>
-      </div>
+      <Divider />
 
-      {/* Categories */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-            分类配置
-          </label>
-          <button
-            onClick={handleAddCategory}
-            className="p-1 hover:bg-indigo-50 text-indigo-600 rounded-md transition-colors"
-            title="添加分类"
-          >
-            <Plus size={16} />
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {categories.map((category, index) => (
-            <div
-              key={category.id}
-              className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2 relative group"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-slate-400 bg-white border border-slate-200 w-5 h-5 flex items-center justify-center rounded-full">
-                  {index + 1}
-                </span>
-                <input
-                  type="text"
-                  className="flex-1 px-2 py-1 text-xs border border-transparent hover:border-slate-300 focus:border-indigo-500 bg-transparent focus:bg-white rounded outline-none font-medium"
-                  value={category.name}
-                  onChange={e => handleUpdateCategory(category.id, { name: e.target.value })}
-                  placeholder="分类名称"
-                />
-                <button
-                  onClick={() => handleRemoveCategory(category.id)}
-                  className="p-1 text-slate-400 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  <Trash2 size={14} />
-                </button>
+      <div className="config-section">
+        <label className="config-label">模型</label>
+        <Popover
+          open={modelPopoverOpen}
+          onOpenChange={setModelPopoverOpen}
+          trigger="click"
+          placement="bottomLeft"
+          overlayClassName="model-selector-popover"
+          arrow={false}
+          content={
+            <Spin spinning={modelLoading}>
+              <div className="model-selector">
+                <div className="model-search">
+                  <Input
+                    prefix={<SearchOutlined />}
+                    placeholder="搜索模型"
+                    value={modelSearch}
+                    onChange={e => setModelSearch(e.target.value)}
+                    allowClear
+                  />
+                </div>
+                <div className="model-list">
+                  {filteredGroups.length === 0 ? (
+                    <Empty description="未找到匹配项" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  ) : (
+                    filteredGroups.map(group => (
+                      <div key={group.id} className="model-group">
+                        <div className="model-group-label">{group.title}</div>
+                        {group.select.map(model => (
+                          <div
+                            key={model}
+                            className={`model-item ${config.model === model ? 'active' : ''}`}
+                            onClick={() => handleModelSelect(model, group)}
+                          >
+                            <span>{model}</span>
+                            {config.model === model && <CheckOutlined className="check-icon" />}
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-              <textarea
-                className="w-full px-2 py-1.5 text-[11px] border border-transparent hover:border-slate-300 focus:border-indigo-500 bg-transparent focus:bg-white rounded outline-none resize-none"
-                rows={2}
-                value={category.description}
-                onChange={e => handleUpdateCategory(category.id, { description: e.target.value })}
+            </Spin>
+          }
+        >
+          <div className="model-selector-trigger">
+            <span className={config.model ? '' : 'placeholder'}>
+              {config.model || '选择模型'}
+            </span>
+            <DownOutlined className="arrow-icon" />
+          </div>
+        </Popover>
+      </div>
+
+      <Divider />
+
+      <div className="config-section">
+        <div className="section-header">
+          <label className="config-label">分类配置</label>
+          <Button
+            type="dashed"
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={handleAddType}
+          >
+            添加分类
+          </Button>
+        </div>
+
+        <div className="types-list">
+          {types.map((type, index) => (
+            <div key={index} className="type-item">
+              <div className="type-header">
+                <span className="type-index">{index + 1}</span>
+                <Input
+                  value={type}
+                  onChange={e => handleTypeChange(index, e.target.value)}
+                  placeholder="分类名称"
+                  className="type-name-input"
+                />
+                {types.length > 1 && (
+                  <Button
+                    type="text"
+                    danger
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    onClick={() => handleRemoveType(index)}
+                  />
+                )}
+              </div>
+              <Input.TextArea
+                value={descriptions[index] || ''}
+                onChange={e => handleDescriptionChange(index, e.target.value)}
                 placeholder="描述该分类的特征，帮助 AI 准确识别..."
+                rows={2}
+                className="type-description"
               />
             </div>
           ))}
-
-          {categories.length === 0 && (
-            <div className="text-center py-6 border-2 border-dashed border-slate-200 rounded-lg">
-              <p className="text-xs text-slate-400">暂无分类，请点击上方按钮添加</p>
-            </div>
-          )}
         </div>
+
+        {types.length === 0 && (
+          <Empty description="请添加分类" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        )}
       </div>
 
-      {/* Advanced Settings */}
-      <div className="pt-4 border-t border-slate-100">
-        <div className="flex items-center gap-1 text-xs font-medium text-slate-400 mb-3">
-          <HelpCircle size={12} />
-          <span>分类逻辑说明</span>
-        </div>
-        <div className="text-[10px] text-slate-500 space-y-1.5 leading-relaxed">
-          <p>• 系统将自动构建提示词，要求 AI 将输入内容匹配到上述分类之一。</p>
-          <p>• 每个分类都有一个对应的输出锚点，可连接到后续不同的流程。</p>
-          <p>• 如果 AI 无法匹配任何分类，将默认走“其他”分支。</p>
+      <Divider />
+
+      <div className="config-section">
+        <label className="config-label">输出变量</label>
+        <div className="output-info">
+          <div className="output-item">
+            <span className="output-name">content</span>
+            <span className="output-type">string</span>
+            <span className="output-desc">分类内容</span>
+          </div>
+          <div className="output-item">
+            <span className="output-name">index</span>
+            <span className="output-type">number</span>
+            <span className="output-desc">分类索引</span>
+          </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
+
+export default QuestionClassifierConfig;

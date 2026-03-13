@@ -1,6 +1,6 @@
 import React from 'react'
 import { Bell } from 'lucide-react'
-import { VariableSelector } from './common'
+import { VariableSelector } from './common/index'
 
 interface NotificationConfigProps {
   config: any

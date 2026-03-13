@@ -1,0 +1,68 @@
+.flow-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 16px;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flow-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.flow-name.placeholder {
+  color: #94a3b8;
+}
+
+.flow-tag {
+  margin: 0;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: #e2e8f0;
+  margin: 0 8px;
+}
+
+.create-flow-form {
+  padding: 8px 0;
+}
+
+.create-flow-form .form-item {
+  margin-bottom: 16px;
+}
+
+.create-flow-form .form-item:last-child {
+  margin-bottom: 0;
+}
+
+.create-flow-form label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 8px;
+}
