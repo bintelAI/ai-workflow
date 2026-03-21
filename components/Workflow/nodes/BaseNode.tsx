@@ -1,192 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Handle, Position, NodeProps, useReactFlow } from 'reactflow'
 import {
-  PlayCircle,
-  StopCircle,
-  CheckSquare,
-  GitFork,
-  Globe,
-  Bell,
   MoreVertical,
-  Clock,
-  Database,
-  Code,
-  Send,
   Plus,
   Trash2,
-  GitMerge,
-  Bot,
-  Server,
-  BookOpen,
-  FileText,
-  Smartphone,
-  HardDrive,
-  Split,
-  Braces,
-  Sparkles,
-  Workflow,
-  Settings,
 } from 'lucide-react'
 import { WorkflowNodeType, NodeData, LayoutDirection } from '../types'
 import { useWorkflowStore } from '../store/useWorkflowStore'
+import { getNodeMeta } from '../config/nodeRegistry'
 
 export const getNodeIcon = (type: string) => {
-  switch (type) {
-    case WorkflowNodeType.START:
-      return <PlayCircle className="w-5 h-5 text-emerald-500" />
-    case WorkflowNodeType.END:
-      return <StopCircle className="w-5 h-5 text-rose-500" />
-    case WorkflowNodeType.APPROVAL:
-      return <CheckSquare className="w-5 h-5 text-blue-500" />
-    case WorkflowNodeType.CC:
-      return <Send className="w-5 h-5 text-indigo-500" />
-    case WorkflowNodeType.CONDITION:
-      return <GitFork className="w-5 h-5 text-amber-500" />
-    case WorkflowNodeType.PARALLEL:
-      return <GitMerge className="w-5 h-5 text-teal-500" />
-    case WorkflowNodeType.API_CALL:
-      return <Server className="w-5 h-5 text-blue-500" />
-    case WorkflowNodeType.NOTIFICATION:
-      return <Bell className="w-5 h-5 text-orange-500" />
-    case WorkflowNodeType.DELAY:
-      return <Clock className="w-5 h-5 text-yellow-500" />
-    case WorkflowNodeType.DATA_OP:
-      return <Database className="w-5 h-5 text-cyan-500" />
-    case WorkflowNodeType.SCRIPT:
-      return <Code className="w-5 h-5 text-slate-700" />
-    case WorkflowNodeType.LLM:
-      return <Bot className="w-5 h-5 text-fuchsia-500" />
-    case WorkflowNodeType.LOOP:
-      return <GitFork className="w-5 h-5 text-purple-500" />
-    case WorkflowNodeType.QUESTION_CLASSIFIER:
-      return <Split className="w-5 h-5 text-indigo-500" />
-    case WorkflowNodeType.SQL:
-      return <Database className="w-5 h-5 text-indigo-500" />
-    case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
-      return <BookOpen className="w-5 h-5 text-sky-600" />
-    case WorkflowNodeType.DOCUMENT_EXTRACTOR:
-      return <FileText className="w-5 h-5 text-amber-600" />
-    case WorkflowNodeType.CLOUD_PHONE:
-      return <Smartphone className="w-5 h-5 text-green-500" />
-    case WorkflowNodeType.STORAGE:
-      return <HardDrive className="w-5 h-5 text-emerald-500" />
-    case WorkflowNodeType.JSON_PARSE:
-      return <Braces className="w-5 h-5 text-green-500" />
-    case WorkflowNodeType.SMART_PARSE:
-      return <Sparkles className="w-5 h-5 text-orange-500" />
-    case WorkflowNodeType.FLOW_CALL:
-      return <Workflow className="w-5 h-5 text-purple-500" />
-    case WorkflowNodeType.VARIABLE:
-      return <Settings className="w-5 h-5 text-teal-500" />
-    default:
-      return <CheckSquare className="w-5 h-5 text-gray-500" />
-  }
+  const meta = getNodeMeta(type as WorkflowNodeType)
+  const Icon = meta?.icon
+  return Icon ? <Icon className={`w-5 h-5 ${meta.color}`} /> : null
 }
 
 export const getNodeTypeLabel = (type: string) => {
-  switch (type) {
-    case WorkflowNodeType.START:
-      return '开始节点'
-    case WorkflowNodeType.END:
-      return '结束节点'
-    case WorkflowNodeType.APPROVAL:
-      return '审批节点'
-    case WorkflowNodeType.CC:
-      return '抄送节点'
-    case WorkflowNodeType.CONDITION:
-      return '条件节点'
-    case WorkflowNodeType.PARALLEL:
-      return '并行节点'
-    case WorkflowNodeType.API_CALL:
-      return 'API 调用'
-    case WorkflowNodeType.NOTIFICATION:
-      return '消息通知'
-    case WorkflowNodeType.DELAY:
-      return '延时等待'
-    case WorkflowNodeType.DATA_OP:
-      return '数据操作'
-    case WorkflowNodeType.SCRIPT:
-      return '脚本代码'
-    case WorkflowNodeType.LLM:
-      return 'LLM 模型'
-    case WorkflowNodeType.LOOP:
-      return '循环节点'
-    case WorkflowNodeType.SQL:
-      return 'SQL 节点'
-    case WorkflowNodeType.QUESTION_CLASSIFIER:
-      return '问题分类器'
-    case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
-      return '知识库检索'
-    case WorkflowNodeType.DOCUMENT_EXTRACTOR:
-      return '文档提取器'
-    case WorkflowNodeType.CLOUD_PHONE:
-      return '云手机控制'
-    case WorkflowNodeType.STORAGE:
-      return '文件存储'
-    case WorkflowNodeType.JSON_PARSE:
-      return 'JSON解析'
-    case WorkflowNodeType.SMART_PARSE:
-      return '智能解析'
-    case WorkflowNodeType.FLOW_CALL:
-      return '流程调用'
-    case WorkflowNodeType.VARIABLE:
-      return '变量处理'
-    default:
-      return '未知节点'
-  }
+  return getNodeMeta(type as WorkflowNodeType)?.label || '未知节点'
 }
 
 export const getNodeIconBgColor = (type: string) => {
-  switch (type) {
-    case WorkflowNodeType.START:
-      return 'bg-emerald-50 border-emerald-100'
-    case WorkflowNodeType.END:
-      return 'bg-rose-50 border-rose-100'
-    case WorkflowNodeType.APPROVAL:
-      return 'bg-blue-50 border-blue-100'
-    case WorkflowNodeType.CC:
-      return 'bg-indigo-50 border-indigo-100'
-    case WorkflowNodeType.CONDITION:
-      return 'bg-amber-50 border-amber-100'
-    case WorkflowNodeType.QUESTION_CLASSIFIER:
-      return 'bg-indigo-50 border-indigo-100'
-    case WorkflowNodeType.PARALLEL:
-      return 'bg-teal-50 border-teal-100'
-    case WorkflowNodeType.API_CALL:
-      return 'bg-blue-50 border-blue-100'
-    case WorkflowNodeType.NOTIFICATION:
-      return 'bg-orange-50 border-orange-100'
-    case WorkflowNodeType.DELAY:
-      return 'bg-yellow-50 border-yellow-100'
-    case WorkflowNodeType.DATA_OP:
-      return 'bg-cyan-50 border-cyan-100'
-    case WorkflowNodeType.SCRIPT:
-      return 'bg-slate-50 border-slate-200'
-    case WorkflowNodeType.LLM:
-      return 'bg-fuchsia-50 border-fuchsia-100'
-    case WorkflowNodeType.LOOP:
-      return 'bg-purple-50 border-purple-100'
-    case WorkflowNodeType.SQL:
-      return 'bg-indigo-50 border-indigo-100'
-    case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
-      return 'bg-sky-50 border-sky-100'
-    case WorkflowNodeType.DOCUMENT_EXTRACTOR:
-      return 'bg-amber-50 border-amber-100'
-    case WorkflowNodeType.CLOUD_PHONE:
-      return 'bg-green-50 border-green-100'
-    case WorkflowNodeType.STORAGE:
-      return 'bg-emerald-50 border-emerald-100'
-    case WorkflowNodeType.JSON_PARSE:
-      return 'bg-green-50 border-green-100'
-    case WorkflowNodeType.SMART_PARSE:
-      return 'bg-orange-50 border-orange-100'
-    case WorkflowNodeType.FLOW_CALL:
-      return 'bg-purple-50 border-purple-100'
-    case WorkflowNodeType.VARIABLE:
-      return 'bg-teal-50 border-teal-100'
-    default:
-      return 'bg-slate-50 border-slate-100'
-  }
+  return getNodeMeta(type as WorkflowNodeType)?.bgClass || 'bg-slate-50 border-slate-100'
 }
 
 export const getNodeColor = (type: string, selected: boolean, executionStatus?: string) => {

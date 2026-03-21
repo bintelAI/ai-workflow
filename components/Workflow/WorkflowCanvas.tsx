@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import ReactFlow, {
   ReactFlowProvider,
   Controls,
@@ -40,24 +40,8 @@ import {
 import { CustomEdge } from './edges/CustomEdge'
 import { WorkflowNodeType } from './types'
 import { WorkflowCanvasProps } from './Workflow.types'
-import {
-  CheckSquare,
-  GitFork,
-  Globe,
-  Bell,
-  Clock,
-  Database,
-  Code,
-  Send,
-  X,
-  GitMerge,
-  Bot,
-  Repeat,
-  BookOpen,
-  FileText,
-  Smartphone,
-  LayoutGrid,
-} from 'lucide-react'
+import { createDefaultNodePayload, getRegistryItems } from './config/nodeRegistry'
+import { X, LayoutGrid } from 'lucide-react'
 
 // Register custom node types
 const nodeTypes: NodeTypes = {
@@ -91,51 +75,6 @@ const edgeTypes: EdgeTypes = {
   custom: CustomEdge,
 }
 
-const getLabelForType = (type: WorkflowNodeType) => {
-  switch (type) {
-    case WorkflowNodeType.LOOP:
-      return '循环迭代'
-    case WorkflowNodeType.START:
-      return '开始节点'
-    case WorkflowNodeType.END:
-      return '结束节点'
-    case WorkflowNodeType.APPROVAL:
-      return '审批节点'
-    case WorkflowNodeType.CC:
-      return '抄送节点'
-    case WorkflowNodeType.CONDITION:
-      return '条件节点'
-    case WorkflowNodeType.QUESTION_CLASSIFIER:
-      return '问题分类'
-    case WorkflowNodeType.PARALLEL:
-      return '并行节点'
-    case WorkflowNodeType.API_CALL:
-      return 'API 调用'
-    case WorkflowNodeType.NOTIFICATION:
-      return '消息通知'
-    case WorkflowNodeType.DELAY:
-      return '延时等待'
-    case WorkflowNodeType.DATA_OP:
-      return '数据操作'
-    case WorkflowNodeType.SCRIPT:
-      return '脚本代码'
-    case WorkflowNodeType.LLM:
-      return 'LLM 模型'
-    case WorkflowNodeType.SQL:
-      return 'SQL 节点'
-    case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
-      return '知识库检索'
-    case WorkflowNodeType.DOCUMENT_EXTRACTOR:
-      return '文档提取器'
-    case WorkflowNodeType.CLOUD_PHONE:
-      return '云手机控制'
-    case WorkflowNodeType.STORAGE:
-      return '文件存储'
-    default:
-      return '新节点'
-  }
-}
-
 // Unified Add Menu Component
 const NodeAddMenu = () => {
   const {
@@ -166,47 +105,17 @@ const NodeAddMenu = () => {
   // Convert flow position to screen position for absolute positioning
   const screenPos = flowToScreenPosition(position)
 
-  const quickAddOptions = [
-    { type: WorkflowNodeType.LLM, label: 'LLM 模型', icon: Bot, color: 'text-fuchsia-500' },
-    {
-      type: WorkflowNodeType.QUESTION_CLASSIFIER,
-      label: '问题分类',
-      icon: GitFork,
-      color: 'text-indigo-500',
-    },
-    {
-      type: WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
-      label: '知识检索',
-      icon: BookOpen,
-      color: 'text-sky-600',
-    },
-    {
-      type: WorkflowNodeType.DOCUMENT_EXTRACTOR,
-      label: '文档提取',
-      icon: FileText,
-      color: 'text-amber-600',
-    },
-    {
-      type: WorkflowNodeType.CLOUD_PHONE,
-      label: '云手机',
-      icon: Smartphone,
-      color: 'text-green-500',
-    },
-    { type: WorkflowNodeType.SQL, label: 'SQL 节点', icon: Database, color: 'text-indigo-500' },
-    { type: WorkflowNodeType.LOOP, label: '循环迭代', icon: Repeat, color: 'text-indigo-600' },
-    { type: WorkflowNodeType.APPROVAL, label: '审批', icon: CheckSquare, color: 'text-blue-500' },
-    { type: WorkflowNodeType.CONDITION, label: '条件', icon: GitFork, color: 'text-amber-500' },
-    { type: WorkflowNodeType.PARALLEL, label: '并行', icon: GitMerge, color: 'text-teal-500' },
-    { type: WorkflowNodeType.CC, label: '抄送', icon: Send, color: 'text-indigo-500' },
-    { type: WorkflowNodeType.DATA_OP, label: '数据', icon: Database, color: 'text-cyan-500' },
-    { type: WorkflowNodeType.DELAY, label: '延时', icon: Clock, color: 'text-yellow-500' },
-    { type: WorkflowNodeType.API_CALL, label: 'API', icon: Globe, color: 'text-violet-500' },
-    { type: WorkflowNodeType.NOTIFICATION, label: '通知', icon: Bell, color: 'text-orange-500' },
-    { type: WorkflowNodeType.SCRIPT, label: '脚本', icon: Code, color: 'text-slate-700' },
-    { type: WorkflowNodeType.END, label: '结束', icon: X, color: 'text-rose-500' },
-  ]
+  const registryItems = getRegistryItems()
+  const quickAddOptions = registryItems
+    .filter(item => item.visibleInQuickAdd !== false)
+    .map(item => ({
+      type: item.type,
+      label: item.shortLabel || item.label,
+      icon: item.icon,
+      color: item.color,
+    }))
 
-  // Filter options based on active category
+  // Filter options based on active category and backend support
   const visibleOptions = quickAddOptions.filter(option => allowedNodes.has(option.type))
 
   const handleClose = () => {
@@ -286,9 +195,19 @@ const WorkflowCanvasInner: React.FC = () => {
     applyAutoLayout,
     categories,
     activeCategoryId,
+    selectedNodeId,
   } = useWorkflowStore()
 
-  const { project, getNodes, fitView } = useReactFlow()
+  const activeCategory = categories.find(c => c.id === activeCategoryId)
+  const effectiveAllowedNodes = activeCategory?.allowedNodeTypes?.length
+    ? activeCategory.allowedNodeTypes
+    : Object.values(WorkflowNodeType)
+  const allowedNodes = useMemo(
+    () => new Set(effectiveAllowedNodes),
+    [effectiveAllowedNodes]
+  )
+
+  const { project, getNodes, fitView, setCenter } = useReactFlow()
 
   const handleAutoLayout = useCallback(() => {
     const activeCategory = categories.find(c => c.id === activeCategoryId)
@@ -308,7 +227,7 @@ const WorkflowCanvasInner: React.FC = () => {
 
       const type = event.dataTransfer.getData('application/reactflow') as WorkflowNodeType
 
-      if (typeof type === 'undefined' || !type) {
+      if (typeof type === 'undefined' || !type || !allowedNodes.has(type)) {
         return
       }
 
@@ -321,89 +240,10 @@ const WorkflowCanvasInner: React.FC = () => {
         y: event.clientY - reactFlowBounds.top,
       })
 
-      // Default Descriptions and Configs
-      let description = '新添加的节点'
-      let config = {}
-
-      if (type === WorkflowNodeType.KNOWLEDGE_RETRIEVAL) {
-        description = '添加知识库检索'
-      } else if (type === WorkflowNodeType.DOCUMENT_EXTRACTOR) {
-        description = '从文档中提取内容'
-      } else if (type === WorkflowNodeType.STORAGE) {
-        description = '将文件上传到存储服务'
-      }
-
-      if (type === WorkflowNodeType.START) {
-        config = {
-          triggerType: 'webhook',
-          devMode: true,
-          devInput:
-            '{"order_id": "ORD-2024-001", "amount": 8500, "currency": "CNY", "requester": {"id": "U-8821", "name": "Alex Chen", "department": "Engineering"}, "items": [{"name": "Server License", "price": 4000}, {"name": "Cloud Credits", "price": 4500}]}',
-        }
-      } else if (type === WorkflowNodeType.LLM) {
-        config = { model: 'gpt-4', temperature: 0.7, systemPrompt: '', userPrompt: '' }
-      } else if (type === WorkflowNodeType.QUESTION_CLASSIFIER) {
-        config = {
-          model: 'gpt-4',
-          temperature: 0.7,
-          inputVariable: '',
-          categories: [
-            { id: `cat_1_${Date.now()}`, name: '分类 1', description: '' },
-            { id: `cat_2_${Date.now()}`, name: '分类 2', description: '' },
-          ],
-        }
-      } else if (type === WorkflowNodeType.PARALLEL) {
-        config = { branches: ['分支 1', '分支 2'] }
-      } else if (type === WorkflowNodeType.LOOP) {
-        config = { targetArray: '' }
-      } else if (type === WorkflowNodeType.API_CALL) {
-        config = {
-          url: '',
-          method: 'GET',
-          queryParams: [],
-          headers: [],
-          bodyType: 'none',
-          body: '',
-        }
-      } else if (type === WorkflowNodeType.CONDITION) {
-        config = { expression: '', conditionGroups: [] }
-      } else if (type === WorkflowNodeType.APPROVAL) {
-        config = { approver: '', approvalType: 'single', timeout: 86400 }
-      } else if (type === WorkflowNodeType.NOTIFICATION) {
-        config = { channel: '', recipients: '', title: '', content: '' }
-      } else if (type === WorkflowNodeType.DELAY) {
-        config = { duration: 60 }
-      } else if (type === WorkflowNodeType.SCRIPT) {
-        config = { script: '' }
-      } else if (type === WorkflowNodeType.SQL) {
-        config = { databaseId: '', sql: '', unsafeMode: false }
-      } else if (type === WorkflowNodeType.KNOWLEDGE_RETRIEVAL) {
-        config = { knowledgeBaseId: '', query: '', topK: 5 }
-      } else if (type === WorkflowNodeType.DOCUMENT_EXTRACTOR) {
-        config = { documentUrl: '', extractFields: [] }
-      } else if (type === WorkflowNodeType.DATA_OP) {
-        config = { operation: 'map', mapping: {} }
-      } else if (type === WorkflowNodeType.CC) {
-        config = { recipients: '', message: '' }
-      } else if (type === WorkflowNodeType.STORAGE) {
-        config = { provider: 'local', fileExtension: 'jpg' }
-      }
-
-      const newNode = {
-        id: `${type}_${Date.now()}`,
-        type,
-        position,
-        style: type === WorkflowNodeType.LOOP ? { width: 350, height: 250 } : undefined, // Default size for Loop
-        data: {
-          label: getLabelForType(type),
-          description,
-          config,
-        },
-      }
-
+      const newNode = createDefaultNodePayload(type, position)
       addNode(newNode)
     },
-    [project, addNode]
+    [project, addNode, allowedNodes]
   )
 
   const onNodeClick = useCallback(
@@ -430,6 +270,47 @@ const WorkflowCanvasInner: React.FC = () => {
     },
     [getNodes, onNodeDragStop]
   )
+
+  useEffect(() => {
+    const focusNode = (nodeId: string) => {
+      const targetNode = nodes.find(node => node.id === nodeId)
+      if (!targetNode) return
+
+      const width = targetNode.width || 200
+      const height = targetNode.height || 80
+      setSelectedNode(nodeId)
+      setCenter(targetNode.position.x + width / 2, targetNode.position.y + height / 2, {
+        zoom: 1.1,
+        duration: 400,
+      })
+    }
+
+    const handleFocusEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ nodeId?: string }>
+      const nodeId = customEvent.detail?.nodeId
+      if (nodeId) {
+        focusNode(nodeId)
+      }
+    }
+
+    window.addEventListener('workflow-focus-node', handleFocusEvent as EventListener)
+    return () => {
+      window.removeEventListener('workflow-focus-node', handleFocusEvent as EventListener)
+    }
+  }, [nodes, setCenter, setSelectedNode])
+
+  useEffect(() => {
+    if (!selectedNodeId) return
+    const targetNode = nodes.find(node => node.id === selectedNodeId)
+    if (!targetNode) return
+
+    const width = targetNode.width || 200
+    const height = targetNode.height || 80
+    setCenter(targetNode.position.x + width / 2, targetNode.position.y + height / 2, {
+      zoom: 1.1,
+      duration: 300,
+    })
+  }, [selectedNodeId, nodes, setCenter])
 
   return (
     <div className="flex-1 h-full w-full bg-slate-50 relative" ref={reactFlowWrapper}>

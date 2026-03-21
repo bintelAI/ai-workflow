@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { message } from '@/components/common/AntdStaticFunction';
+import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeToken } from '@/utils/runtime';
 
 // 定义通用响应结构
 interface ApiResponse<T = any> {
@@ -10,7 +11,7 @@ interface ApiResponse<T = any> {
 
 const config: AxiosRequestConfig = {
   // 从环境变量获取 Base URL，开发环境为 /api，生产环境为实际地址
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: getRuntimeBaseURL(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -22,10 +23,16 @@ const request: AxiosInstance = axios.create(config);
 // 请求拦截器
 request.interceptors.request.use(
   (config) => {
-    // 从 LocalStorage 获取 Token (根据你实际存储的 key 修改)
-    const token = localStorage.getItem('token');
+    config.baseURL = getRuntimeBaseURL();
+
+    // 从运行时配置或 LocalStorage 获取 Token
+    const token = getRuntimeToken();
+    const projectId = getRuntimeProjectId();
     if (token) {
       config.headers.Authorization = `${token}`;
+    }
+    if (projectId) {
+      config.headers['x-project-id'] = projectId;
     }
     return config;
   },

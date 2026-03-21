@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Globe, Plus, Trash2, ChevronDown, ChevronUp, RefreshCcw } from 'lucide-react'
 import { APICallConfig as APICallConfigType, QueryParam, HeaderParam } from '../types'
 import { VariableInput } from './common/index'
+import { normalizeLegacyTemplate } from '../utils/workflowVariables'
 
 interface APICallConfigProps {
   config: any
@@ -230,19 +231,18 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
       // Helper function to replace variables in strings
       const replaceVariables = (str: string) => {
         if (typeof str !== 'string') return str
-        return str.replace(/\{\{(.*?)\}\}/g, (match, variableName) => {
+        const normalized = normalizeLegacyTemplate(str)
+        return normalized.replace(/\{\{(.*?)\}\}/g, (match, variableName) => {
           const trimmedName = variableName.trim()
-          // Check if variable exists in input data
-          if (trimmedName in inputData) {
-            const val = inputData[trimmedName]
-            return typeof val === 'object' ? JSON.stringify(val) : String(val)
-          }
-          // Check if variable is "payload"
           if (trimmedName === 'payload') {
             return JSON.stringify(inputData)
           }
-          // Return original match if variable not found
-          return match
+          const value = trimmedName.split('.').reduce((acc: any, key: string) => (acc == null ? undefined : acc[key]), inputData as any)
+          return value !== undefined
+            ? typeof value === 'object'
+              ? JSON.stringify(value)
+              : String(value)
+            : match
         })
       }
 

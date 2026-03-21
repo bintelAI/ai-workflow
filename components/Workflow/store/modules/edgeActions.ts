@@ -17,6 +17,8 @@ export const createEdgeActions = (set: any, get: any): EdgeActions => ({
       edges: addEdge(
         {
           ...connection,
+          sourceHandle: connection.sourceHandle || 'source',
+          targetHandle: connection.targetHandle || 'target',
           type: 'custom',
           animated: true,
           markerEnd: { type: MarkerType.ArrowClosed },

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Select, Divider, Alert, Empty, Spin } from 'antd'
 import { BranchesOutlined } from '@ant-design/icons'
 import { InputParams, OutputParams } from './common/index'
-import { flowConfigApi } from '@/src/api/flow'
+import { flowConfigApi, flowInfoApi } from '@/src/api/flow'
 import { useWorkflowStore } from '../store/useWorkflowStore'
 import type { FlowField } from '@/src/types/flow'
 import './FlowCallConfig.css'
@@ -29,6 +29,32 @@ interface FlowItem {
   description?: string
 }
 
+const normalizeFlowField = (field: any, fallbackField: string): FlowField => ({
+  field: field?.field || field?.name || fallbackField,
+  name: field?.name || field?.field || fallbackField,
+  type: field?.type || 'string',
+  required: Boolean(field?.required),
+  label: field?.label || field?.name || field?.field || fallbackField,
+  value: field?.value,
+})
+
+const extractFlowParams = (draftNode: any) => {
+  const data = draftNode?.data || {}
+  const inputParams = Array.isArray(data.inputParams)
+    ? data.inputParams.map((item: any, index: number) =>
+        normalizeFlowField(item, item?.field || item?.name || `input_${index + 1}`)
+      )
+    : []
+
+  const outputParams = Array.isArray(data.outputParams)
+    ? data.outputParams.map((item: any, index: number) =>
+        normalizeFlowField(item, item?.field || item?.name || `output_${index + 1}`)
+      )
+    : []
+
+  return { inputParams, outputParams }
+}
+
 const FlowCallConfig: React.FC<FlowCallConfigProps> = ({
   config,
   onConfigChange,
@@ -37,6 +63,7 @@ const FlowCallConfig: React.FC<FlowCallConfigProps> = ({
   const teamId = useWorkflowStore(state => state.teamId)
   const [flowList, setFlowList] = useState<FlowItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
     if (teamId) {
@@ -57,6 +84,41 @@ const FlowCallConfig: React.FC<FlowCallConfigProps> = ({
     }
   }
 
+  const syncFlowParams = useCallback(
+    async (flowId?: number) => {
+      if (!teamId || !flowId) {
+        onConfigChange('inputParams', [])
+        onConfigChange('outputParams', [])
+        return
+      }
+
+      setDetailLoading(true)
+      try {
+        const res = await flowInfoApi.info(flowId, teamId)
+        const draft = res?.data?.draft
+        const startNode = draft?.nodes?.find((node: any) => node?.type === 'start')
+        const endNode = [...(draft?.nodes || [])].reverse().find((node: any) => node?.type === 'end')
+        const { inputParams } = extractFlowParams(startNode)
+        const { outputParams } = extractFlowParams(endNode)
+        onConfigChange('inputParams', inputParams)
+        onConfigChange('outputParams', outputParams)
+      } catch (error) {
+        console.error('Failed to load flow detail:', error)
+        onConfigChange('inputParams', [])
+        onConfigChange('outputParams', [])
+      } finally {
+        setDetailLoading(false)
+      }
+    },
+    [teamId, onConfigChange]
+  )
+
+  useEffect(() => {
+    if (config.flowId) {
+      syncFlowParams(config.flowId)
+    }
+  }, [config.flowId, syncFlowParams])
+
   const handleInputParamsChange = useCallback(
     (params: FlowField[]) => {
       onConfigChange('inputParams', params)
@@ -71,8 +133,9 @@ const FlowCallConfig: React.FC<FlowCallConfigProps> = ({
     [onConfigChange]
   )
 
-  const handleFlowSelect = (flowId: number) => {
+  const handleFlowSelect = async (flowId?: number) => {
     onConfigChange('flowId', flowId)
+    await syncFlowParams(flowId)
   }
 
   return (
@@ -93,7 +156,7 @@ const FlowCallConfig: React.FC<FlowCallConfigProps> = ({
           选择流程
           <span className="required">*</span>
         </label>
-        <Spin spinning={loading}>
+        <Spin spinning={loading || detailLoading}>
           <Select
             placeholder="选择要调用的流程..."
             value={config.flowId}

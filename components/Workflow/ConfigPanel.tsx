@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useWorkflowStore } from './store/useWorkflowStore'
 import { WorkflowNodeType } from './types'
-import { X, Save, Trash2, Wand2 } from 'lucide-react'
+import { X, Save, Trash2, Wand2, PlayCircle } from 'lucide-react'
 
 // Import configuration components
 import LoopConfig from './configs/LoopConfig'
@@ -27,20 +27,52 @@ import SmartParseConfig from './configs/SmartParseConfig'
 import FlowCallConfig from './configs/FlowCallConfig'
 import VariableConfig from './configs/VariableConfig'
 import { NodeOutputPreview } from './configs/NodeOutputPreview'
+import { buildLoopBodyOutputCatalog, buildVariableCatalog } from './utils/workflowVariables'
 
 // Import common components from configs/common.tsx
 import { AIButton } from './configs/common'
 
+const BACKEND_SUPPORTED_NODE_TYPES = new Set<WorkflowNodeType>([
+  WorkflowNodeType.START,
+  WorkflowNodeType.END,
+  WorkflowNodeType.LLM,
+  WorkflowNodeType.SCRIPT,
+  WorkflowNodeType.CONDITION,
+  WorkflowNodeType.QUESTION_CLASSIFIER,
+  WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
+  WorkflowNodeType.VARIABLE,
+  WorkflowNodeType.JSON_PARSE,
+  WorkflowNodeType.SMART_PARSE,
+  WorkflowNodeType.FLOW_CALL,
+  WorkflowNodeType.LOOP,
+])
+
 const ConfigPanel: React.FC = () => {
   const {
     nodes,
+    edges,
+    globalVariables,
     selectedNodeId,
     updateNodeData,
     setSelectedNode,
     deleteNode,
     aiAutocompleteConfig,
+    runFlow,
   } = useWorkflowStore()
   const selectedNode = nodes.find(n => n.id === selectedNodeId)
+  const availableVariables = selectedNode
+    ? buildVariableCatalog({
+        nodes,
+        edges,
+        currentNodeId: selectedNode.id,
+        globalVariables,
+        scope: 'upstream',
+      })
+    : []
+  const loopBodyOutputVariables = selectedNode?.type === WorkflowNodeType.LOOP
+    ? buildLoopBodyOutputCatalog(nodes, selectedNode.id)
+    : []
+  const isBackendSupportedNode = selectedNode ? BACKEND_SUPPORTED_NODE_TYPES.has(selectedNode.type as WorkflowNodeType) : false
   const [loadingField, setLoadingField] = useState<string | null>(null)
   const [panelWidth, setPanelWidth] = useState(450)
   const [isResizing, setIsResizing] = useState(false)
@@ -67,6 +99,20 @@ const ConfigPanel: React.FC = () => {
     }
   }, [resize, stopResizing])
 
+  useEffect(() => {
+    const handleFocusNodeConfig = (event: Event) => {
+      const customEvent = event as CustomEvent<{ nodeId?: string }>
+      const nodeId = customEvent.detail?.nodeId
+      if (!nodeId) return
+      setSelectedNode(nodeId)
+    }
+
+    window.addEventListener('workflow-open-node-config', handleFocusNodeConfig as EventListener)
+    return () => {
+      window.removeEventListener('workflow-open-node-config', handleFocusNodeConfig as EventListener)
+    }
+  }, [setSelectedNode])
+
   if (!selectedNode) return null // Or empty state
 
   const handleChange = (field: string, value: any) => {
@@ -77,6 +123,13 @@ const ConfigPanel: React.FC = () => {
     const currentConfig = selectedNode.data.config || {}
     updateNodeData(selectedNode.id, {
       config: { ...currentConfig, [key]: value },
+    })
+  }
+
+  const handleConfigPatch = (patch: Record<string, any>) => {
+    const currentConfig = selectedNode.data.config || {}
+    updateNodeData(selectedNode.id, {
+      config: { ...currentConfig, ...patch },
     })
   }
 
@@ -97,38 +150,42 @@ const ConfigPanel: React.FC = () => {
     }
   }
 
+  const handleNodeDebug = async () => {
+    if (!selectedNode || !isBackendSupportedNode) return
+    try {
+      await runFlow({ nodeId: selectedNode.id })
+    } catch (error) {
+      console.error('Node debug failed:', error)
+    }
+  }
+
   const renderAdvancedConfig = () => {
     const config: any = selectedNode.data.config || {}
 
     switch (selectedNode.type) {
       case WorkflowNodeType.LOOP:
-        return <LoopConfig config={config} onConfigChange={handleConfigChange} />
+        return <LoopConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} loopBodyVariables={loopBodyOutputVariables} />
       case WorkflowNodeType.START:
         return <StartConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.END:
-        return <EndConfig config={config} onConfigChange={handleConfigChange} />
+        return <EndConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.SCRIPT:
-        return (
-          <ScriptConfig
-            config={config}
-            onConfigChange={handleConfigChange}
-            loadingField={loadingField}
-            onAIGenerate={handleAIGenerate}
-          />
-        )
+        return <ScriptConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.LLM:
         return (
           <LLMConfig
             config={config}
             onConfigChange={handleConfigChange}
+            onConfigPatch={handleConfigPatch}
             loadingField={loadingField}
             onAIGenerate={handleAIGenerate}
+            variables={availableVariables}
           />
         )
       case WorkflowNodeType.API_CALL:
         return <APICallConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.CONDITION:
-        return <ConditionConfig config={config} onConfigChange={handleConfigChange} />
+        return <ConditionConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.DELAY:
         return <DelayConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.NOTIFICATION:
@@ -142,7 +199,7 @@ const ConfigPanel: React.FC = () => {
       case WorkflowNodeType.SQL:
         return <SQLConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
-        return <KnowledgeRetrievalConfig config={config} onConfigChange={handleConfigChange} />
+        return <KnowledgeRetrievalConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.DOCUMENT_EXTRACTOR:
         return <DocumentExtractorConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.CLOUD_PHONE:
@@ -150,15 +207,15 @@ const ConfigPanel: React.FC = () => {
       case WorkflowNodeType.STORAGE:
         return <StorageConfigPanel config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.QUESTION_CLASSIFIER:
-        return <QuestionClassifierConfig config={config} onConfigChange={handleConfigChange} />
+        return <QuestionClassifierConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.JSON_PARSE:
-        return <JSONParseConfig config={config} onConfigChange={handleConfigChange} />
+        return <JSONParseConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.SMART_PARSE:
-        return <SmartParseConfig config={config} onConfigChange={handleConfigChange} />
+        return <SmartParseConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.FLOW_CALL:
-        return <FlowCallConfig config={config} onConfigChange={handleConfigChange} />
+        return <FlowCallConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.VARIABLE:
-        return <VariableConfig config={config} onConfigChange={handleConfigChange} />
+        return <VariableConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       default:
         return (
           <div className="p-3 bg-slate-50 rounded border border-slate-100 text-xs text-slate-500 flex items-center gap-2">
@@ -194,6 +251,12 @@ const ConfigPanel: React.FC = () => {
 
       <div className="flex-1 overflow-hidden flex flex-col">
         <div className="p-5 overflow-y-auto space-y-6">
+          {!isBackendSupportedNode && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              当前节点未接入后端执行器，建议仅用于查看或迁移占位，不要作为可运行节点使用。
+            </div>
+          )}
+
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">节点名称</label>
@@ -251,6 +314,14 @@ const ConfigPanel: React.FC = () => {
         >
           <Save size={16} /> 完成
         </button>
+        {isBackendSupportedNode && selectedNode.type !== WorkflowNodeType.START && selectedNode.type !== WorkflowNodeType.END && (
+          <button
+            onClick={handleNodeDebug}
+            className="flex items-center justify-center gap-2 px-4 py-2 border border-indigo-200 bg-indigo-50 text-indigo-700 rounded-md hover:bg-indigo-100 transition-colors"
+          >
+            <PlayCircle size={16} /> 调试
+          </button>
+        )}
         <button
           onClick={() => deleteNode(selectedNode.id)}
           className="flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"

@@ -181,7 +181,7 @@ export const CloudPhoneConfig: React.FC<CloudPhoneConfigProps> = ({ config, onCo
           rows={6}
         />
         <div className="text-xs text-slate-400">
-          提示：支持使用变量引用，如 {'{{upstream_node.output}}'}
+          提示：支持使用变量引用，如 {'{{nodes.llm-1.text}}'}
         </div>
       </div>
 

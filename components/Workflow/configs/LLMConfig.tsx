@@ -4,7 +4,7 @@ import { SearchOutlined, CheckOutlined, DownOutlined, ToolOutlined, ApiOutlined 
 import { InputParams, VariableSelector } from './common/index';
 import { flowConfigApi } from '@/src/api/flow';
 import { useWorkflowStore } from '../store/useWorkflowStore';
-import type { FlowField, FlowModelOption, LLMOptions } from '@/src/types/flow';
+import type { FlowField } from '@/src/types/flow';
 import './LLMConfig.css';
 
 interface LLMConfigProps {
@@ -18,8 +18,14 @@ interface LLMConfigProps {
     toolConfig?: any[];
     mcpConfig?: any[];
     inputParams?: FlowField[];
+    supplier?: string;
+    supplierName?: string;
+    configId?: number;
+    comm?: any;
+    options?: any[];
   };
   onConfigChange: (key: string, value: any) => void;
+  onConfigPatch?: (patch: Record<string, any>) => void;
   loadingField?: string | null;
   onAIGenerate?: (field: string, isConfig: boolean) => void;
   variables?: Array<{
@@ -36,6 +42,7 @@ interface ModelGroup {
   type: string;
   select: string[];
   options: any[];
+  comm?: any;
 }
 
 interface ConfigItem {
@@ -48,6 +55,7 @@ interface ConfigItem {
 const LLMConfig: React.FC<LLMConfigProps> = ({
   config,
   onConfigChange,
+  onConfigPatch,
   variables = [],
 }) => {
   const teamId = useWorkflowStore(state => state.teamId)
@@ -79,11 +87,12 @@ const LLMConfig: React.FC<LLMConfigProps> = ({
           type: e.type,
           select: e.options?.options?.find((o: any) => o.field === 'model')?.select || [],
           options: e.options?.options?.filter((o: any) => o.field !== 'model') || [],
+          comm: e.options?.comm,
         }));
         setModelGroups(groups);
         
         if (!config.model && groups.length > 0 && groups[0].select.length > 0) {
-          onConfigChange('model', groups[0].select[0]);
+          handleModelSelect(groups[0].select[0], groups[0]);
         }
       } catch (error) {
         console.error('Failed to load models:', error);
@@ -120,9 +129,33 @@ const LLMConfig: React.FC<LLMConfigProps> = ({
   }, [modelGroups, modelSearch]);
 
   const handleModelSelect = (modelName: string, group: ModelGroup) => {
-    onConfigChange('model', modelName);
-    onConfigChange('supplier', group.type);
-    onConfigChange('supplierName', group.title);
+    const currentModelGroup = group;
+    const currentOptions = Array.isArray(config.options) ? config.options : [];
+    const mergedOptions = currentModelGroup.options.map((option: any) => {
+      const matchedOption = currentOptions.find((item: any) => item?.field === option?.field);
+      return matchedOption
+        ? { ...option, value: matchedOption.value, enable: matchedOption.enable }
+        : { ...option };
+    });
+
+    if (onConfigPatch) {
+      onConfigPatch({
+        model: modelName,
+        supplier: currentModelGroup.type,
+        supplierName: currentModelGroup.title,
+        configId: currentModelGroup.id,
+        comm: currentModelGroup.comm,
+        options: mergedOptions,
+      });
+    } else {
+      onConfigChange('model', modelName);
+      onConfigChange('supplier', currentModelGroup.type);
+      onConfigChange('supplierName', currentModelGroup.title);
+      onConfigChange('configId', currentModelGroup.id);
+      onConfigChange('comm', currentModelGroup.comm);
+      onConfigChange('options', mergedOptions);
+    }
+
     setModelPopoverOpen(false);
   };
 
@@ -155,8 +188,65 @@ const LLMConfig: React.FC<LLMConfigProps> = ({
   };
 
   const currentModelGroup = useMemo(() => {
+    if (!config.model) return undefined;
+    if (config.configId) {
+      const matchedById = modelGroups.find(g => g.id === config.configId && g.select.includes(config.model || ''));
+      if (matchedById) return matchedById;
+    }
     return modelGroups.find(g => g.select.includes(config.model || ''));
-  }, [modelGroups, config.model]);
+  }, [modelGroups, config.configId, config.model]);
+
+  useEffect(() => {
+    if (!config.model || modelGroups.length === 0) {
+      return;
+    }
+
+    const matchedGroup = currentModelGroup;
+    if (!matchedGroup) {
+      return;
+    }
+
+    if (config.configId !== matchedGroup.id) {
+      onConfigChange('configId', matchedGroup.id);
+    }
+
+    if (config.supplier !== matchedGroup.type) {
+      onConfigChange('supplier', matchedGroup.type);
+    }
+
+    if (config.supplierName !== matchedGroup.title) {
+      onConfigChange('supplierName', matchedGroup.title);
+    }
+
+    if (config.comm === undefined && matchedGroup.comm !== undefined) {
+      onConfigChange('comm', matchedGroup.comm);
+    }
+
+    const currentOptions = Array.isArray(config.options) ? config.options : [];
+    const needsOptionSync =
+      currentOptions.length === 0 ||
+      matchedGroup.options.some((option: any) => !currentOptions.some((item: any) => item?.field === option?.field));
+
+    if (needsOptionSync) {
+      const mergedOptions = matchedGroup.options.map((option: any) => {
+        const matchedOption = currentOptions.find((item: any) => item?.field === option?.field);
+        return matchedOption
+          ? { ...option, value: matchedOption.value, enable: matchedOption.enable }
+          : { ...option };
+      });
+      onConfigChange('options', mergedOptions);
+    }
+  }, [
+    config.comm,
+    config.configId,
+    config.model,
+    config.options,
+    config.supplier,
+    config.supplierName,
+    currentModelGroup,
+    modelGroups.length,
+    onConfigChange,
+  ]);
 
   const selectedToolIds = (config.toolConfig || []).map((t: any) => t.id).filter(Boolean);
   const selectedMcpIds = (config.mcpConfig || []).map((m: any) => m.id).filter(Boolean);
@@ -206,12 +296,12 @@ const LLMConfig: React.FC<LLMConfigProps> = ({
                         <div className="model-group-label">{group.title}</div>
                         {group.select.map(model => (
                           <div
-                            key={model}
-                            className={`model-item ${config.model === model ? 'active' : ''}`}
+                            key={`${group.id}-${model}`}
+                            className={`model-item ${config.model === model && config.configId === group.id ? 'active' : ''}`}
                             onClick={() => handleModelSelect(model, group)}
                           >
                             <span>{model}</span>
-                            {config.model === model && <CheckOutlined className="check-icon" />}
+                            {config.model === model && config.configId === group.id && <CheckOutlined className="check-icon" />}
                           </div>
                         ))}
                       </div>
@@ -345,8 +435,8 @@ const LLMConfig: React.FC<LLMConfigProps> = ({
           <VariableSelector
             variables={variables}
             onChange={data => {
-              const varRef = data.nodeId ? `{{${data.nodeId}.${data.name}}}` : data.value;
-              onConfigChange('userPrompt', `${config.userPrompt || ''} ${varRef}`);
+              const varRef = data.template || data.value;
+              onConfigChange('userPrompt', `${config.userPrompt || ''} ${varRef}`.trim());
             }}
             placeholder="插入变量..."
           />

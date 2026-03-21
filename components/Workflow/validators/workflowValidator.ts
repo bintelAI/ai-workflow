@@ -1,6 +1,8 @@
 import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../types'
 import { ValidationError, ValidationResult } from '../ValidationReportModal'
 
+type ValidationConfig = Record<string, any>
+
 export class WorkflowValidator {
   private nodes: WorkflowNode[]
   private edges: WorkflowEdge[]
@@ -84,7 +86,7 @@ export class WorkflowValidator {
 
   private validateNodeConfigs() {
     this.nodes.forEach(node => {
-      const config = node.data.config || {}
+      const config = this.getNodeConfig(node)
 
       switch (node.type) {
         case WorkflowNodeType.START:
@@ -135,8 +137,68 @@ export class WorkflowValidator {
         case WorkflowNodeType.CC:
           this.validateCCNode(node, config)
           break
+        case WorkflowNodeType.CLOUD_PHONE:
+          this.validateCloudPhoneNode(node, config)
+          break
+        case WorkflowNodeType.STORAGE:
+          this.validateStorageNode(node, config)
+          break
+        case WorkflowNodeType.QUESTION_CLASSIFIER:
+          this.validateQuestionClassifierNode(node, config)
+          break
+        case WorkflowNodeType.JSON_PARSE:
+          this.validateJSONParseNode(node, config)
+          break
+        case WorkflowNodeType.SMART_PARSE:
+          this.validateSmartParseNode(node, config)
+          break
+        case WorkflowNodeType.FLOW_CALL:
+          this.validateFlowCallNode(node, config)
+          break
+        case WorkflowNodeType.VARIABLE:
+          this.validateVariableNode(node, config)
+          break
       }
     })
+  }
+
+  private getNodeConfig(node: WorkflowNode): ValidationConfig {
+    return (node.data?.config || {}) as ValidationConfig
+  }
+
+  private getOutgoingEdges(nodeId: string) {
+    return this.edges.filter(edge => edge.source === nodeId)
+  }
+
+  private getTrimmedString(value: unknown) {
+    return typeof value === 'string' ? value.trim() : ''
+  }
+
+  private hasNonEmptyString(value: unknown) {
+    return this.getTrimmedString(value) !== ''
+  }
+
+  private hasConfiguredParams(params: unknown) {
+    return Array.isArray(params) && params.some(item => this.hasNamedField(item))
+  }
+
+  private hasNamedField(item: any) {
+    if (!item || typeof item !== 'object') return false
+    return this.hasNonEmptyString(item.field) || this.hasNonEmptyString(item.name)
+  }
+
+  private countOutgoingHandles(nodeId: string, handleIds: string[]) {
+    const handleSet = new Set(handleIds)
+    return this.getOutgoingEdges(nodeId).filter(edge => edge.sourceHandle && handleSet.has(edge.sourceHandle))
+      .length
+  }
+
+  private hasOutgoingHandle(nodeId: string, handleIds: string[]) {
+    return this.countOutgoingHandles(nodeId, handleIds) > 0
+  }
+
+  private getNodeById(nodeId: string) {
+    return this.nodes.find(node => node.id === nodeId)
   }
 
   private validateStartNode(node: WorkflowNode, config: any) {
@@ -216,46 +278,94 @@ export class WorkflowValidator {
   }
 
   private validateConditionNode(node: WorkflowNode, config: any) {
-    const hasExpression = config.expression && config.expression.trim() !== ''
-    const hasConditionGroups = config.conditionGroups && config.conditionGroups.length > 0
+    const conditionItems = Array.isArray(config.IF)
+      ? config.IF.filter((item: any) => this.hasNonEmptyString(item?.field))
+      : []
+    const hasExpression = this.hasNonEmptyString(config.expression)
+    const hasConditionGroups = Array.isArray(config.conditionGroups) && config.conditionGroups.length > 0
+    const hasLegacyConditions = conditionItems.length > 0
 
-    if (!hasExpression && !hasConditionGroups) {
+    if (!hasExpression && !hasConditionGroups && !hasLegacyConditions) {
       this.addError({
         type: 'error',
         category: 'node_config',
         nodeId: node.id,
         nodeLabel: node.data.label,
         message: '条件节点缺少判断条件',
-        suggestion: '配置表达式或添加条件组来定义分支逻辑',
+        suggestion: '至少添加一条 IF 条件，或配置表达式/条件组来定义分支逻辑',
       })
     }
 
-    if (hasConditionGroups) {
-      const outgoingEdges = this.edges.filter(e => e.source === node.id)
-      const conditionCount = config.conditionGroups.length
+    const ifBranchConnected = this.hasOutgoingHandle(node.id, ['source-if', 'true'])
+    const elseBranchConnected = this.hasOutgoingHandle(node.id, ['source-else', 'false'])
 
-      if (outgoingEdges.length < conditionCount) {
-        this.addError({
-          type: 'warning',
-          category: 'connection',
-          nodeId: node.id,
-          nodeLabel: node.data.label,
-          message: `条件节点定义了 ${conditionCount} 个条件，但只有 ${outgoingEdges.length} 条输出连接`,
-          suggestion: '为每个条件分支添加对应的输出连接',
-        })
-      }
+    if (!ifBranchConnected) {
+      this.addError({
+        type: 'warning',
+        category: 'connection',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '条件节点缺少“是”分支连接',
+        suggestion: '从条件节点的“是”出口连接后续节点',
+      })
+    }
+
+    if (!elseBranchConnected) {
+      this.addError({
+        type: 'warning',
+        category: 'connection',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '条件节点缺少“否”分支连接',
+        suggestion: '从条件节点的“否”出口连接后续节点',
+      })
     }
   }
 
   private validateLoopNode(node: WorkflowNode, config: any) {
-    if (!config.targetArray || config.targetArray.trim() === '') {
+    const hasTargetArray = this.hasNonEmptyString(config.targetArray || config.targetArrayTemplate)
+
+    if (!hasTargetArray) {
       this.addError({
         type: 'error',
         category: 'node_config',
         nodeId: node.id,
         nodeLabel: node.data.label,
-        message: '循环节点未配置目标数组',
-        suggestion: '在配置面板中指定要遍历的数组变量路径',
+        message: '循环节点未配置循环数组',
+        suggestion: '请从变量选择器中选择一个数组变量作为循环源',
+      })
+    }
+
+    if (!['serial', 'parallel', undefined].includes(config.executionMode)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '循环节点执行方式配置无效',
+        suggestion: '执行方式仅支持串行或并发',
+      })
+    }
+
+    if ((config.executionMode || 'serial') === 'parallel' && Number(config.maxConcurrency || 0) < 1) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '循环节点最大并发数必须大于 0',
+        suggestion: '并发执行时请设置至少为 1 的最大并发数',
+      })
+    }
+
+    if ((config.outputMode || 'all') === 'field' && !this.hasNonEmptyString(config.resultField)) {
+      this.addError({
+        type: 'warning',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '循环节点未选择循环体输出字段',
+        suggestion: '当聚合指定字段时，请绑定循环体内部节点的输出字段',
       })
     }
 
@@ -267,12 +377,11 @@ export class WorkflowValidator {
         nodeId: node.id,
         nodeLabel: node.data.label,
         message: '循环节点内部没有子节点',
-        suggestion: '拖拽节点到循环节点内部以定义循环体',
+        suggestion: '拖拽节点到循环节点内部作为循环体',
       })
     }
 
-    const outgoingEdges = this.edges.filter(e => e.source === node.id)
-    const hasLoopOutput = outgoingEdges.some(e => e.sourceHandle === 'loop-output')
+    const hasLoopOutput = this.hasOutgoingHandle(node.id, ['loop-output'])
 
     if (!hasLoopOutput && children.length > 0) {
       this.addError({
@@ -281,13 +390,17 @@ export class WorkflowValidator {
         nodeId: node.id,
         nodeLabel: node.data.label,
         message: '循环节点缺少循环输出连接',
-        suggestion: '从循环节点的输出连接点连接到后续节点',
+        suggestion: '从循环节点的循环输出连接到后续节点',
       })
     }
   }
 
   private validateParallelNode(node: WorkflowNode, config: any) {
-    if (!config.branches || config.branches.length === 0) {
+    const branches = Array.isArray(config.branches)
+      ? config.branches.filter((branch: any) => this.hasNonEmptyString(branch))
+      : []
+
+    if (branches.length === 0) {
       this.addError({
         type: 'error',
         category: 'node_config',
@@ -296,19 +409,22 @@ export class WorkflowValidator {
         message: '并行节点未配置分支',
         suggestion: '在配置面板中添加至少一个分支',
       })
+      return
     }
 
-    const outgoingEdges = this.edges.filter(e => e.source === node.id)
-    const branchCount = config.branches?.length || 0
+    const connectedBranchCount = this.countOutgoingHandles(
+      node.id,
+      branches.map((_, index) => `branch-${index}`)
+    )
 
-    if (outgoingEdges.length < branchCount) {
+    if (connectedBranchCount < branches.length) {
       this.addError({
         type: 'warning',
         category: 'connection',
         nodeId: node.id,
         nodeLabel: node.data.label,
-        message: `并行节点定义了 ${branchCount} 个分支，但只有 ${outgoingEdges.length} 条输出连接`,
-        suggestion: '为每个分支添加对应的输出连接',
+        message: `并行节点定义了 ${branches.length} 个分支，但只有 ${connectedBranchCount} 个分支已连接`,
+        suggestion: '为每个并行分支添加对应的输出连接',
       })
     }
   }
@@ -386,14 +502,14 @@ export class WorkflowValidator {
   }
 
   private validateScriptNode(node: WorkflowNode, config: any) {
-    if (!config.script || config.script.trim() === '') {
+    if (!this.hasNonEmptyString(config.code) && !this.hasNonEmptyString(config.script)) {
       this.addError({
         type: 'error',
         category: 'node_config',
         nodeId: node.id,
         nodeLabel: node.data.label,
         message: '脚本节点未配置脚本代码',
-        suggestion: '在配置面板中编写 JavaScript 代码',
+        suggestion: '在配置面板中编写代码内容',
       })
     }
   }
@@ -504,18 +620,21 @@ export class WorkflowValidator {
   }
 
   private validateDocumentExtractorNode(node: WorkflowNode, config: any) {
-    if (!config.documentUrl || config.documentUrl.trim() === '') {
+    const hasDocumentUrl = this.hasNonEmptyString(config.documentUrl)
+    const hasInputParams = this.hasConfiguredParams(config.inputParams)
+
+    if (!hasDocumentUrl && !hasInputParams) {
       this.addError({
         type: 'error',
         category: 'node_config',
         nodeId: node.id,
         nodeLabel: node.data.label,
-        message: '文档提取器节点未配置文档 URL',
-        suggestion: '输入文档的 URL 地址',
+        message: '文档提取器节点未配置文档来源',
+        suggestion: '填写文档 URL，或通过输入变量传入待提取文档',
       })
     }
 
-    if (!config.extractFields || config.extractFields.length === 0) {
+    if (!Array.isArray(config.extractFields) || config.extractFields.length === 0) {
       this.addError({
         type: 'warning',
         category: 'node_config',
@@ -527,15 +646,172 @@ export class WorkflowValidator {
     }
   }
 
-  private validateDataOpNode(node: WorkflowNode, config: any) {
-    if (!config.operation || config.operation.trim() === '') {
+  private validateCloudPhoneNode(node: WorkflowNode, config: any) {
+    if (!this.hasNonEmptyString(config.phoneId)) {
       this.addError({
         type: 'error',
         category: 'node_config',
         nodeId: node.id,
         nodeLabel: node.data.label,
-        message: '数据操作节点未配置操作类型',
-        suggestion: '选择操作类型：映射、过滤、转换等',
+        message: '云手机节点未选择云手机设备',
+        suggestion: '先选择要执行操作的云手机设备',
+      })
+    }
+
+    if (!this.hasNonEmptyString(config.operationContent)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '云手机节点未配置执行内容',
+        suggestion: '填写需要在云手机执行的操作内容',
+      })
+    }
+  }
+
+  private validateStorageNode(node: WorkflowNode, config: any) {
+    if (!this.hasNonEmptyString(config.provider)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '文件存储节点未配置存储提供商',
+        suggestion: '选择本地或云端存储提供商',
+      })
+    }
+  }
+
+  private validateDataOpNode(node: WorkflowNode, config: any) {
+    if (!this.hasNonEmptyString(config.code) && !this.hasNonEmptyString(config.operation)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '数据操作节点未配置处理逻辑',
+        suggestion: '填写数据处理代码或选择操作类型',
+      })
+    }
+  }
+
+  private validateQuestionClassifierNode(node: WorkflowNode, config: any) {
+    if (!this.hasNonEmptyString(config.model)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '分类器节点未配置模型',
+        suggestion: '选择用于分类的模型',
+      })
+    }
+
+    const types = Array.isArray(config.types)
+      ? config.types.filter((item: any) => this.hasNonEmptyString(item))
+      : []
+
+    if (types.length === 0) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '分类器节点未配置分类项',
+        suggestion: '至少添加一个分类项',
+      })
+      return
+    }
+
+    const connectedBranchCount = this.countOutgoingHandles(
+      node.id,
+      types.map((_, index) => `source-${index}`)
+    )
+    const hasElseBranch = this.hasOutgoingHandle(node.id, ['source-else'])
+
+    if (connectedBranchCount < types.length) {
+      this.addError({
+        type: 'warning',
+        category: 'connection',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: `分类器节点定义了 ${types.length} 个分类，但只有 ${connectedBranchCount} 个分类分支已连接`,
+        suggestion: '为每个分类分支连接对应的后续节点',
+      })
+    }
+
+    if (!hasElseBranch) {
+      this.addError({
+        type: 'warning',
+        category: 'connection',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '分类器节点缺少“其他”分支连接',
+        suggestion: '为未命中的情况补充“其他”分支连接',
+      })
+    }
+  }
+
+  private validateJSONParseNode(node: WorkflowNode, config: any) {
+    if (!this.hasConfiguredParams(config.inputParams)) {
+      this.addError({
+        type: 'warning',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: 'JSON 解析节点未配置输入变量',
+        suggestion: '选择需要解析的 JSON 字符串变量',
+      })
+    }
+  }
+
+  private validateSmartParseNode(node: WorkflowNode, config: any) {
+    if (!this.hasConfiguredParams(config.inputParams)) {
+      this.addError({
+        type: 'warning',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '智能解析节点未配置输入变量',
+        suggestion: '选择需要进行智能解析的输入变量',
+      })
+    }
+  }
+
+  private validateFlowCallNode(node: WorkflowNode, config: any) {
+    if (config.flowId === undefined || config.flowId === null || `${config.flowId}` === '') {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '流程调用节点未选择目标流程',
+        suggestion: '先在配置面板中选择要调用的流程',
+      })
+    }
+  }
+
+  private validateVariableNode(node: WorkflowNode, config: any) {
+    if (!this.hasNonEmptyString(config.code)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '变量处理节点未配置代码逻辑',
+        suggestion: '填写变量处理代码',
+      })
+    }
+
+    if (!this.hasConfiguredParams(config.outputParams)) {
+      this.addError({
+        type: 'warning',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '变量处理节点未配置输出变量',
+        suggestion: '至少声明一个输出变量，便于后续节点引用',
       })
     }
   }
@@ -656,6 +932,19 @@ export class WorkflowValidator {
     })
   }
 
+  private findLoopParent(node: WorkflowNode | undefined) {
+    if (!node?.parentNode) return undefined
+
+    const parentNode = this.getNodeById(node.parentNode)
+    if (!parentNode) return undefined
+
+    if (parentNode.type === WorkflowNodeType.LOOP) {
+      return parentNode
+    }
+
+    return this.findLoopParent(parentNode)
+  }
+
   private validateVariables() {
     const variablePattern = /\{\{([^}]+)\}\}/g
 
@@ -684,14 +973,17 @@ export class WorkflowValidator {
             const hasConnection = this.edges.some(
               e => e.source === sourceNodeId && e.target === node.id
             )
-            if (!hasConnection && sourceNode.type !== WorkflowNodeType.START) {
+            const sourceInLoop = this.findLoopParent(sourceNode)
+            const targetInLoop = this.findLoopParent(node)
+            const sharesLoopScope = sourceInLoop && targetInLoop && sourceInLoop.id === targetInLoop.id
+            if (!hasConnection && !sharesLoopScope && sourceNode.type !== WorkflowNodeType.START) {
               this.addError({
                 type: 'warning',
                 category: 'variable',
                 nodeId: node.id,
                 nodeLabel: node.data.label,
                 message: `节点引用了上游节点 {{${variable}}} 的数据，但两者之间没有连接`,
-                suggestion: '建立从源节点到当前节点的连接',
+                suggestion: '建立从源节点到当前节点的连接，或将节点放到同一循环作用域内',
               })
             }
           }

@@ -92,7 +92,7 @@ export const SQLConfig: React.FC<SQLConfigProps> = ({ config, onConfigChange }) 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-slate-700 uppercase">SQL 语句</label>
-          <span className="text-[10px] text-slate-400">支持 {'{{变量}}'}</span>
+          <span className="text-[10px] text-slate-400">支持 {'{{nodes.xxx.field}}'} / {'{{payload.key}}'}</span>
         </div>
         <VariableTextArea
           value={config.sql || ''}

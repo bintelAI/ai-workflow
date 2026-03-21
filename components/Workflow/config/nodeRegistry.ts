@@ -1,0 +1,363 @@
+import {
+  PlayCircle,
+  StopCircle,
+  CheckSquare,
+  GitFork,
+  GitMerge,
+  Globe,
+  Bell,
+  Clock,
+  Database,
+  Code,
+  Send,
+  Bot,
+  Repeat,
+  BookOpen,
+  FileText,
+  Smartphone,
+  HardDrive,
+  Split,
+  Braces,
+  Sparkles,
+  Workflow,
+  Settings,
+  Server,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { WorkflowNodeType, type WorkflowNode, type WorkflowEdge } from '../types'
+
+export type WorkflowNodeGroup = 'basic' | 'logic' | 'automation' | 'industry'
+
+export interface WorkflowNodeRegistryItem {
+  type: WorkflowNodeType
+  label: string
+  shortLabel?: string
+  description: string
+  icon: LucideIcon
+  color: string
+  bgClass: string
+  group: WorkflowNodeGroup
+  sort: number
+  visibleInSidebar?: boolean
+  visibleInSettings?: boolean
+  visibleInQuickAdd?: boolean
+  defaultStyle?: Record<string, any>
+  createDefaultConfig: () => Record<string, any>
+}
+
+const DEFAULT_DEV_INPUT =
+  '{"order_id": "ORD-2024-001", "amount": 8500, "currency": "CNY", "requester": {"id": "U-8821", "name": "Alex Chen", "department": "Engineering"}, "items": [{"name": "Server License", "price": 4000}, {"name": "Cloud Credits", "price": 4500}]}'
+
+export const NODE_REGISTRY: Record<WorkflowNodeType, WorkflowNodeRegistryItem> = {
+  [WorkflowNodeType.START]: {
+    type: WorkflowNodeType.START,
+    label: '开始节点',
+    shortLabel: '开始',
+    description: 'Webhook 触发',
+    icon: PlayCircle,
+    color: 'text-emerald-500',
+    bgClass: 'bg-emerald-50 border-emerald-100',
+    group: 'basic',
+    sort: 1,
+    createDefaultConfig: () => ({ triggerType: 'webhook', devMode: true, devInput: DEFAULT_DEV_INPUT }),
+  },
+  [WorkflowNodeType.END]: {
+    type: WorkflowNodeType.END,
+    label: '结束节点',
+    shortLabel: '结束',
+    description: '流程结束',
+    icon: StopCircle,
+    color: 'text-rose-500',
+    bgClass: 'bg-rose-50 border-rose-100',
+    group: 'basic',
+    sort: 2,
+    createDefaultConfig: () => ({}),
+  },
+  [WorkflowNodeType.APPROVAL]: {
+    type: WorkflowNodeType.APPROVAL,
+    label: '审批节点',
+    description: '人工审批处理',
+    icon: CheckSquare,
+    color: 'text-blue-500',
+    bgClass: 'bg-blue-50 border-blue-100',
+    group: 'logic',
+    sort: 10,
+    createDefaultConfig: () => ({ approver: '', approvalType: 'single', timeout: 86400 }),
+  },
+  [WorkflowNodeType.CC]: {
+    type: WorkflowNodeType.CC,
+    label: '抄送节点',
+    description: '发送抄送消息',
+    icon: Send,
+    color: 'text-indigo-500',
+    bgClass: 'bg-indigo-50 border-indigo-100',
+    group: 'logic',
+    sort: 11,
+    createDefaultConfig: () => ({ recipients: '', message: '' }),
+  },
+  [WorkflowNodeType.CONDITION]: {
+    type: WorkflowNodeType.CONDITION,
+    label: '条件分支',
+    shortLabel: '条件',
+    description: '条件判断分支',
+    icon: GitFork,
+    color: 'text-amber-500',
+    bgClass: 'bg-amber-50 border-amber-100',
+    group: 'logic',
+    sort: 12,
+    createDefaultConfig: () => ({ expression: '', conditionGroups: [] }),
+  },
+  [WorkflowNodeType.PARALLEL]: {
+    type: WorkflowNodeType.PARALLEL,
+    label: '并行分支',
+    shortLabel: '并行',
+    description: '并行执行多个分支',
+    icon: GitMerge,
+    color: 'text-teal-500',
+    bgClass: 'bg-teal-50 border-teal-100',
+    group: 'logic',
+    sort: 13,
+    createDefaultConfig: () => ({ branches: ['分支 1', '分支 2'] }),
+  },
+  [WorkflowNodeType.LOOP]: {
+    type: WorkflowNodeType.LOOP,
+    label: '循环迭代',
+    description: '循环处理数组元素',
+    icon: Repeat,
+    color: 'text-indigo-600',
+    bgClass: 'bg-purple-50 border-purple-100',
+    group: 'logic',
+    sort: 14,
+    defaultStyle: { width: 800, height: 800 },
+    createDefaultConfig: () => ({ targetArray: '' }),
+  },
+  [WorkflowNodeType.DELAY]: {
+    type: WorkflowNodeType.DELAY,
+    label: '延时等待',
+    shortLabel: '延时',
+    description: '等待指定时长',
+    icon: Clock,
+    color: 'text-yellow-500',
+    bgClass: 'bg-yellow-50 border-yellow-100',
+    group: 'logic',
+    sort: 15,
+    createDefaultConfig: () => ({ duration: 60 }),
+  },
+  [WorkflowNodeType.QUESTION_CLASSIFIER]: {
+    type: WorkflowNodeType.QUESTION_CLASSIFIER,
+    label: '问题分类',
+    description: '将输入分类到不同分支',
+    icon: Split,
+    color: 'text-indigo-500',
+    bgClass: 'bg-indigo-50 border-indigo-100',
+    group: 'logic',
+    sort: 16,
+    createDefaultConfig: () => ({
+      model: 'gpt-4',
+      temperature: 0.7,
+      inputVariable: '',
+      categories: [
+        { id: `cat_1_${Date.now()}`, name: '分类 1', description: '' },
+        { id: `cat_2_${Date.now()}`, name: '分类 2', description: '' },
+      ],
+    }),
+  },
+  [WorkflowNodeType.API_CALL]: {
+    type: WorkflowNodeType.API_CALL,
+    label: 'API 调用',
+    shortLabel: 'API',
+    description: '调用外部接口',
+    icon: Globe,
+    color: 'text-violet-500',
+    bgClass: 'bg-blue-50 border-blue-100',
+    group: 'automation',
+    sort: 20,
+    createDefaultConfig: () => ({ url: '', method: 'GET', queryParams: [], headers: [], bodyType: 'none', body: '' }),
+  },
+  [WorkflowNodeType.NOTIFICATION]: {
+    type: WorkflowNodeType.NOTIFICATION,
+    label: '消息通知',
+    shortLabel: '通知',
+    description: '发送通知消息',
+    icon: Bell,
+    color: 'text-orange-500',
+    bgClass: 'bg-orange-50 border-orange-100',
+    group: 'automation',
+    sort: 21,
+    createDefaultConfig: () => ({ channel: '', recipients: '', title: '', content: '' }),
+  },
+  [WorkflowNodeType.DATA_OP]: {
+    type: WorkflowNodeType.DATA_OP,
+    label: '数据操作',
+    shortLabel: '数据',
+    description: '映射和处理数据',
+    icon: Database,
+    color: 'text-cyan-500',
+    bgClass: 'bg-cyan-50 border-cyan-100',
+    group: 'automation',
+    sort: 22,
+    createDefaultConfig: () => ({ operation: 'map', mapping: {} }),
+  },
+  [WorkflowNodeType.SQL]: {
+    type: WorkflowNodeType.SQL,
+    label: 'SQL 节点',
+    description: '执行 SQL 查询',
+    icon: Database,
+    color: 'text-indigo-500',
+    bgClass: 'bg-indigo-50 border-indigo-100',
+    group: 'automation',
+    sort: 23,
+    createDefaultConfig: () => ({ databaseId: '', sql: '', unsafeMode: false }),
+  },
+  [WorkflowNodeType.SCRIPT]: {
+    type: WorkflowNodeType.SCRIPT,
+    label: '脚本代码',
+    shortLabel: '脚本',
+    description: '执行自定义脚本',
+    icon: Code,
+    color: 'text-slate-700',
+    bgClass: 'bg-slate-50 border-slate-200',
+    group: 'automation',
+    sort: 24,
+    createDefaultConfig: () => ({ script: '' }),
+  },
+  [WorkflowNodeType.LLM]: {
+    type: WorkflowNodeType.LLM,
+    label: 'AI 模型',
+    shortLabel: 'LLM 模型',
+    description: '调用大语言模型',
+    icon: Bot,
+    color: 'text-fuchsia-500',
+    bgClass: 'bg-fuchsia-50 border-fuchsia-100',
+    group: 'automation',
+    sort: 25,
+    createDefaultConfig: () => ({ model: 'gpt-4', temperature: 0.7, systemPrompt: '', userPrompt: '' }),
+  },
+  [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: {
+    type: WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
+    label: '知识库检索',
+    shortLabel: '知识检索',
+    description: '检索知识库内容',
+    icon: BookOpen,
+    color: 'text-sky-600',
+    bgClass: 'bg-sky-50 border-sky-100',
+    group: 'automation',
+    sort: 26,
+    createDefaultConfig: () => ({ knowledgeBaseId: '', query: '', topK: 5 }),
+  },
+  [WorkflowNodeType.DOCUMENT_EXTRACTOR]: {
+    type: WorkflowNodeType.DOCUMENT_EXTRACTOR,
+    label: '文档提取器',
+    shortLabel: '文档提取',
+    description: '从文档中提取内容',
+    icon: FileText,
+    color: 'text-amber-600',
+    bgClass: 'bg-amber-50 border-amber-100',
+    group: 'automation',
+    sort: 27,
+    createDefaultConfig: () => ({ documentUrl: '', extractFields: [] }),
+  },
+  [WorkflowNodeType.JSON_PARSE]: {
+    type: WorkflowNodeType.JSON_PARSE,
+    label: 'JSON解析',
+    description: '解析 JSON 内容',
+    icon: Braces,
+    color: 'text-green-500',
+    bgClass: 'bg-green-50 border-green-100',
+    group: 'automation',
+    sort: 28,
+    createDefaultConfig: () => ({ inputParams: [{ field: 'text', type: 'string' }], outputParams: [{ field: 'json', type: 'object' }], inputVariable: '', schema: {}, outputField: 'json' }),
+  },
+  [WorkflowNodeType.SMART_PARSE]: {
+    type: WorkflowNodeType.SMART_PARSE,
+    label: '智能解析',
+    description: '智能提取结构化结果',
+    icon: Sparkles,
+    color: 'text-orange-500',
+    bgClass: 'bg-orange-50 border-orange-100',
+    group: 'automation',
+    sort: 29,
+    createDefaultConfig: () => ({ inputParams: [{ field: 'text', type: 'string' }], outputParams: [{ field: 'result', type: '输入结果' }], inputVariable: '', parseType: 'text', selector: '', schema: {}, model: '', supplier: '', supplierName: '' }),
+  },
+  [WorkflowNodeType.FLOW_CALL]: {
+    type: WorkflowNodeType.FLOW_CALL,
+    label: '流程调用',
+    description: '调用其他流程',
+    icon: Workflow,
+    color: 'text-purple-500',
+    bgClass: 'bg-purple-50 border-purple-100',
+    group: 'automation',
+    sort: 30,
+    createDefaultConfig: () => ({ flowId: undefined, flowLabel: '', inputParams: [], outputParams: [] }),
+  },
+  [WorkflowNodeType.VARIABLE]: {
+    type: WorkflowNodeType.VARIABLE,
+    label: '变量处理',
+    description: '处理输入输出变量',
+    icon: Settings,
+    color: 'text-teal-500',
+    bgClass: 'bg-teal-50 border-teal-100',
+    group: 'automation',
+    sort: 31,
+    createDefaultConfig: () => ({
+      inputParams: [{ field: 'arg1', type: 'string' }],
+      outputParams: [{ field: 'arg1', type: 'string' }],
+      inputVariables: [{ key: 'arg1', value: '' }],
+      code: `async function main(params: Params): Promise<Params> {\n  return params;\n}`,
+      language: 'javascript',
+      outputField: 'arg1',
+    }),
+  },
+  [WorkflowNodeType.CLOUD_PHONE]: {
+    type: WorkflowNodeType.CLOUD_PHONE,
+    label: '云手机控制',
+    description: '执行云手机自动化',
+    icon: Smartphone,
+    color: 'text-green-500',
+    bgClass: 'bg-green-50 border-green-100',
+    group: 'industry',
+    sort: 40,
+    createDefaultConfig: () => ({}),
+  },
+  [WorkflowNodeType.STORAGE]: {
+    type: WorkflowNodeType.STORAGE,
+    label: '文件存储',
+    description: '上传文件到存储服务',
+    icon: HardDrive,
+    color: 'text-emerald-500',
+    bgClass: 'bg-emerald-50 border-emerald-100',
+    group: 'industry',
+    sort: 41,
+    createDefaultConfig: () => ({ provider: 'local', fileExtension: 'jpg' }),
+  },
+}
+
+export const NODE_GROUP_LABELS: Record<WorkflowNodeGroup, string> = {
+  basic: '基础节点',
+  logic: '逻辑控制',
+  automation: '自动化节点',
+  industry: '行业节点',
+}
+
+export const getNodeMeta = (type: WorkflowNodeType) => NODE_REGISTRY[type]
+export const getAllNodeTypes = () => Object.values(WorkflowNodeType)
+export const getRegistryItems = () => Object.values(NODE_REGISTRY).sort((a, b) => a.sort - b.sort)
+export const getNodeTypesByGroup = (group: WorkflowNodeGroup) =>
+  getRegistryItems()
+    .filter(item => item.group === group)
+    .map(item => item.type)
+
+export const createDefaultNodePayload = (type: WorkflowNodeType, position: { x: number; y: number }) => {
+  const meta = getNodeMeta(type)
+  return {
+    id: `${type}_${Date.now()}`,
+    type,
+    position,
+    style: meta.defaultStyle,
+    data: {
+      label: meta.label,
+      description: meta.description,
+      config: meta.createDefaultConfig(),
+    },
+  }
+}

@@ -2,6 +2,7 @@ import { WorkflowStoreState, WorkflowNode, WorkflowEdge } from '../types'
 import { flowInfoApi } from '@/src/api/flow'
 import { exportToBackend, importFromBackend } from '../../adapters/backendAdapter'
 import type { FlowInfoEntity, FlowDraft } from '@/src/types/flow'
+import { getPluginModeByFlowType } from '../../config/pluginModeRegistry'
 
 export interface FlowState {
   flowInfo: FlowInfoEntity | null
@@ -48,7 +49,8 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
     try {
       const res = await flowInfoApi.info(flowId, currentTeamId || undefined)
       const flowInfo = res.data
-      set({ flowInfo })
+      const pluginMode = getPluginModeByFlowType(flowInfo?.type)
+      set({ flowInfo, activeCategoryId: pluginMode.categoryId })
 
       if (flowInfo?.draft) {
         const { nodes, edges } = importFromBackend(flowInfo.draft)

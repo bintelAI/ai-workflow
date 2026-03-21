@@ -14,6 +14,8 @@ interface SmartParseConfigProps {
     model?: string
     supplier?: string
     supplierName?: string
+    configId?: number
+    comm?: any
   }
   onConfigChange: (key: string, value: any) => void
   variables?: Array<{
@@ -30,6 +32,7 @@ interface ModelGroup {
   type: string
   select: string[]
   options: any[]
+  comm?: any
 }
 
 const SmartParseConfig: React.FC<SmartParseConfigProps> = ({
@@ -60,6 +63,7 @@ const SmartParseConfig: React.FC<SmartParseConfigProps> = ({
         type: e.type,
         select: e.options?.options?.find((o: any) => o.field === 'model')?.select || [],
         options: e.options?.options?.filter((o: any) => o.field !== 'model') || [],
+        comm: e.options?.comm,
       }))
       setModelGroups(groups)
       
@@ -75,16 +79,63 @@ const SmartParseConfig: React.FC<SmartParseConfigProps> = ({
 
   const filteredGroups = useMemo(() => {
     if (!modelSearch) return modelGroups
-    return modelGroups.filter(g => 
+    return modelGroups.filter(g =>
       g.title.toLowerCase().includes(modelSearch.toLowerCase()) ||
       g.select.some(m => m.toLowerCase().includes(modelSearch.toLowerCase()))
     )
   }, [modelGroups, modelSearch])
 
+  const currentModelGroup = useMemo(() => {
+    if (!config.model) return undefined
+    if (config.configId) {
+      const matchedById = modelGroups.find(g => g.id === config.configId && g.select.includes(config.model || ''))
+      if (matchedById) return matchedById
+    }
+    return modelGroups.find(g => g.select.includes(config.model || ''))
+  }, [modelGroups, config.configId, config.model])
+
+  useEffect(() => {
+    if (!config.model || modelGroups.length === 0) {
+      return
+    }
+
+    const matchedGroup = currentModelGroup
+    if (!matchedGroup) {
+      return
+    }
+
+    if (config.configId !== matchedGroup.id) {
+      onConfigChange('configId', matchedGroup.id)
+    }
+
+    if (config.supplier !== matchedGroup.type) {
+      onConfigChange('supplier', matchedGroup.type)
+    }
+
+    if (config.supplierName !== matchedGroup.title) {
+      onConfigChange('supplierName', matchedGroup.title)
+    }
+
+    if (config.comm !== matchedGroup.comm) {
+      onConfigChange('comm', matchedGroup.comm)
+    }
+  }, [
+    currentModelGroup,
+    modelGroups,
+    config.model,
+    config.configId,
+    config.supplier,
+    config.supplierName,
+    config.comm,
+    onConfigChange,
+  ])
+
   const handleModelSelect = (modelName: string, group: ModelGroup) => {
     onConfigChange('model', modelName)
     onConfigChange('supplier', group.type)
     onConfigChange('supplierName', group.title)
+    onConfigChange('configId', group.id)
+    onConfigChange('comm', group.comm)
     setModelPopoverOpen(false)
   }
 

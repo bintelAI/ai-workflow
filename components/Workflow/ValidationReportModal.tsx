@@ -36,6 +36,51 @@ export interface ValidationResult {
   }
 }
 
+const TYPE_META = {
+  error: {
+    icon: <XCircle size={18} className="text-red-500" />,
+    sectionClassName: 'bg-red-50 border-red-200',
+    itemClassName: 'bg-white border-red-100',
+    headerHoverClassName: 'hover:bg-red-100/50',
+    titleClassName: 'text-red-800',
+    subTitleClassName: 'text-red-600',
+    iconClassName: 'text-red-500',
+    suggestionClassName: 'text-xs text-slate-600 bg-amber-50 p-2 rounded border border-amber-100',
+    suggestionIconClassName: 'text-amber-500',
+    title: '错误',
+    subTitle: '必须修复才能运行',
+    suggestionLabel: '修复建议：',
+  },
+  warning: {
+    icon: <AlertTriangle size={18} className="text-amber-500" />,
+    sectionClassName: 'bg-amber-50 border-amber-200',
+    itemClassName: 'bg-white border-amber-100',
+    headerHoverClassName: 'hover:bg-amber-100/50',
+    titleClassName: 'text-amber-800',
+    subTitleClassName: 'text-amber-600',
+    iconClassName: 'text-amber-500',
+    suggestionClassName: 'text-xs text-slate-600 bg-amber-50 p-2 rounded border border-amber-100',
+    suggestionIconClassName: 'text-amber-500',
+    title: '警告',
+    subTitle: '建议修复以避免运行偏差',
+    suggestionLabel: '修复建议：',
+  },
+  info: {
+    icon: <Info size={18} className="text-blue-500" />,
+    sectionClassName: 'bg-blue-50 border-blue-200',
+    itemClassName: 'bg-white border-blue-100',
+    headerHoverClassName: 'hover:bg-blue-100/50',
+    titleClassName: 'text-blue-800',
+    subTitleClassName: 'text-blue-600',
+    iconClassName: 'text-blue-500',
+    suggestionClassName: 'text-xs text-slate-600 bg-blue-50 p-2 rounded border border-blue-100',
+    suggestionIconClassName: 'text-blue-500',
+    title: '提示',
+    subTitle: '当前节点玩法说明',
+    suggestionLabel: '说明：',
+  },
+} as const
+
 interface ValidationReportModalProps {
   isOpen: boolean
   onClose: () => void
@@ -67,18 +112,11 @@ const ValidationReportModal: React.FC<ValidationReportModalProps> = ({
   const warnings = result.errors.filter(e => e.type === 'warning')
   const infos = result.errors.filter(e => e.type === 'info')
 
-  const getIconForType = (type: string) => {
-    switch (type) {
-      case 'error':
-        return <XCircle size={18} className="text-red-500" />
-      case 'warning':
-        return <AlertTriangle size={18} className="text-amber-500" />
-      case 'info':
-        return <Info size={18} className="text-blue-500" />
-      default:
-        return <Info size={18} className="text-slate-400" />
-    }
-  }
+  const sections = [
+    { key: 'errors', items: errors, type: 'error' as const },
+    { key: 'warnings', items: warnings, type: 'warning' as const },
+    { key: 'infos', items: infos, type: 'info' as const },
+  ].filter(section => section.items.length > 0)
 
   const getCategoryLabel = (category: string) => {
     switch (category) {
@@ -111,7 +149,9 @@ const ValidationReportModal: React.FC<ValidationReportModalProps> = ({
             <div>
               <h2 className="font-bold text-slate-800 text-lg">工作流验证报告</h2>
               <p className="text-xs text-slate-500">
-                {result.isValid ? '验证通过，工作流配置完整' : '发现配置问题，请根据建议进行修复'}
+                {result.isValid
+                  ? '验证通过，当前工作流结构与节点配置可用于保存或运行'
+                  : '以下结果已按当前节点玩法、分支句柄与变量作用域重新校验'}
               </p>
             </div>
           </div>
@@ -183,177 +223,76 @@ const ValidationReportModal: React.FC<ValidationReportModalProps> = ({
               </div>
               <h3 className="text-lg font-bold text-slate-800 mb-2">验证通过</h3>
               <p className="text-sm text-slate-500 max-w-md">
-                工作流配置完整，未发现任何问题。您可以放心保存或运行此工作流。
+                工作流配置已通过前端校验，未发现结构、连接、变量引用或节点配置问题。
               </p>
             </div>
           ) : (
             <>
-              {/* Errors Section */}
-              {errors.length > 0 && (
-                <div className="bg-red-50 rounded-lg border border-red-200 overflow-hidden">
-                  <button
-                    onClick={() => toggleSection('errors')}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-red-100/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <XCircle size={18} className="text-red-500" />
-                      <span className="font-semibold text-red-800">错误 ({errors.length})</span>
-                      <span className="text-xs text-red-600">必须修复才能运行</span>
-                    </div>
-                    {expandedSections.has('errors') ? (
-                      <ChevronUp size={18} className="text-red-500" />
-                    ) : (
-                      <ChevronDown size={18} className="text-red-500" />
-                    )}
-                  </button>
-                  {expandedSections.has('errors') && (
-                    <div className="px-4 pb-4 space-y-3">
-                      {errors.map(error => (
-                        <div
-                          key={error.id}
-                          className="bg-white rounded-lg p-4 border border-red-100"
-                        >
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div className="flex items-center gap-2">
-                              {getIconForType(error.type)}
-                              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                                {getCategoryLabel(error.category)}
-                              </span>
-                            </div>
-                            {error.nodeLabel && (
-                              <span className="text-xs font-medium text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                                {error.nodeLabel}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-slate-800 font-medium mb-2">{error.message}</p>
-                          {error.suggestion && (
-                            <div className="flex items-start gap-2 text-xs text-slate-600 bg-amber-50 p-2 rounded border border-amber-100">
-                              <Lightbulb size={14} className="text-amber-500 mt-0.5 shrink-0" />
-                              <span>
-                                <strong>修复建议：</strong>
-                                {error.suggestion}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              {sections.map(section => {
+                const meta = TYPE_META[section.type]
 
-              {/* Warnings Section */}
-              {warnings.length > 0 && (
-                <div className="bg-amber-50 rounded-lg border border-amber-200 overflow-hidden">
-                  <button
-                    onClick={() => toggleSection('warnings')}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-amber-100/50 transition-colors"
+                return (
+                  <div
+                    key={section.key}
+                    className={`${meta.sectionClassName} rounded-lg border overflow-hidden`}
                   >
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle size={18} className="text-amber-500" />
-                      <span className="font-semibold text-amber-800">警告 ({warnings.length})</span>
-                      <span className="text-xs text-amber-600">建议修复以优化体验</span>
-                    </div>
-                    {expandedSections.has('warnings') ? (
-                      <ChevronUp size={18} className="text-amber-500" />
-                    ) : (
-                      <ChevronDown size={18} className="text-amber-500" />
-                    )}
-                  </button>
-                  {expandedSections.has('warnings') && (
-                    <div className="px-4 pb-4 space-y-3">
-                      {warnings.map(warning => (
-                        <div
-                          key={warning.id}
-                          className="bg-white rounded-lg p-4 border border-amber-100"
-                        >
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div className="flex items-center gap-2">
-                              {getIconForType(warning.type)}
-                              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                                {getCategoryLabel(warning.category)}
-                              </span>
+                    <button
+                      onClick={() => toggleSection(section.key)}
+                      className={`w-full px-4 py-3 flex items-center justify-between transition-colors ${meta.headerHoverClassName}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {meta.icon}
+                        <span className={`font-semibold ${meta.titleClassName}`}>
+                          {meta.title} ({section.items.length})
+                        </span>
+                        <span className={`text-xs ${meta.subTitleClassName}`}>{meta.subTitle}</span>
+                      </div>
+                      {expandedSections.has(section.key) ? (
+                        <ChevronUp size={18} className={meta.iconClassName} />
+                      ) : (
+                        <ChevronDown size={18} className={meta.iconClassName} />
+                      )}
+                    </button>
+                    {expandedSections.has(section.key) && (
+                      <div className="px-4 pb-4 space-y-3">
+                        {section.items.map(item => (
+                          <div
+                            key={item.id}
+                            className={`${meta.itemClassName} rounded-lg p-4 border`}
+                          >
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div className="flex items-center gap-2">
+                                {meta.icon}
+                                <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                  {getCategoryLabel(item.category)}
+                                </span>
+                              </div>
+                              {item.nodeLabel && (
+                                <span className="text-xs font-medium text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                                  {item.nodeLabel}
+                                </span>
+                              )}
                             </div>
-                            {warning.nodeLabel && (
-                              <span className="text-xs font-medium text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                                {warning.nodeLabel}
-                              </span>
+                            <p className="text-sm text-slate-800 font-medium mb-2">{item.message}</p>
+                            {item.suggestion && (
+                              <div className={`flex items-start gap-2 ${meta.suggestionClassName}`}>
+                                <Lightbulb
+                                  size={14}
+                                  className={`${meta.suggestionIconClassName} mt-0.5 shrink-0`}
+                                />
+                                <span>
+                                  <strong>{meta.suggestionLabel}</strong>
+                                  {item.suggestion}
+                                </span>
+                              </div>
                             )}
                           </div>
-                          <p className="text-sm text-slate-800 font-medium mb-2">
-                            {warning.message}
-                          </p>
-                          {warning.suggestion && (
-                            <div className="flex items-start gap-2 text-xs text-slate-600 bg-amber-50 p-2 rounded border border-amber-100">
-                              <Lightbulb size={14} className="text-amber-500 mt-0.5 shrink-0" />
-                              <span>
-                                <strong>修复建议：</strong>
-                                {warning.suggestion}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Info Section */}
-              {infos.length > 0 && (
-                <div className="bg-blue-50 rounded-lg border border-blue-200 overflow-hidden">
-                  <button
-                    onClick={() => toggleSection('infos')}
-                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-blue-100/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Info size={18} className="text-blue-500" />
-                      <span className="font-semibold text-blue-800">提示 ({infos.length})</span>
-                      <span className="text-xs text-blue-600">优化建议</span>
-                    </div>
-                    {expandedSections.has('infos') ? (
-                      <ChevronUp size={18} className="text-blue-500" />
-                    ) : (
-                      <ChevronDown size={18} className="text-blue-500" />
+                        ))}
+                      </div>
                     )}
-                  </button>
-                  {expandedSections.has('infos') && (
-                    <div className="px-4 pb-4 space-y-3">
-                      {infos.map(info => (
-                        <div
-                          key={info.id}
-                          className="bg-white rounded-lg p-4 border border-blue-100"
-                        >
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div className="flex items-center gap-2">
-                              {getIconForType(info.type)}
-                              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                                {getCategoryLabel(info.category)}
-                              </span>
-                            </div>
-                            {info.nodeLabel && (
-                              <span className="text-xs font-medium text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                                {info.nodeLabel}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-slate-800 font-medium mb-2">{info.message}</p>
-                          {info.suggestion && (
-                            <div className="flex items-start gap-2 text-xs text-slate-600 bg-blue-50 p-2 rounded border border-blue-100">
-                              <Lightbulb size={14} className="text-blue-500 mt-0.5 shrink-0" />
-                              <span>
-                                <strong>优化建议：</strong>
-                                {info.suggestion}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )
+              })}
             </>
           )}
         </div>

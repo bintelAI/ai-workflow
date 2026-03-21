@@ -16,7 +16,14 @@ export interface FlowData {
   inputParams?: FlowField[];
   outputParams?: FlowField[];
   options?: Record<string, any>;
-  status?: 'idle' | 'running' | 'completed' | 'error';
+  status?: 'idle' | 'running' | 'completed' | 'error' | 'start' | 'end';
+  reason?: 'success' | 'cancel' | 'error';
+  duration?: number;
+  count?: {
+    tokenUsage: number;
+  };
+  result?: any;
+  error?: string;
 }
 
 export interface FlowNode {
@@ -24,6 +31,7 @@ export interface FlowNode {
   id?: string;
   label?: string;
   description?: string;
+  desc?: string;
   type?: string;
   icon?: string;
   name?: string;
@@ -57,10 +65,15 @@ export interface FlowNodeResultData {
   nodeId: string;
   nodeType: string;
   duration?: number;
+  input?: any;
+  output?: any;
+  success?: boolean;
   result?: {
     success: boolean;
     error?: string;
-  };
+    [key: string]: any;
+  } | any;
+  error?: string;
   nextNodeIds?: string[];
 }
 
@@ -77,7 +90,7 @@ export interface FlowToolData {
   nodeId: string;
 }
 
-export interface FlowData {
+export interface FlowExecutionSummary {
   status: 'start' | 'end';
   reason?: 'success' | 'cancel' | 'error';
   duration?: number;
@@ -117,6 +130,8 @@ export interface FlowRunRequest {
   requestId?: string;
   sessionId?: string;
   nodeId?: string;
+  flowId?: number;
+  teamId?: string | number | null;
   stream?: boolean;
 }
 
@@ -203,10 +218,17 @@ export interface CodeOptions {
 
 export interface ClassifyOptions {
   model: {
+    configId?: number;
+    supplier?: string;
+    supplierName?: string;
     params: {
       model: string;
     };
   };
+  supplier?: string;
+  supplierName?: string;
+  configId?: number;
+  comm?: any;
   types: string[];
   descriptions: string[];
 }
@@ -224,6 +246,19 @@ export interface FlowOptions {
 export interface ParseOptions {
   type: 'text' | 'json' | 'html';
   selector?: string;
+  schema?: Record<string, any>;
+  model?: {
+    configId?: number;
+    supplier?: string;
+    supplierName?: string;
+    params?: {
+      model?: string;
+    };
+  };
+  supplier?: string;
+  supplierName?: string;
+  configId?: number;
+  comm?: any;
 }
 
 export const NODE_TYPE_MAP: Record<string, string> = {
@@ -234,9 +269,12 @@ export const NODE_TYPE_MAP: Record<string, string> = {
   condition: 'judge',
   question_classifier: 'classify',
   knowledge_retrieval: 'know',
-  data_op: 'variable',
-  document_extractor: 'parse',
-  loop: 'flow',
+  variable: 'variable',
+  json_parse: 'json',
+  smart_parse: 'parse',
+  flow_call: 'flow',
+  api_call: 'api',
+  loop: 'loop',
 };
 
 export const REVERSE_NODE_TYPE_MAP: Record<string, string> = {
@@ -247,7 +285,10 @@ export const REVERSE_NODE_TYPE_MAP: Record<string, string> = {
   judge: 'condition',
   classify: 'question_classifier',
   know: 'knowledge_retrieval',
-  variable: 'data_op',
-  parse: 'document_extractor',
-  flow: 'loop',
+  variable: 'variable',
+  json: 'json_parse',
+  flow: 'flow_call',
+  api: 'api_call',
+  parse: 'smart_parse',
+  loop: 'loop',
 };

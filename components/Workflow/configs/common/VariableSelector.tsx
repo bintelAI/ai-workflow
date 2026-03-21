@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Popover, Input, Button, Empty, Tooltip } from 'antd';
 import { SearchOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
 import type { FlowField } from '@/src/types/flow';
+import type { WorkflowVariableMeta } from '../../utils/workflowVariables';
 import './VariableSelector.css';
 
 interface VariableGroup {
@@ -9,6 +10,7 @@ interface VariableGroup {
   type?: string;
   label?: string;
   params: FlowField[];
+  variables?: WorkflowVariableMeta[];
 }
 
 interface VariableSelectorProps {
@@ -23,6 +25,9 @@ interface VariableSelectorProps {
     nodeType: string;
     value: string;
     name?: string;
+    template?: string;
+    refPath?: string;
+    label?: string;
   }) => void;
   onClear?: () => void;
   variables?: VariableGroup[];
@@ -70,23 +75,44 @@ const VariableSelector: React.FC<VariableSelectorProps> = ({
       .filter(group => group.params.length > 0);
   }, [variables, keyword]);
 
+  const selectedMeta = useMemo(() => {
+    const directGroup = variables.find(g => g.id === nodeId)
+    const directMatch = directGroup?.variables?.find(item => item.name === field || item.path === value || item.template === value)
+    if (directMatch) {
+      return directMatch
+    }
+    for (const group of variables) {
+      const match = group.variables?.find(item => item.path === value || item.template === value)
+      if (match) {
+        return match
+      }
+    }
+    return undefined
+  }, [variables, nodeId, field, value]);
+
   const displayText = useMemo(() => {
     if (customValue) return customValue;
-    if (!nodeId || !field) return '';
-    const group = variables.find(g => g.id === nodeId);
+    if (selectedMeta) return `${selectedMeta.nodeLabel || selectedMeta.label} / ${selectedMeta.name}`;
+    if (!nodeId && !value) return '';
+    const group = variables.find(g => g.id === nodeId)
+      || variables.find(g => g.variables?.some(item => item.path === value || item.template === value));
     if (group) {
-      return `${group.label} / ${field}`;
+      return `${group.label} / ${field || selectedMeta?.name || ''}`;
     }
     return '';
-  }, [customValue, nodeId, field, variables]);
+  }, [customValue, nodeId, field, value, variables, selectedMeta]);
 
   const handleSelect = (param: FlowField, group: VariableGroup) => {
+    const meta = group.variables?.find(item => item.name === (param.name || param.field));
     onChange?.({
       field: param.field || '',
       nodeId: group.id,
       nodeType: group.type || '',
       value: '',
       name: param.name || param.field,
+      template: meta?.template,
+      refPath: meta?.path,
+      label: meta?.label,
     });
     setOpen(false);
     setKeyword('');
@@ -134,22 +160,29 @@ const VariableSelector: React.FC<VariableSelectorProps> = ({
         {filteredVariables.length === 0 ? (
           <Empty description="未找到匹配项" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
-          filteredVariables.map(group => (
-            <div key={group.id} className="variable-group">
+          filteredVariables.map((group, groupIndex) => (
+            <div key={`${group.id || 'group'}_${groupIndex}_${group.label || ''}`} className="variable-group">
               <div className="variable-group-label">{group.label}</div>
-              {group.params.map(param => (
-                <div
-                  key={`${group.id}_${param.field}`}
-                  className={`variable-item ${
-                    nodeId === group.id && field === param.field ? 'active' : ''
-                  }`}
-                  onClick={() => handleSelect(param, group)}
-                >
-                  <span className="variable-icon">📋</span>
-                  <span className="variable-name">{param.field}</span>
-                  <span className="variable-type">{param.type || 'any'}</span>
-                </div>
-              ))}
+              {group.params.map((param, paramIndex) => {
+                const meta = group.variables?.find(item => item.name === (param.name || param.field));
+                const itemKey = `${group.id || 'group'}_${param.field || param.name || 'field'}_${paramIndex}_${meta?.template || meta?.path || ''}`
+                const isActive = Boolean(
+                  (nodeId && nodeId === group.id && field === param.field) ||
+                  (value && meta && (meta.template === value || meta.path === value))
+                )
+                return (
+                  <div
+                    key={itemKey}
+                    className={`variable-item ${isActive ? 'active' : ''}`}
+                    onClick={() => handleSelect(param, group)}
+                  >
+                    <span className="variable-icon">📋</span>
+                    <span className="variable-name">{param.field}</span>
+                    <span className="variable-type">{param.type || 'any'}</span>
+                    {meta?.template && <span className="variable-type">{meta.template}</span>}
+                  </div>
+                )
+              })}
             </div>
           ))
         )}

@@ -1,6 +1,7 @@
 import React from 'react'
-import { WorkflowNode, WorkflowNodeType } from '../types'
+import { WorkflowNode } from '../types'
 import { Box, Braces, FileText, ToggleLeft, Hash, List, Globe } from 'lucide-react'
+import { getNodeOutputSchema } from '../utils/workflowVariables'
 
 interface NodeOutputPreviewProps {
   node: WorkflowNode
@@ -32,125 +33,11 @@ const getIconForType = (type: string) => {
 }
 
 export const NodeOutputPreview: React.FC<NodeOutputPreviewProps> = ({ node }) => {
-  // Determine outputs based on node type
-  const getOutputs = (): OutputVariable[] => {
-    const config = node.data.config || {}
-
-    switch (node.type) {
-      case WorkflowNodeType.START:
-        // Parse devInput for Start Node
-        try {
-          const devInput = config.devInput || '{}'
-          const parsed = JSON.parse(devInput)
-          return Object.keys(parsed).map(key => ({
-            name: key,
-            type: Array.isArray(parsed[key]) ? 'array' : typeof parsed[key],
-            description: '全局输入变量 (Global Input)',
-          }))
-        } catch (e) {
-          return [{ name: 'payload', type: 'object', description: 'Root Payload Object' }]
-        }
-
-      case WorkflowNodeType.LLM:
-        return [
-          { name: 'text', type: 'string', description: '生成内容 (Generated Content)' },
-          { name: 'reasoning_content', type: 'string', description: '推理内容 (Chain of Thought)' },
-          { name: 'usage', type: 'object', description: '模型用量信息 (Token Usage)' },
-        ]
-
-      case WorkflowNodeType.API_CALL:
-        return [
-          { name: 'status', type: 'number', description: 'HTTP 状态码 (Status Code)' },
-          { name: 'data', type: 'any', description: '响应数据 (Response Body)' },
-          { name: 'headers', type: 'object', description: '响应头 (Response Headers)' },
-          { name: 'raw_data', type: 'any', description: '原始响应 (Raw Data)' },
-        ]
-
-      case WorkflowNodeType.CONDITION:
-        return [
-          { name: 'result', type: 'boolean', description: '条件执行结果' },
-          { name: 'next_path', type: 'string', description: '执行分支路径 (true/false)' },
-        ]
-
-      case WorkflowNodeType.LOOP:
-        const outputs = [
-          { name: 'loop_results', type: 'array', description: '聚合所有迭代结果 (All Results)' },
-          { name: 'count', type: 'number', description: '迭代总次数 (Total Count)' },
-        ]
-        if (config.exportOutput) {
-          outputs.push({
-            name: 'export_value',
-            type: 'array',
-            description: `指定变量聚合: ${config.exportOutput}`,
-          })
-        }
-        return outputs
-
-      case WorkflowNodeType.SCRIPT:
-        return [{ name: 'result', type: 'any', description: '脚本执行结果 (Execution Result)' }]
-
-      case WorkflowNodeType.APPROVAL:
-        return [
-          { name: 'approved', type: 'boolean', description: '审批结果 (Status)' },
-          { name: 'comment', type: 'string', description: '审批意见 (Comments)' },
-          { name: 'approver', type: 'string', description: '审批人 (Approver)' },
-          { name: 'approval_time', type: 'string', description: '审批时间 (Time)' },
-        ]
-
-      case WorkflowNodeType.DATA_OP:
-        return [{ name: 'result', type: 'any', description: '操作结果 (Operation Result)' }]
-
-      case WorkflowNodeType.DELAY:
-        return [{ name: 'processed', type: 'boolean', description: '延迟完成状态' }]
-
-      case WorkflowNodeType.NOTIFICATION:
-        return [{ name: 'status', type: 'string', description: '通知发送状态' }]
-
-      case WorkflowNodeType.CC:
-        return [{ name: 'status', type: 'string', description: '抄送状态' }]
-
-      case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
-        return [
-          {
-            name: 'result',
-            type: 'string',
-            description: '检索到的最相关内容文本 (Retrieved Result)',
-          },
-          {
-            name: 'context',
-            type: 'string',
-            description: '格式化的上下文内容 (Formatted Context)',
-          },
-          { name: 'references', type: 'array', description: '引用分段列表 (References/Segments)' },
-        ]
-
-      case WorkflowNodeType.DOCUMENT_EXTRACTOR:
-        return [
-          {
-            name: 'text',
-            type: 'string',
-            description: '从文档中提取的纯文本内容 (Extracted Text)',
-          },
-        ]
-
-      case WorkflowNodeType.STORAGE:
-        return [
-          {
-            name: 'url',
-            type: 'string',
-            description: '文件存储后的访问地址 (File URL)',
-          },
-        ]
-
-      case WorkflowNodeType.END:
-        return [] // End nodes don't produce outputs for other nodes
-
-      default:
-        return [{ name: 'processed', type: 'boolean', description: '节点执行状态' }]
-    }
-  }
-
-  const outputs = getOutputs()
+  const outputs = getNodeOutputSchema(node).map(item => ({
+    name: item.field,
+    type: item.type,
+    description: item.description,
+  }))
 
   if (outputs.length === 0) return null
 

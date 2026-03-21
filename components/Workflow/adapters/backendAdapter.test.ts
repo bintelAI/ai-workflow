@@ -50,7 +50,7 @@ describe('backendAdapter', () => {
       createNode('llm-1', WorkflowNodeType.LLM, {
         model: 'gpt-4',
         systemPrompt: 'You are a helper.',
-        userPrompt: 'Tell me about {{start-1.topic}} in {{start-1.language}}.',
+        userPrompt: 'Tell me about {{nodes.start-1.topic}} in {{nodes.start-1.language}}.',
       }),
     ];
     const workflow: WorkflowStoreState = { nodes, edges: [], globalVariables: [] } as any;
@@ -69,7 +69,7 @@ describe('backendAdapter', () => {
     );
     expect(llmNode?.data.options?.messages).toEqual([
       { role: 'system', content: 'You are a helper.' },
-      { role: 'user', content: 'Tell me about {{start-1.topic}} in {{start-1.language}}.' },
+      { role: 'user', content: 'Tell me about {{nodes.start-1.topic}} in {{nodes.start-1.language}}.' },
     ]);
   });
 
@@ -79,7 +79,7 @@ describe('backendAdapter', () => {
         language: 'javascript',
         code: 'const a = 1; return { result: a };',
         inputVariables: [
-            { key: 'arg1', value: '{{start-1.topic}}' }
+            { key: 'arg1', value: '{{nodes.start-1.topic}}' }
         ]
       }),
       createNode('start-1', WorkflowNodeType.START)
@@ -122,7 +122,7 @@ describe('backendAdapter', () => {
           { id: 'c1', name: 'Tech', description: 'Technology related' },
           { id: 'c2', name: 'News', description: 'Daily news' },
         ],
-        inputVariable: '{{start-1.text}}'
+        inputVariable: '{{nodes.start-1.text}}'
       }),
       createNode('start-1', WorkflowNodeType.START)
     ];
@@ -144,7 +144,7 @@ describe('backendAdapter', () => {
   it('should convert Knowledge node', () => {
       const nodes = [
           createNode('know-1', WorkflowNodeType.KNOWLEDGE_RETRIEVAL, {
-              query: '{{start-1.question}}',
+              query: '{{nodes.start-1.question}}',
               dataset_ids: ['ds1', 'ds2'],
               top_k: 5
           }),
@@ -169,7 +169,7 @@ describe('backendAdapter', () => {
       const nodes = [
           createNode('op-1', WorkflowNodeType.DATA_OP, {
               opType: 'transform',
-              targetField: '{{start-1.data}}'
+              targetField: '{{nodes.start-1.data}}'
           }),
           createNode('start-1', WorkflowNodeType.START)
       ];
@@ -191,7 +191,7 @@ describe('backendAdapter', () => {
     const nodes = [
       createNode('end-1', WorkflowNodeType.END, {
         outputs: [
-          { key: 'final_answer', value: '{{llm-1.text}}' },
+          { key: 'final_answer', value: '{{nodes.llm-1.text}}' },
           { key: 'static_val', value: 'done' }
         ],
       }),

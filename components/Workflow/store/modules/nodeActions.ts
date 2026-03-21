@@ -82,8 +82,8 @@ export const createNodeActions = (set: any, get: any): NodeActions => ({
       const loopRect = {
         x: loopAbsPos.x,
         y: loopAbsPos.y,
-        width: loopNode.width || 350,
-        height: loopNode.height || 250,
+        width: loopNode.width || 800,
+        height: loopNode.height || 800,
       }
 
       const centerX = absRect.x + absRect.width / 2
@@ -125,7 +125,10 @@ export const createNodeActions = (set: any, get: any): NodeActions => ({
                 ...n,
                 parentNode: undefined,
                 extent: undefined,
-                position: absRect,
+                position: {
+                  x: absRect.x,
+                  y: absRect.y,
+                },
               }
             }
           }

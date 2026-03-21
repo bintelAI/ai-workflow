@@ -1,106 +1,36 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import {
-  PlayCircle,
-  StopCircle,
-  CheckSquare,
-  GitFork,
-  Globe,
-  Bell,
-  Clock,
-  Database,
-  Code,
-  Send,
-  GripVertical,
-  GitMerge,
-  Bot,
-  Repeat,
   Download,
   Upload,
-  BookOpen,
-  FileText,
-  Smartphone,
-  HardDrive,
   Search,
   X,
-  Split,
-  Braces,
-  Sparkles,
-  Workflow,
-  Settings,
 } from 'lucide-react'
 import { useReactFlow } from 'reactflow'
 import { WorkflowNodeType } from './types'
 import { useWorkflowStore } from './store/useWorkflowStore'
 import { SidebarProps } from './Workflow.types'
+import { getDefaultCategoriesFromPluginModes } from './config/pluginModeRegistry'
+import { NODE_GROUP_LABELS, getRegistryItems } from './config/nodeRegistry'
 
 const DraggableNode = ({
   type,
   label,
   icon: Icon,
   color,
+  bgClass,
 }: {
   type: WorkflowNodeType
   label: string
   icon: any
   color: string
+  bgClass: string
 }) => {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType)
     event.dataTransfer.effectAllowed = 'move'
   }
 
-  const getNodeBgColor = (type: WorkflowNodeType): string => {
-    switch (type) {
-      case WorkflowNodeType.START:
-        return 'bg-emerald-50 border-emerald-100'
-      case WorkflowNodeType.END:
-        return 'bg-rose-50 border-rose-100'
-      case WorkflowNodeType.CONDITION:
-        return 'bg-amber-50 border-amber-100'
-      case WorkflowNodeType.QUESTION_CLASSIFIER:
-        return 'bg-indigo-50 border-indigo-100'
-      case WorkflowNodeType.PARALLEL:
-        return 'bg-teal-50 border-teal-100'
-      case WorkflowNodeType.APPROVAL:
-        return 'bg-blue-50 border-blue-100'
-      case WorkflowNodeType.CC:
-        return 'bg-indigo-50 border-indigo-100'
-      case WorkflowNodeType.DELAY:
-        return 'bg-yellow-50 border-yellow-100'
-      case WorkflowNodeType.LOOP:
-        return 'bg-purple-50 border-purple-100'
-      case WorkflowNodeType.API_CALL:
-        return 'bg-blue-50 border-blue-100'
-      case WorkflowNodeType.NOTIFICATION:
-        return 'bg-orange-50 border-orange-100'
-      case WorkflowNodeType.DATA_OP:
-        return 'bg-cyan-50 border-cyan-100'
-      case WorkflowNodeType.SCRIPT:
-        return 'bg-slate-50 border-slate-200'
-      case WorkflowNodeType.LLM:
-        return 'bg-fuchsia-50 border-fuchsia-100'
-      case WorkflowNodeType.SQL:
-        return 'bg-indigo-50 border-indigo-100'
-      case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
-        return 'bg-sky-50 border-sky-100'
-      case WorkflowNodeType.DOCUMENT_EXTRACTOR:
-        return 'bg-amber-50 border-amber-100'
-      case WorkflowNodeType.CLOUD_PHONE:
-        return 'bg-green-50 border-green-100'
-      case WorkflowNodeType.STORAGE:
-        return 'bg-emerald-50 border-emerald-100'
-      case WorkflowNodeType.JSON_PARSE:
-        return 'bg-green-50 border-green-100'
-      case WorkflowNodeType.SMART_PARSE:
-        return 'bg-orange-50 border-orange-100'
-      case WorkflowNodeType.FLOW_CALL:
-        return 'bg-purple-50 border-purple-100'
-      case WorkflowNodeType.VARIABLE:
-        return 'bg-teal-50 border-teal-100'
-      default:
-        return 'bg-slate-50 border-slate-100'
-    }
-  }
+  const getNodeBgColor = (bgClass: string): string => bgClass
 
   return (
     <div
@@ -109,7 +39,7 @@ const DraggableNode = ({
       draggable
     >
       <div
-        className={`p-2.5 rounded-lg border transition-transform group-hover:scale-110 ${getNodeBgColor(type)}`}
+        className={`p-2.5 rounded-lg border transition-transform group-hover:scale-110 ${getNodeBgColor(bgClass)}`}
       >
         <Icon className={`w-6 h-6 ${color}`} />
       </div>
@@ -129,40 +59,12 @@ export const Sidebar: React.FC<SidebarProps> = () => {
   // Get store data for filtering
   const { categories, activeCategoryId, nodes, edges, setWorkflow, globalVariables } = useWorkflowStore()
   const activeCategory = categories.find(c => c.id === activeCategoryId)
-  
-  // If in general mode, always allow all nodes, otherwise use allowedNodeTypes
-  const allowedNodes = new Set(
-    (activeCategoryId === 'general' || !activeCategory?.allowedNodeTypes || activeCategory.allowedNodeTypes.length === 0)
-      ? Object.values(WorkflowNodeType)
-      : activeCategory.allowedNodeTypes
-  )
+  const effectiveAllowedNodes = activeCategoryId === 'general'
+    ? Object.values(WorkflowNodeType)
+    : activeCategory?.allowedNodeTypes || []
+  const allowedNodes = new Set(effectiveAllowedNodes)
 
-  // Node metadata for search
-  const nodeMetadata: Record<WorkflowNodeType, { label: string; icon: any; color: string }> = {
-    [WorkflowNodeType.START]: { label: '开始', icon: PlayCircle, color: 'text-emerald-500' },
-    [WorkflowNodeType.END]: { label: '结束', icon: StopCircle, color: 'text-rose-500' },
-    [WorkflowNodeType.CONDITION]: { label: '条件分支', icon: GitFork, color: 'text-amber-500' },
-    [WorkflowNodeType.QUESTION_CLASSIFIER]: { label: '问题分类', icon: Split, color: 'text-indigo-500' },
-    [WorkflowNodeType.PARALLEL]: { label: '并行分支', icon: GitMerge, color: 'text-teal-500' },
-    [WorkflowNodeType.APPROVAL]: { label: '审批节点', icon: CheckSquare, color: 'text-blue-500' },
-    [WorkflowNodeType.CC]: { label: '抄送节点', icon: Send, color: 'text-indigo-500' },
-    [WorkflowNodeType.DELAY]: { label: '延时等待', icon: Clock, color: 'text-yellow-500' },
-    [WorkflowNodeType.LOOP]: { label: '循环迭代', icon: Repeat, color: 'text-indigo-600' },
-    [WorkflowNodeType.API_CALL]: { label: 'API 调用', icon: Send, color: 'text-blue-500' },
-    [WorkflowNodeType.NOTIFICATION]: { label: '消息通知', icon: Bell, color: 'text-orange-500' },
-    [WorkflowNodeType.DATA_OP]: { label: '数据操作', icon: Database, color: 'text-cyan-500' },
-    [WorkflowNodeType.SCRIPT]: { label: '脚本代码', icon: Code, color: 'text-slate-600' },
-    [WorkflowNodeType.LLM]: { label: 'AI 模型', icon: Bot, color: 'text-fuchsia-500' },
-    [WorkflowNodeType.SQL]: { label: 'SQL 执行', icon: Database, color: 'text-indigo-500' },
-    [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: { label: '知识库检索', icon: BookOpen, color: 'text-sky-600' },
-    [WorkflowNodeType.DOCUMENT_EXTRACTOR]: { label: '文档提取器', icon: FileText, color: 'text-amber-600' },
-    [WorkflowNodeType.CLOUD_PHONE]: { label: '云手机控制', icon: Smartphone, color: 'text-green-500' },
-    [WorkflowNodeType.STORAGE]: { label: '文件存储', icon: HardDrive, color: 'text-emerald-500' },
-    [WorkflowNodeType.JSON_PARSE]: { label: 'JSON解析', icon: Braces, color: 'text-green-500' },
-    [WorkflowNodeType.SMART_PARSE]: { label: '智能解析', icon: Sparkles, color: 'text-orange-500' },
-    [WorkflowNodeType.FLOW_CALL]: { label: '流程调用', icon: Workflow, color: 'text-purple-500' },
-    [WorkflowNodeType.VARIABLE]: { label: '变量处理', icon: Settings, color: 'text-teal-500' },
-  }
+  const registryItems = getRegistryItems()
 
   const handleExport = () => {
     const data = {
@@ -200,7 +102,13 @@ export const Sidebar: React.FC<SidebarProps> = () => {
         const content = e.target?.result as string
         const data = JSON.parse(content)
         if (data.nodes && data.edges) {
-          setWorkflow(data.nodes, data.edges, data.activeCategoryId, data.categories, data.globalVariables)
+          setWorkflow(
+            data.nodes,
+            data.edges,
+            data.activeCategoryId,
+            data.categories || getDefaultCategoriesFromPluginModes(),
+            data.globalVariables
+          )
 
           if (data.viewport) {
             setTimeout(() => {
@@ -257,27 +165,27 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     label: string
     icon: any
     color: string
-  }> = ({ type, label, icon, color }) => {
+    bgClass: string
+  }> = ({ type, label, icon, color, bgClass }) => {
     if (!allowedNodes.has(type)) return null
-    return <DraggableNode type={type} label={label} icon={icon} color={color} />
+    return <DraggableNode type={type} label={label} icon={icon} color={color} bgClass={bgClass} />
   }
 
   // Helper to check if a node matches search query
   const nodeMatchesSearch = (type: WorkflowNodeType): boolean => {
     if (!searchQuery.trim()) return true
-    const metadata = nodeMetadata[type]
+    const metadata = registryItems.find(item => item.type === type)
     return metadata?.label.toLowerCase().includes(searchQuery.toLowerCase()) ?? false
   }
 
-  // Helper to check if a group has any visible children
-  const hasVisibleNodes = (types: WorkflowNodeType[]) => {
-    return types.some(t => allowedNodes.has(t) && nodeMatchesSearch(t))
-  }
+  const groupedRegistryItems = Object.entries(NODE_GROUP_LABELS).map(([group, label]) => ({
+    group,
+    label,
+    items: registryItems.filter(
+      item => item.group === group && allowedNodes.has(item.type) && nodeMatchesSearch(item.type)
+    ),
+  }))
 
-  // Get filtered nodes for a group
-  const getFilteredNodes = (types: WorkflowNodeType[]) => {
-    return types.filter(t => allowedNodes.has(t) && nodeMatchesSearch(t))
-  }
 
   return (
     <aside
@@ -316,141 +224,30 @@ export const Sidebar: React.FC<SidebarProps> = () => {
       </div>
 
       <div className="p-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200">
-        {/* Basic Nodes Group */}
-        {hasVisibleNodes([WorkflowNodeType.START, WorkflowNodeType.END]) && (
-          <div className="mb-6">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              基础节点
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {getFilteredNodes([WorkflowNodeType.START, WorkflowNodeType.END]).map(type => {
-                const metadata = nodeMetadata[type]
-                return (
+        {groupedRegistryItems.map(({ group, label, items }) => {
+          if (items.length === 0) return null
+          return (
+            <div className="mb-6" key={group}>
+              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                {label}
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {items.map(item => (
                   <RenderNode
-                    key={type}
-                    type={type}
-                    label={metadata.label}
-                    icon={metadata.icon}
-                    color={metadata.color}
+                    key={item.type}
+                    type={item.type}
+                    label={item.shortLabel || item.label}
+                    icon={item.icon}
+                    color={item.color}
+                    bgClass={item.bgClass}
                   />
-                )
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })}
 
-        {/* Logic Nodes Group */}
-        {hasVisibleNodes([
-          WorkflowNodeType.CONDITION,
-          WorkflowNodeType.QUESTION_CLASSIFIER,
-          WorkflowNodeType.PARALLEL,
-          WorkflowNodeType.APPROVAL,
-          WorkflowNodeType.CC,
-          WorkflowNodeType.DELAY,
-          WorkflowNodeType.LOOP,
-        ]) && (
-          <div className="mb-6">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              逻辑控制
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {getFilteredNodes([
-                WorkflowNodeType.LOOP,
-                WorkflowNodeType.CONDITION,
-                WorkflowNodeType.QUESTION_CLASSIFIER,
-                WorkflowNodeType.PARALLEL,
-                WorkflowNodeType.APPROVAL,
-                WorkflowNodeType.CC,
-                WorkflowNodeType.DELAY,
-              ]).map(type => {
-                const metadata = nodeMetadata[type]
-                return (
-                  <RenderNode
-                    key={type}
-                    type={type}
-                    label={metadata.label}
-                    icon={metadata.icon}
-                    color={metadata.color}
-                  />
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Automation Nodes Group */}
-        {hasVisibleNodes([
-          WorkflowNodeType.API_CALL,
-          WorkflowNodeType.NOTIFICATION,
-          WorkflowNodeType.DATA_OP,
-          WorkflowNodeType.SCRIPT,
-          WorkflowNodeType.LLM,
-          WorkflowNodeType.SQL,
-          WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
-          WorkflowNodeType.DOCUMENT_EXTRACTOR,
-          WorkflowNodeType.JSON_PARSE,
-          WorkflowNodeType.SMART_PARSE,
-          WorkflowNodeType.FLOW_CALL,
-          WorkflowNodeType.VARIABLE,
-        ]) && (
-          <div className="mb-6">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              自动化节点
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {getFilteredNodes([
-                WorkflowNodeType.LLM,
-                WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
-                WorkflowNodeType.DOCUMENT_EXTRACTOR,
-                WorkflowNodeType.SMART_PARSE,
-                WorkflowNodeType.JSON_PARSE,
-                WorkflowNodeType.FLOW_CALL,
-                WorkflowNodeType.VARIABLE,
-                WorkflowNodeType.API_CALL,
-                WorkflowNodeType.SQL,
-                WorkflowNodeType.DATA_OP,
-                WorkflowNodeType.SCRIPT,
-                WorkflowNodeType.NOTIFICATION,
-              ]).map(type => {
-                const metadata = nodeMetadata[type]
-                return (
-                  <RenderNode
-                    key={type}
-                    type={type}
-                    label={metadata.label}
-                    icon={metadata.icon}
-                    color={metadata.color}
-                  />
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Industry Nodes Group */}
-        {hasVisibleNodes([WorkflowNodeType.CLOUD_PHONE, WorkflowNodeType.STORAGE]) && (
-          <div className="mb-6">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              行业节点
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {getFilteredNodes([WorkflowNodeType.CLOUD_PHONE, WorkflowNodeType.STORAGE]).map(type => {
-                const metadata = nodeMetadata[type]
-                return (
-                  <RenderNode
-                    key={type}
-                    type={type}
-                    label={metadata.label}
-                    icon={metadata.icon}
-                    color={metadata.color}
-                  />
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {!hasVisibleNodes(Object.values(WorkflowNodeType)) && (
+        {groupedRegistryItems.every(group => group.items.length === 0) && (
           <div className="text-center p-4 text-slate-400 text-xs">
             {searchQuery ? '未找到匹配的节点' : '当前模式未配置任何可用节点'}
           </div>

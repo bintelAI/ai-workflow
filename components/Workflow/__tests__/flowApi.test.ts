@@ -109,9 +109,9 @@ describe('Flow API', () => {
       const mockResponse = { data: { model: { options: [] } } };
       (request.get as any).mockResolvedValue(mockResponse);
 
-      const result = await flowConfigApi.all();
-      
-      expect(request.get).toHaveBeenCalledWith('/app/flow/config/all');
+      const result = await flowConfigApi.all(1 as any);
+
+      expect(request.get).toHaveBeenCalledWith('/app/flow/1/config/all');
       expect(result).toEqual(mockResponse);
     });
 
@@ -119,9 +119,9 @@ describe('Flow API', () => {
       const mockResponse = { data: { options: [] } };
       (request.get as any).mockResolvedValue(mockResponse);
 
-      const result = await flowConfigApi.getByNode('llm');
-      
-      expect(request.get).toHaveBeenCalledWith('/app/flow/config/getByNode', { params: { node: 'llm', type: undefined } });
+      const result = await flowConfigApi.getByNode(undefined as any, 'llm');
+
+      expect(request.get).toHaveBeenCalledWith('/app/flow/undefined/config/getByNode', { params: { node: 'llm', type: undefined } });
       expect(result).toEqual(mockResponse);
     });
 
@@ -129,9 +129,9 @@ describe('Flow API', () => {
       const mockResponse = { data: { options: [] } };
       (request.post as any).mockResolvedValue(mockResponse);
 
-      const result = await flowConfigApi.config('llm', 'chat');
-      
-      expect(request.post).toHaveBeenCalledWith('/app/flow/config/config', { node: 'llm', type: 'chat' });
+      const result = await flowConfigApi.config(1 as any, 'llm', 'chat');
+
+      expect(request.post).toHaveBeenCalledWith('/app/flow/1/config/config', { node: 'llm', type: 'chat' });
       expect(result).toEqual(mockResponse);
     });
   });

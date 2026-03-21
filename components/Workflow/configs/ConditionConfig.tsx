@@ -78,7 +78,7 @@ const ConditionConfig: React.FC<ConditionConfigProps> = ({
   );
 
   const handleVariableChange = useCallback(
-    (index: number, data: { field: string; nodeId: string; nodeType: string; name?: string }) => {
+    (index: number, data: { field: string; nodeId: string; nodeType: string; name?: string; template?: string }) => {
       const newList = [...ifList];
       newList[index] = {
         ...newList[index],

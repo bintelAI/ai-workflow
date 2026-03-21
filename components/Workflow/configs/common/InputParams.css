@@ -8,8 +8,9 @@
 }
 
 .input-params-item {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 180px) minmax(0, 1fr) auto;
+  align-items: start;
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -19,16 +20,26 @@
 }
 
 .input-params-item .field-name {
-  flex: 0 0 120px;
+  min-width: 0;
 }
 
 .input-params-item .field-value {
-  flex: 1;
   min-width: 0;
 }
 
 .input-params-item .delete-btn {
   flex-shrink: 0;
+  justify-self: end;
+}
+
+@media (max-width: 640px) {
+  .input-params-item {
+    grid-template-columns: 1fr;
+  }
+
+  .input-params-item .delete-btn {
+    justify-self: start;
+  }
 }
 
 .input-params-item.error .field-name .ant-input {

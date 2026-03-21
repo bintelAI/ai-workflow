@@ -264,7 +264,7 @@ export const StorageConfigPanel: React.FC<StorageConfigProps> = ({ config, onCon
           <FileText className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
           <div className="text-xs text-blue-700">
             <p className="font-medium mb-1">存储节点说明</p>
-            <p>此节点用于文件存储，支持本地存储和多种云存储服务。文件上传后，将返回可访问的下载地址。</p>
+            <p>此节点用于文件存储，支持本地存储和多种云存储服务。可在配置中插入统一变量模板，文件上传后将返回可访问的下载地址。</p>
           </div>
         </div>
       </div>

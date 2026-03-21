@@ -1,41 +1,7 @@
-import { WorkflowCategory, WorkflowNodeType } from '../../types'
+import { WorkflowCategory } from '../../types'
+import { getDefaultCategoriesFromPluginModes } from '../../config/pluginModeRegistry'
 
-const DEFAULT_CATEGORIES: WorkflowCategory[] = [
-  {
-    id: 'general',
-    name: '全功能模式',
-    description: '包含所有可用节点，适用于复杂混合场景。',
-    isSystem: true,
-    allowedNodeTypes: Object.values(WorkflowNodeType),
-  },
-  {
-    id: 'business_approval',
-    name: '行政审批流 (BPM)',
-    description: '专注于OA审批、报销、请假等业务流程。屏蔽技术性节点。',
-    isSystem: true,
-    allowedNodeTypes: [],
-  },
-  {
-    id: 'ai_agent',
-    name: 'AI Agent 编排',
-    description: '专注于 LLM 调用、数据处理和 API 集成。屏蔽人工审批节点。',
-    isSystem: true,
-    allowedNodeTypes: [
-      WorkflowNodeType.START,
-      WorkflowNodeType.END,
-      WorkflowNodeType.LLM,
-      WorkflowNodeType.QUESTION_CLASSIFIER,
-      WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
-      WorkflowNodeType.DOCUMENT_EXTRACTOR,
-      WorkflowNodeType.API_CALL,
-      WorkflowNodeType.DATA_OP,
-      WorkflowNodeType.SCRIPT,
-      WorkflowNodeType.CONDITION,
-      WorkflowNodeType.LOOP,
-      WorkflowNodeType.DELAY,
-    ],
-  },
-]
+const DEFAULT_CATEGORIES: WorkflowCategory[] = getDefaultCategoriesFromPluginModes()
 
 export interface CategoryActions {
   setActiveCategory: (categoryId: string) => void

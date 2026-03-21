@@ -50,7 +50,10 @@ export const NotificationConfig: React.FC<NotificationConfigProps> = ({
           <div className="w-full">
             <VariableSelector
               value=""
-              onChange={val => onConfigChange('message', (config?.message || '') + ` {{${val}}}`)}
+              onChange={val => {
+                const nextValue = typeof val === 'string' && val.startsWith('{{') ? val : `{{${val}}}`
+                onConfigChange('message', `${config?.message || ''} ${nextValue}`.trim())
+              }}
               placeholder="插入变量..."
             />
           </div>

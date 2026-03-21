@@ -10,6 +10,7 @@ import {
   ConditionOperator 
 } from '@/src/types/flow';
 import { WorkflowStoreState, WorkflowNodeType, VariableConfig } from '../types';
+import { extractVariableTemplates, normalizeLegacyTemplate } from '../utils/workflowVariables';
 
 const NODE_CONFIG_MAP: Record<string, { color: string; icon: string; group: string; cardWidth: string }> = {
   start: { color: '#409eff', icon: 'start', group: '基础', cardWidth: '430px' },
@@ -22,6 +23,7 @@ const NODE_CONFIG_MAP: Record<string, { color: string; icon: string; group: stri
   variable: { color: '#909399', icon: 'variable', group: '逻辑', cardWidth: '430px' },
   parse: { color: '#909399', icon: 'parse', group: '逻辑', cardWidth: '430px' },
   flow: { color: '#409eff', icon: 'flow', group: '逻辑', cardWidth: '430px' },
+  loop: { color: '#8b5cf6', icon: 'loop', group: '逻辑', cardWidth: '430px' },
 };
 
 const mapNodeType = (frontendType?: string): string => {
@@ -36,8 +38,9 @@ const mapToBackendType = (backendType?: string): string => {
 
 export const exportToBackend = (workflow: WorkflowStoreState): FlowDraft => {
   const { nodes, edges } = workflow;
+  const normalizedEdges = ensureLoopEdges(nodes, edges)
   const backendNodes = nodes.map((node, index) => convertNodeToBackend(node, nodes, index));
-  const backendEdges = edges.map((edge, index) => convertEdgeToBackend(edge, index));
+  const backendEdges = normalizedEdges.map((edge, index) => convertEdgeToBackend(edge, index, nodes));
 
   return {
     nodes: backendNodes,
@@ -46,19 +49,59 @@ export const exportToBackend = (workflow: WorkflowStoreState): FlowDraft => {
   };
 };
 
+const ensureLoopEdges = (nodes: Node[], edges: Edge[]): Edge[] => {
+  const result = [...edges]
+  const existingKeys = new Set(
+    result.map(edge => `${edge.source}-${edge.sourceHandle || ''}-${edge.target}-${edge.targetHandle || ''}`)
+  )
+
+  nodes
+    .filter(node => node.type === WorkflowNodeType.LOOP)
+    .forEach(loopNode => {
+      const bodyNodeIds = Array.isArray((loopNode.data as any)?.config?.bodyNodeIds)
+        ? (loopNode.data as any).config.bodyNodeIds
+        : nodes.filter(node => node.parentNode === loopNode.id).map(node => node.id)
+
+      bodyNodeIds.forEach((bodyNodeId: string) => {
+        const bodyNode = nodes.find(node => node.id === bodyNodeId)
+        if (!bodyNode) return
+        const key = `${loopNode.id}-loop-start-${bodyNodeId}-`
+        if (!existingKeys.has(key)) {
+          result.push({
+            id: `e${loopNode.id}-start-${bodyNodeId}`,
+            source: loopNode.id,
+            target: bodyNodeId,
+            sourceHandle: 'loop-start',
+            targetHandle: undefined,
+            type: 'custom',
+            animated: true,
+          } as Edge)
+          existingKeys.add(key)
+        }
+      })
+    })
+
+  return result
+}
+
 const convertNodeToBackend = (node: Node, allNodes: Node[], index: number): FlowNode => {
   const backendType = mapNodeType(node.type);
   const data = convertNodeData(node, allNodes, backendType);
   const config = NODE_CONFIG_MAP[backendType] || { color: '#909399', icon: 'node', group: '其他', cardWidth: '430px' };
+
+  const description = node.data?.description || '';
 
   return {
     id: node.id,
     type: backendType,
     initialized: false,
     position: node.position,
+    parentNode: node.parentNode,
+    style: node.style,
     data,
     label: node.data?.label || node.type || 'Node',
-    description: node.data?.description || '',
+    description,
+    desc: description,
     color: config.color,
     handle: backendType === 'start' ? { target: false } : backendType === 'end' ? { source: false } : {},
     name: `node-${backendType}`,
@@ -68,20 +111,67 @@ const convertNodeToBackend = (node: Node, allNodes: Node[], index: number): Flow
   };
 };
 
-const convertEdgeToBackend = (edge: Edge, index: number): FlowEdge => ({
-  id: edge.id || `vueflow__edge-${edge.source}${edge.sourceHandle || ''}-${edge.target}${edge.targetHandle || ''}`,
-  type: edge.type || 'button',
-  source: edge.source,
-  target: edge.target,
-  sourceHandle: edge.sourceHandle || null,
-  targetHandle: edge.targetHandle || null,
-  updatable: true,
-  data: {},
-  label: '',
-  animated: edge.animated || false,
-  style: edge.style || {},
-  _stroke: '#4165d7',
-});
+const normalizeBackendEdgeHandles = (
+  edge: Edge,
+  sourceNode: Node | undefined,
+  targetNode: Node | undefined
+) => {
+  let sourceHandle = edge.sourceHandle || null;
+  let targetHandle = edge.targetHandle || null;
+
+  const isLoopInternalEdge = sourceNode?.type === WorkflowNodeType.LOOP && targetNode?.parentNode === sourceNode.id
+  const isLoopOutgoingEdge = sourceNode?.type === WorkflowNodeType.LOOP && targetNode?.parentNode !== sourceNode.id
+  const isLoopIncomingEdge = targetNode?.type === WorkflowNodeType.LOOP
+
+  if (sourceNode?.type === WorkflowNodeType.QUESTION_CLASSIFIER && sourceHandle === 'source-else') {
+    sourceHandle = null;
+  }
+
+  if (sourceNode?.type === WorkflowNodeType.PARALLEL && sourceHandle?.startsWith('branch-')) {
+    sourceHandle = 'source';
+  }
+
+  if (isLoopInternalEdge) {
+    sourceHandle = 'loop-start'
+    targetHandle = null
+  } else if (isLoopOutgoingEdge) {
+    sourceHandle = 'loop-output'
+  } else if (!sourceHandle) {
+    sourceHandle = 'source';
+  }
+
+  if (isLoopIncomingEdge) {
+    targetHandle = 'loop-input'
+  } else if (!targetHandle) {
+    targetHandle = 'target';
+  }
+
+  return {
+    sourceHandle,
+    targetHandle,
+  };
+};
+
+const convertEdgeToBackend = (edge: Edge, index: number, allNodes: Node[]): FlowEdge => {
+  const sourceNode = allNodes.find(node => node.id === edge.source);
+  const targetNode = allNodes.find(node => node.id === edge.target);
+  const normalizedHandles = normalizeBackendEdgeHandles(edge, sourceNode, targetNode);
+
+  return {
+    id: edge.id || `vueflow__edge-${edge.source}${normalizedHandles.sourceHandle || ''}-${edge.target}${normalizedHandles.targetHandle || ''}`,
+    type: edge.type || 'button',
+    source: edge.source,
+    target: edge.target,
+    sourceHandle: normalizedHandles.sourceHandle,
+    targetHandle: normalizedHandles.targetHandle,
+    updatable: true,
+    data: {},
+    label: '',
+    animated: edge.animated || false,
+    style: edge.style || {},
+    _stroke: '#4165d7',
+  };
+};
 
 const convertNodeData = (node: Node, allNodes: Node[], backendType: string): FlowData => {
   const config = node.data?.config || {};
@@ -101,12 +191,18 @@ const convertNodeData = (node: Node, allNodes: Node[], backendType: string): Flo
       return convertClassifyNodeData(config, allNodes);
     case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
       return convertKnowNodeData(config, allNodes);
-    case WorkflowNodeType.DATA_OP:
+    case WorkflowNodeType.VARIABLE:
       return convertVariableNodeData(config, allNodes);
-    case WorkflowNodeType.DOCUMENT_EXTRACTOR:
+    case WorkflowNodeType.SMART_PARSE:
       return convertParseNodeData(config, allNodes);
-    case WorkflowNodeType.LOOP:
+    case WorkflowNodeType.JSON_PARSE:
+      return convertJsonNodeData(config, allNodes);
+    case WorkflowNodeType.FLOW_CALL:
       return convertFlowNodeData(config);
+    case WorkflowNodeType.API_CALL:
+      return convertApiCallNodeData(config, allNodes);
+    case WorkflowNodeType.LOOP:
+      return convertLoopNodeData(config, node, allNodes);
     default:
       return {
         inputParams: [],
@@ -139,28 +235,38 @@ const convertStartNodeData = (config: any): FlowData => {
 };
 
 const convertEndNodeData = (config: any, allNodes: Node[]): FlowData => {
-  const outputs: Array<{ key: string; value: string }> = config?.outputs || [];
-  
-  const inputParams: FlowField[] = outputs.map(out => {
-    const refs = extractVariableRefs(out.value, allNodes);
-    if (refs.length > 0) {
-      return {
-        ...refs[0],
-        field: out.key,
-      };
-    }
-    return {
-      field: out.key,
-      value: out.value,
-      type: 'string',
-    };
-  });
+  const outputs: Array<{ key: string; value: string; template?: string; nodeId?: string; nodeType?: string; name?: string }> =
+    config?.outputs || [];
 
-  const outputParams: FlowField[] = outputs.map(out => ({
-    name: out.key,
-    field: out.key,
-    type: 'any',
-  }));
+  const inputParams: FlowField[] = outputs
+    .filter(out => out?.key)
+    .map(out => {
+      const templateValue = out.template || out.value || '';
+      const refs = extractVariableRefs(templateValue, allNodes);
+      if (refs.length > 0) {
+        const ref = refs[0];
+        return {
+          ...ref,
+          field: out.key,
+          name: ref.name || out.name || out.key,
+        };
+      }
+
+      return {
+        field: out.key,
+        name: out.name || out.key,
+        value: out.value,
+        type: 'string',
+      };
+    });
+
+  const outputParams: FlowField[] = outputs
+    .filter(out => out?.key)
+    .map(out => ({
+      name: out.key,
+      field: out.key,
+      type: 'any',
+    }));
 
   return {
     inputParams,
@@ -170,38 +276,74 @@ const convertEndNodeData = (config: any, allNodes: Node[]): FlowData => {
 };
 
 const convertLLMNodeData = (config: any, allNodes: Node[]): FlowData => {
-  const { model, temperature, systemPrompt, userPrompt, history, isOutput } = config || {};
-  
+  const {
+    model,
+    temperature,
+    systemPrompt,
+    userPrompt,
+    history,
+    isOutput,
+    supplier,
+    supplierName,
+    configId,
+    comm,
+    options: modelOptions,
+  } = config || {};
+
   const inputParams: FlowField[] = [];
   const sysVars = extractVariableRefs(systemPrompt, allNodes);
   const userVars = extractVariableRefs(userPrompt, allNodes);
-  
+
   const varMap = new Map<string, FlowField>();
   [...sysVars, ...userVars].forEach(p => {
     if (p.name) varMap.set(p.name, p);
   });
   inputParams.push(...Array.from(varMap.values()));
 
-  const messages = [
-    { role: 'system', content: systemPrompt || '' },
-    { role: 'user', content: userPrompt || '' },
+  const normalizedMessages = [
+    { role: 'system', content: normalizeLegacyTemplate(systemPrompt || '', allNodes) },
+    { role: 'user', content: normalizeLegacyTemplate(userPrompt || '', allNodes) },
   ];
 
+  const normalizedModelOptions = Array.isArray(modelOptions)
+    ? modelOptions.map((option: any) => ({ ...option }))
+    : [];
+
+  const modelParams = normalizedModelOptions.reduce(
+    (acc: Record<string, any>, option: any) => {
+      if (option?.field && option.enable) {
+        acc[option.field] = option.value;
+      }
+      return acc;
+    },
+    {
+      model: model || '',
+      temperature: temperature ?? 0.7,
+    }
+  );
+
   return {
-    inputParams: [{ field: 'input', ...inputParams[0] }],
+    inputParams: inputParams.map((item, index) => ({
+      ...item,
+      field: item.field || item.name || `var_${index + 1}`,
+    })),
     outputParams: [
       { type: 'string', field: 'text' },
       { type: 'stream', field: 'stream' },
     ],
     options: {
+      supplier,
+      supplierName,
+      configId,
+      comm,
       model: {
-        options: [],
-        params: {
-          model: model || '',
-          temperature: temperature ?? 0.7,
-        },
+        configId,
+        supplier,
+        supplierName,
+        options: normalizedModelOptions,
+        params: modelParams,
       },
-      messages,
+      messages: normalizedMessages,
       history: history || 0,
       isOutput: isOutput !== false,
       toolConfig: config?.toolConfig || [],
@@ -307,18 +449,28 @@ const mapConditionOperator = (operator: string): ConditionOperator => {
 };
 
 const convertClassifyNodeData = (config: any, allNodes: Node[]): FlowData => {
-  const { categories, inputVariable, model } = config || {};
-  
+  const {
+    categories,
+    inputVariable,
+    model,
+    supplier,
+    supplierName,
+    configId,
+    comm,
+  } = config || {};
+
   const inputParams: FlowField[] = [];
   const refs = extractVariableRefs(inputVariable, allNodes);
   if (refs.length > 0) {
     inputParams.push({
       ...refs[0],
-      field: 'input',
+      field: 'content',
+      name: refs[0].name || 'content',
     });
   } else if (inputVariable) {
     inputParams.push({
-      field: 'input',
+      field: 'content',
+      name: 'content',
       value: inputVariable,
       type: 'string',
     });
@@ -329,9 +481,26 @@ const convertClassifyNodeData = (config: any, allNodes: Node[]): FlowData => {
 
   return {
     inputParams,
-    outputParams: [],
+    outputParams: [
+      {
+        name: 'index',
+        field: 'index',
+        type: 'number',
+      },
+    ],
     options: {
-      model: { params: { model: model || '' } },
+      model: model
+        ? {
+            configId,
+            supplier,
+            supplierName,
+            params: { model },
+          }
+        : { params: { model: '' } },
+      supplier,
+      supplierName,
+      configId,
+      comm,
       types,
       descriptions,
     },
@@ -371,67 +540,189 @@ const convertKnowNodeData = (config: any, allNodes: Node[]): FlowData => {
 };
 
 const convertVariableNodeData = (config: any, allNodes: Node[]): FlowData => {
-  const { opType, targetField, value } = config || {};
-  
-  const inputParams: FlowField[] = [];
-  const refs = extractVariableRefs(targetField, allNodes);
-  if (refs.length > 0) {
-    inputParams.push({
-      ...refs[0],
-      field: 'input',
-    });
-  } else if (targetField) {
-    inputParams.push({
-      field: 'input',
-      value: targetField,
-      type: 'string',
-    });
-  }
+  const {
+    code,
+    inputVariable,
+    inputVariables,
+    inputParams,
+    outputParams,
+    targetField,
+    value,
+    outputField,
+    language,
+  } = config || {};
+
+  const inputParamsData: FlowField[] = [];
+  const sources = Array.isArray(inputVariables) && inputVariables.length > 0
+    ? inputVariables.map((item: any) => ({ key: item?.key || 'input', value: item?.value }))
+    : Array.isArray(inputParams) && inputParams.length > 0
+      ? inputParams.map((item: any, index: number) => ({
+          key: item?.field || item?.name || `arg${index + 1}`,
+          value: item?.template || (item?.nodeId && item?.name ? `{{nodes.${item.nodeId}.${item.name}}}` : item?.value),
+        }))
+      : [{ key: 'input', value: inputVariable || targetField || value }];
+
+  sources.forEach(item => {
+    if (!item?.value) return;
+    const refs = extractVariableRefs(item.value, allNodes);
+    if (refs.length > 0) {
+      inputParamsData.push({
+        ...refs[0],
+        field: item.key,
+      });
+    } else {
+      inputParamsData.push({
+        field: item.key,
+        value: item.value,
+        type: 'string',
+      });
+    }
+  });
+
+  const normalizedOutputParams = Array.isArray(outputParams) && outputParams.length > 0
+    ? outputParams.map((item: any) => ({
+        name: item?.field || item?.name || 'result',
+        field: item?.field || item?.name || 'result',
+        type: item?.type || 'any',
+      }))
+    : [{ name: outputField || 'result', field: outputField || 'result', type: 'any' }];
 
   return {
-    inputParams,
-    outputParams: [{ name: 'result', field: 'result', type: 'any' }],
+    inputParams: inputParamsData,
+    outputParams: normalizedOutputParams,
     options: {
-      opType: opType || 'transform',
-      value,
+      code: code || 'return params.input;',
+      type: language || 'javascript',
     },
   };
 };
 
 const convertParseNodeData = (config: any, allNodes: Node[]): FlowData => {
-  const { inputVariable, parseType, selector } = config || {};
-  
-  const inputParams: FlowField[] = [];
-  const refs = extractVariableRefs(inputVariable, allNodes);
-  if (refs.length > 0) {
-    inputParams.push({
-      ...refs[0],
-      field: 'input',
-    });
-  } else if (inputVariable) {
-    inputParams.push({
-      field: 'input',
-      value: inputVariable,
-      type: 'string',
-    });
+  const {
+    inputVariable,
+    inputParams,
+    parseType,
+    selector,
+    schema,
+    model,
+    outputParams,
+    supplier,
+    supplierName,
+    configId,
+    comm,
+  } = config || {};
+
+  const inputParamsData: FlowField[] = Array.isArray(inputParams) && inputParams.length > 0
+    ? inputParams.map((item: any, index: number) => ({
+        name: item?.name || item?.field || `text${index + 1}`,
+        field: item?.field || item?.name || `text${index + 1}`,
+        type: item?.type || 'string',
+        nodeId: item?.nodeId,
+        nodeType: item?.nodeType,
+        value: item?.nodeId && item?.name ? undefined : item?.value,
+      }))
+    : [];
+
+  if (inputParamsData.length === 0) {
+    const refs = extractVariableRefs(inputVariable, allNodes);
+    if (refs.length > 0) {
+      inputParamsData.push({
+        ...refs[0],
+        field: 'text',
+      });
+    } else if (inputVariable) {
+      inputParamsData.push({
+        field: 'text',
+        value: inputVariable,
+        type: 'string',
+      });
+    }
   }
 
+  const normalizedOutputParams = Array.isArray(outputParams) && outputParams.length > 0
+    ? outputParams.map((item: any) => ({
+        name: item?.field || item?.name || 'result',
+        field: item?.field || item?.name || 'result',
+        type: item?.type || 'any',
+      }))
+    : [{ name: 'result', field: 'result', type: 'any' }];
+
   return {
-    inputParams,
-    outputParams: [{ name: 'result', field: 'result', type: 'any' }],
+    inputParams: inputParamsData,
+    outputParams: normalizedOutputParams,
     options: {
       type: parseType || 'text',
       selector,
+      schema,
+      supplier,
+      supplierName,
+      configId,
+      comm,
+      model: model
+        ? {
+            configId,
+            supplier,
+            supplierName,
+            params: { model },
+          }
+        : undefined,
+    },
+  };
+};
+
+const convertJsonNodeData = (config: any, allNodes: Node[]): FlowData => {
+  const { inputVariable, inputParams, schema, outputField, outputParams } = config || {};
+
+  const inputParamsData: FlowField[] = Array.isArray(inputParams) && inputParams.length > 0
+    ? inputParams.map((item: any, index: number) => ({
+        name: item?.name || item?.field || `text${index + 1}`,
+        field: item?.field || item?.name || `text${index + 1}`,
+        type: item?.type || 'string',
+        nodeId: item?.nodeId,
+        nodeType: item?.nodeType,
+        value: item?.nodeId && item?.name ? undefined : item?.value,
+      }))
+    : [];
+
+  if (inputParamsData.length === 0) {
+    const refs = extractVariableRefs(inputVariable, allNodes);
+    if (refs.length > 0) {
+      inputParamsData.push({
+        ...refs[0],
+        field: 'text',
+      });
+    } else if (inputVariable) {
+      inputParamsData.push({
+        field: 'text',
+        value: inputVariable,
+        type: 'string',
+      });
+    }
+  }
+
+  const normalizedOutputParams = Array.isArray(outputParams) && outputParams.length > 0
+    ? outputParams.map((item: any) => ({
+        name: item?.field || item?.name || 'json',
+        field: item?.field || item?.name || 'json',
+        type: item?.type || 'json',
+      }))
+    : [{ name: outputField || 'json', field: outputField || 'json', type: 'json' }];
+
+  return {
+    inputParams: inputParamsData,
+    outputParams: normalizedOutputParams,
+    options: {
+      schema: schema || {},
     },
   };
 };
 
 const convertFlowNodeData = (config: any): FlowData => {
-  const { flowLabel, flowId } = config || {};
-  
+  const { flowLabel, flowId, inputParams, outputParams } = config || {};
+
   return {
-    inputParams: [],
-    outputParams: [],
+    inputParams: Array.isArray(inputParams) ? inputParams : [],
+    outputParams: Array.isArray(outputParams) ? outputParams : [],
     options: {
       label: flowLabel || '',
       flowId,
@@ -439,28 +730,98 @@ const convertFlowNodeData = (config: any): FlowData => {
   };
 };
 
+const convertApiCallNodeData = (config: any, allNodes: Node[]): FlowData => {
+  const normalizedUrl = normalizeLegacyTemplate(config?.url || '', allNodes)
+  const outputParams: FlowField[] = [
+    { field: 'status', type: 'number', name: 'status' },
+    { field: 'headers', type: 'json', name: 'headers' },
+    { field: 'data', type: 'any', name: 'data' },
+    { field: 'rawData', type: 'any', name: 'rawData' },
+    { field: 'success', type: 'boolean', name: 'success' },
+    { field: 'branchStatus', type: 'string', name: 'branchStatus' },
+  ]
+
+  return {
+    inputParams: [],
+    outputParams,
+    options: {
+      method: config?.method || 'GET',
+      url: normalizedUrl,
+      queryParams: config?.queryParams || [],
+      headers: config?.headers || [],
+      bodyType: config?.bodyType || 'none',
+      body: normalizeLegacyTemplate(config?.body || '', allNodes),
+      bodyParams: config?.bodyParams || [],
+      auth: config?.auth || { type: 'none' },
+      timeout: config?.timeout || 30000,
+      retry: config?.retry || {
+        enabled: false,
+        maxRetries: 3,
+        delay: 1000,
+        retryOnStatusCodes: [500, 502, 503, 504],
+      },
+      responseHandling: config?.responseHandling || {
+        followRedirects: true,
+        parseResponse: true,
+        statusCodeBranching: false,
+      },
+    },
+  }
+}
+
+const convertLoopNodeData = (config: any, node: Node, allNodes: Node[]): FlowData => {
+  const bodyNodes = allNodes.filter(item => item.parentNode === node.id);
+  const bodyNodeIds = bodyNodes.map(item => item.id);
+
+  return {
+    inputParams: [],
+    outputParams: Array.isArray(config.outputParams)
+      ? config.outputParams
+      : [{ field: 'result', name: 'result', type: 'array' }],
+    options: {
+      targetArray: config.targetArrayTemplate || config.targetArray || '',
+      targetArrayField: config.targetArrayField || '',
+      targetArrayNodeId: config.targetArrayNodeId || '',
+      targetArrayNodeType: config.targetArrayNodeType || '',
+      outputMode: config.outputMode || 'all',
+      resultNodeId: config.resultNodeId || '',
+      resultNodeType: config.resultNodeType || '',
+      resultField: config.resultField || '',
+      resultTemplate: config.resultTemplate || '',
+      executionMode: config.executionMode || 'serial',
+      maxConcurrency: Number(config.maxConcurrency) > 0 ? Number(config.maxConcurrency) : 1,
+      bodyNodeIds,
+    },
+  };
+};
+
 const extractVariableRefs = (text: string, allNodes: Node[]): FlowField[] => {
   if (!text || typeof text !== 'string') return [];
-  
-  const regex = /\{\{\s*([^}]+?)\s*\}\}/g;
-  const matches = [...text.matchAll(regex)];
+
+  const refs = extractVariableTemplates(text, allNodes);
   const params: FlowField[] = [];
 
-  matches.forEach(match => {
-    const content = match[1];
-    const parts = content.split('.');
-    
-    if (parts.length >= 2) {
-      const nodeId = parts[0];
-      const varName = parts.slice(1).join('.');
-      
-      const sourceNode = allNodes.find(n => n.id === nodeId);
-      if (sourceNode) {
+  refs.forEach(ref => {
+    if (ref.kind === 'node' && ref.nodeId && ref.name) {
+      const sourceNode = allNodes.find(n => n.id === ref.nodeId);
+      params.push({
+        nodeId: ref.nodeId,
+        nodeType: mapNodeType(sourceNode?.type || ref.nodeType),
+        name: ref.name,
+        field: ref.name,
+        type: 'any',
+      });
+      return;
+    }
+
+    if (ref.kind === 'payload') {
+      const startNode = allNodes.find(n => n.type === WorkflowNodeType.START);
+      if (startNode && ref.name) {
         params.push({
-          nodeId,
-          nodeType: mapNodeType(sourceNode.type),
-          name: varName,
-          field: varName,
+          nodeId: startNode.id,
+          nodeType: mapNodeType(startNode.type),
+          name: ref.name,
+          field: ref.name,
           type: 'any',
         });
       }
@@ -472,11 +833,18 @@ const extractVariableRefs = (text: string, allNodes: Node[]): FlowField[] => {
 
 export const importFromBackend = (draft: FlowDraft): Partial<WorkflowStoreState> => {
   if (!draft) return { nodes: [], edges: [] };
-  
+
   const { nodes: backendNodes, edges: backendEdges } = draft;
-  
+
   const nodes = backendNodes.map(node => convertNodeFromBackend(node));
-  const edges = backendEdges.map(edge => convertEdgeFromBackend(edge));
+  const dedupEdgeMap = new Map<string, FlowEdge>()
+  backendEdges.forEach(edge => {
+    const key = `${edge.source}-${edge.sourceHandle || ''}-${edge.target}-${edge.targetHandle || ''}`
+    if (!dedupEdgeMap.has(key)) {
+      dedupEdgeMap.set(key, edge)
+    }
+  })
+  const edges = Array.from(dedupEdgeMap.values()).map(edge => convertEdgeFromBackend(edge, nodes));
 
   return { nodes, edges };
 };
@@ -489,25 +857,56 @@ const convertNodeFromBackend = (node: FlowNode): Node => {
     id: node.id || '',
     type: frontendType,
     position: node.position || { x: 0, y: 0 },
+    parentNode: node.parentNode,
+    extent: node.parentNode ? 'parent' : undefined,
+    style: node.style,
     data: {
       label: node.label || '',
-      description: node.description,
+      description: node.description || node.desc,
       config,
       status: 'idle',
     },
   };
 };
 
-const convertEdgeFromBackend = (edge: FlowEdge): Edge => ({
-  id: edge.id,
-  source: edge.source,
-  target: edge.target,
-  sourceHandle: edge.sourceHandle,
-  targetHandle: edge.targetHandle,
-  type: edge.type,
-  animated: edge.animated,
-  style: edge.style,
-});
+const convertEdgeFromBackend = (edge: FlowEdge, nodes: Node[]): Edge => {
+  const sourceNode = nodes.find(node => node.id === edge.source)
+  const targetNode = nodes.find(node => node.id === edge.target)
+
+  let sourceHandle = edge.sourceHandle || undefined
+  let targetHandle = edge.targetHandle || undefined
+
+  if (sourceNode?.type === WorkflowNodeType.LOOP && sourceHandle === 'source') {
+    sourceHandle = targetNode?.parentNode === sourceNode.id ? 'loop-start' : 'loop-output'
+  }
+
+  if (targetNode?.type === WorkflowNodeType.LOOP && targetHandle === 'target') {
+    targetHandle = 'loop-input'
+  }
+
+  if (sourceNode?.type === WorkflowNodeType.LOOP && targetNode?.parentNode === sourceNode.id && !sourceHandle) {
+    sourceHandle = 'loop-start'
+  }
+
+  if (sourceNode?.type === WorkflowNodeType.LOOP && targetNode?.parentNode !== sourceNode.id && !sourceHandle) {
+    sourceHandle = 'loop-output'
+  }
+
+  if (targetNode?.type === WorkflowNodeType.LOOP && !targetHandle) {
+    targetHandle = 'loop-input'
+  }
+
+  return {
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    sourceHandle,
+    targetHandle,
+    type: edge.type,
+    animated: edge.animated,
+    style: edge.style,
+  }
+}
 
 const convertDataToConfig = (data: FlowData | undefined, nodeType: string): Record<string, any> => {
   if (!data) return {};
@@ -515,6 +914,8 @@ const convertDataToConfig = (data: FlowData | undefined, nodeType: string): Reco
   switch (nodeType) {
     case 'start':
       return convertStartDataToConfig(data);
+    case 'end':
+      return convertEndDataToConfig(data);
     case 'llm':
       return convertLLMDataToConfig(data);
     case 'code':
@@ -529,8 +930,12 @@ const convertDataToConfig = (data: FlowData | undefined, nodeType: string): Reco
       return convertVariableDataToConfig(data);
     case 'parse':
       return convertParseDataToConfig(data);
+    case 'json':
+      return convertJsonDataToConfig(data);
     case 'flow':
       return convertFlowDataToConfig(data);
+    case 'loop':
+      return convertLoopDataToConfig(data);
     default:
       return data.options || {};
   }
@@ -553,10 +958,29 @@ const convertStartDataToConfig = (data: FlowData): Record<string, any> => {
   };
 };
 
+const convertEndDataToConfig = (data: FlowData): Record<string, any> => {
+  const inputParams = Array.isArray(data.inputParams) ? data.inputParams : [];
+
+  const outputs = inputParams.map((item: any) => ({
+    key: item?.field || item?.name || '',
+    value: item?.nodeId && item?.name ? `{{nodes.${item.nodeId}.${item.name}}}` : item?.value || '',
+    template: item?.nodeId && item?.name ? `{{nodes.${item.nodeId}.${item.name}}}` : '',
+    refPath: item?.nodeId && item?.name ? `nodes.${item.nodeId}.${item.name}` : '',
+    nodeId: item?.nodeId || '',
+    nodeType: item?.nodeType || '',
+    name: item?.name || '',
+  }));
+
+  return {
+    outputs,
+  };
+};
+
 const convertLLMDataToConfig = (data: FlowData): Record<string, any> => {
   const options = data.options || {};
   const messages = options.messages || [];
-  
+  const modelOptions = Array.isArray(options.model?.options) ? options.model.options : [];
+
   return {
     model: options.model?.params?.model || '',
     temperature: options.model?.params?.temperature || 0.7,
@@ -566,6 +990,11 @@ const convertLLMDataToConfig = (data: FlowData): Record<string, any> => {
     isOutput: options.isOutput !== false,
     toolConfig: options.toolConfig || [],
     mcpConfig: options.mcpConfig || [],
+    supplier: options.model?.supplier || options.supplier,
+    supplierName: options.model?.supplierName || options.supplierName,
+    configId: options.model?.configId || options.configId,
+    comm: options.comm,
+    options: modelOptions.map((option: any) => ({ ...option })),
   };
 };
 
@@ -580,7 +1009,7 @@ const convertCodeDataToConfig = (data: FlowData): Record<string, any> => {
 
   const inputVariables = (data.inputParams || []).map(p => ({
     key: p.field,
-    value: p.nodeId ? `{{${p.nodeId}.${p.name}}}` : p.value,
+    value: p.nodeId ? `{{nodes.${p.nodeId}.${p.name}}}` : p.value,
   }));
 
   return {
@@ -598,7 +1027,7 @@ const convertJudgeDataToConfig = (data: FlowData): Record<string, any> => {
   const conditions: any[] = [];
   IF.forEach((item: any) => {
     conditions.push({
-      variable: item.nodeId ? `{{${item.nodeId}.${item.name}}}` : item.value,
+      variable: item.nodeId ? `{{nodes.${item.nodeId}.${item.name}}}` : item.value,
       operator: mapOperatorToConfig(item.condition),
       value: item.value,
       logic: item.operator || 'AND',
@@ -644,11 +1073,15 @@ const convertClassifyDataToConfig = (data: FlowData): Record<string, any> => {
 
   const inputParam = (data.inputParams || [])[0];
   const inputVariable = inputParam?.nodeId 
-    ? `{{${inputParam.nodeId}.${inputParam.name}}}` 
+    ? `{{nodes.${inputParam.nodeId}.${inputParam.name}}}`
     : inputParam?.value || '';
 
   return {
     model: options.model?.params?.model || '',
+    supplier: options.model?.supplier || options.supplier,
+    supplierName: options.model?.supplierName || options.supplierName,
+    configId: options.model?.configId || options.configId,
+    comm: options.comm,
     categories,
     inputVariable,
   };
@@ -658,7 +1091,7 @@ const convertKnowDataToConfig = (data: FlowData): Record<string, any> => {
   const options = data.options || {};
   const inputParam = (data.inputParams || [])[0];
   const query = inputParam?.nodeId 
-    ? `{{${inputParam.nodeId}.${inputParam.name}}}` 
+    ? `{{nodes.${inputParam.nodeId}.${inputParam.name}}}`
     : inputParam?.value || '';
 
   return {
@@ -671,15 +1104,19 @@ const convertKnowDataToConfig = (data: FlowData): Record<string, any> => {
 
 const convertVariableDataToConfig = (data: FlowData): Record<string, any> => {
   const options = data.options || {};
-  const inputParam = (data.inputParams || [])[0];
-  const targetField = inputParam?.nodeId 
-    ? `{{${inputParam.nodeId}.${inputParam.name}}}` 
-    : inputParam?.value || '';
+  const inputVariables = (data.inputParams || []).map(p => ({
+    key: p.field || 'input',
+    value: p.nodeId ? `{{nodes.${p.nodeId}.${p.name}}}` : p.value,
+  }));
 
   return {
-    opType: options.opType || 'transform',
-    targetField,
-    value: options.value,
+    code: options.code || '',
+    language: options.type || 'javascript',
+    inputVariables,
+    inputVariable: inputVariables[0]?.value || '',
+    inputParams: data.inputParams || [],
+    outputParams: data.outputParams || [{ field: 'result', type: 'any' }],
+    outputField: (data.outputParams || [])[0]?.field || 'result',
   };
 };
 
@@ -687,22 +1124,68 @@ const convertParseDataToConfig = (data: FlowData): Record<string, any> => {
   const options = data.options || {};
   const inputParam = (data.inputParams || [])[0];
   const inputVariable = inputParam?.nodeId 
-    ? `{{${inputParam.nodeId}.${inputParam.name}}}` 
+    ? `{{nodes.${inputParam.nodeId}.${inputParam.name}}}`
     : inputParam?.value || '';
 
   return {
     inputVariable,
+    inputParams: data.inputParams || [{ field: 'text', type: 'string' }],
+    outputParams: data.outputParams || [{ field: 'result', type: 'any' }],
     parseType: options.type || 'text',
     selector: options.selector,
+    schema: options.schema,
+    model: options.model?.params?.model || '',
+    supplier: options.model?.supplier || options.supplier,
+    supplierName: options.model?.supplierName || options.supplierName,
+    configId: options.model?.configId || options.configId,
+    comm: options.comm,
+  };
+};
+
+const convertJsonDataToConfig = (data: FlowData): Record<string, any> => {
+  const options = data.options || {};
+  const inputParam = (data.inputParams || [])[0];
+  const inputVariable = inputParam?.nodeId
+    ? `{{nodes.${inputParam.nodeId}.${inputParam.name}}}`
+    : inputParam?.value || '';
+
+  return {
+    inputVariable,
+    inputParams: data.inputParams || [{ field: 'text', type: 'string' }],
+    outputParams: data.outputParams || [{ field: 'json', type: 'json' }],
+    schema: options.schema || {},
+    outputField: (data.outputParams || [])[0]?.field || 'json',
   };
 };
 
 const convertFlowDataToConfig = (data: FlowData): Record<string, any> => {
   const options = data.options || {};
-  
+
   return {
     flowLabel: options.label || '',
     flowId: options.flowId,
+    inputParams: data.inputParams || [],
+    outputParams: data.outputParams || [],
+  };
+};
+
+const convertLoopDataToConfig = (data: FlowData): Record<string, any> => {
+  const options = data.options || {};
+
+  return {
+    targetArray: options.targetArray || '',
+    targetArrayField: options.targetArrayField || '',
+    targetArrayNodeId: options.targetArrayNodeId || '',
+    targetArrayNodeType: options.targetArrayNodeType || '',
+    targetArrayTemplate: options.targetArray || '',
+    executionMode: options.executionMode || 'serial',
+    maxConcurrency: Number(options.maxConcurrency) > 0 ? Number(options.maxConcurrency) : 1,
+    outputMode: options.outputMode || 'all',
+    resultNodeId: options.resultNodeId || '',
+    resultNodeType: options.resultNodeType || '',
+    resultField: options.resultField || '',
+    resultTemplate: options.resultTemplate || '',
+    outputParams: data.outputParams || [{ field: 'result', type: 'array' }],
   };
 };
 

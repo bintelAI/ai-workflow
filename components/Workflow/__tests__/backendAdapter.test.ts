@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
-import { exportToBackend, importFromBackend, getAvailableVariables } from '../adapters/backendAdapter';
-import type { FlowNode, FlowEdge, FlowDraft } from '@/src/types/flow';
+import { describe, it, expect } from 'vitest';
+import { exportToBackend, importFromBackend } from '../adapters/backendAdapter';
+import type { FlowDraft } from '@/src/types/flow';
 import type { WorkflowNodeType } from '../types';
 
 describe('backendAdapter', () => {
@@ -26,7 +26,7 @@ describe('backendAdapter', () => {
       };
 
       const result = exportToBackend(workflow as any);
-      
+
       expect(result.nodes).toHaveLength(1);
       expect(result.nodes[0].type).toBe('start');
       expect(result.nodes[0].data?.inputParams).toBeDefined();
@@ -47,7 +47,7 @@ describe('backendAdapter', () => {
                 model: 'gpt-4',
                 temperature: 0.7,
                 systemPrompt: 'You are a helpful assistant',
-                userPrompt: 'Hello {{node_0.input}}'
+                userPrompt: 'Hello {{nodes.node_0.input}}'
               }
             }
           }
@@ -56,7 +56,7 @@ describe('backendAdapter', () => {
       };
 
       const result = exportToBackend(workflow as any);
-      
+
       expect(result.nodes).toHaveLength(1);
       expect(result.nodes[0].type).toBe('llm');
       expect(result.nodes[0].data?.options?.model?.params?.model).toBe('gpt-4');
@@ -76,7 +76,7 @@ describe('backendAdapter', () => {
                 conditionGroups: [
                   {
                     conditions: [
-                      { variable: '{{node_0.status}}', operator: 'equals', value: 'active', logic: 'AND' }
+                      { variable: '{{nodes.node_0.status}}', operator: 'equals', value: 'active', logic: 'AND' }
                     ]
                   }
                 ]
@@ -88,10 +88,79 @@ describe('backendAdapter', () => {
       };
 
       const result = exportToBackend(workflow as any);
-      
+
       expect(result.nodes).toHaveLength(1);
       expect(result.nodes[0].type).toBe('judge');
       expect(result.nodes[0].data?.options?.IF).toBeDefined();
+    });
+
+    it('should convert loop node with aggregation metadata correctly', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'loop_1',
+            type: 'loop' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: '循环',
+              config: {
+                targetArray: '{{payload.list}}',
+                targetArrayField: 'list',
+                targetArrayNodeId: 'start_1',
+                targetArrayNodeType: 'start',
+                targetArrayTemplate: '{{payload.list}}',
+                executionMode: 'parallel',
+                maxConcurrency: 3,
+                outputMode: 'field',
+                resultNodeId: 'var_1',
+                resultNodeType: 'variable',
+                resultField: 'score',
+                resultTemplate: '{{nodes.var_1.score}}',
+                outputParams: [
+                  {
+                    field: 'result',
+                    name: 'result',
+                    type: 'array',
+                    label: '评分列表',
+                    itemType: 'number',
+                    itemLabel: '评分',
+                  },
+                ],
+              }
+            }
+          },
+          {
+            id: 'var_1',
+            type: 'variable' as WorkflowNodeType,
+            parentNode: 'loop_1',
+            position: { x: 120, y: 160 },
+            data: {
+              label: '变量处理',
+              config: {
+                outputParams: [{ field: 'score', type: 'number', label: '评分' }],
+              }
+            }
+          }
+        ],
+        edges: []
+      };
+
+      const result = exportToBackend(workflow as any);
+      const loopNode = result.nodes.find(n => n.id === 'loop_1');
+
+      expect(loopNode?.type).toBe('loop');
+      expect(loopNode?.data?.options?.executionMode).toBe('parallel');
+      expect(loopNode?.data?.options?.maxConcurrency).toBe(3);
+      expect(loopNode?.data?.options?.resultNodeId).toBe('var_1');
+      expect(loopNode?.data?.options?.resultField).toBe('score');
+      expect(loopNode?.data?.outputParams?.[0]).toEqual(
+        expect.objectContaining({
+          field: 'result',
+          type: 'array',
+          itemType: 'number',
+          itemLabel: '评分',
+        })
+      );
     });
 
     it('should convert edges correctly', () => {
@@ -109,7 +178,7 @@ describe('backendAdapter', () => {
       };
 
       const result = exportToBackend(workflow as any);
-      
+
       expect(result.edges).toHaveLength(1);
       expect(result.edges[0].source).toBe('node_1');
       expect(result.edges[0].target).toBe('node_2');
@@ -136,7 +205,7 @@ describe('backendAdapter', () => {
       };
 
       const result = importFromBackend(draft);
-      
+
       expect(result.nodes).toHaveLength(1);
       expect(result.nodes?.[0]?.type).toBe('start');
       expect(result.nodes?.[0]?.data?.config?.variables).toBeDefined();
@@ -167,54 +236,110 @@ describe('backendAdapter', () => {
       };
 
       const result = importFromBackend(draft);
-      
+
       expect(result.nodes).toHaveLength(1);
       expect(result.nodes?.[0]?.type).toBe('llm');
       expect(result.nodes?.[0]?.data?.config?.model).toBe('gpt-4');
     });
+
+    it('should import loop node aggregation metadata correctly', () => {
+      const draft: FlowDraft = {
+        nodes: [
+          {
+            id: 'loop_1',
+            type: 'loop',
+            label: '循环',
+            position: { x: 100, y: 100 },
+            data: {
+              outputParams: [
+                {
+                  field: 'result',
+                  name: 'result',
+                  type: 'array',
+                  label: '评分列表',
+                  itemType: 'number',
+                  itemLabel: '评分',
+                },
+              ],
+              options: {
+                targetArray: '{{payload.list}}',
+                targetArrayField: 'list',
+                targetArrayNodeId: 'start_1',
+                targetArrayNodeType: 'start',
+                executionMode: 'parallel',
+                maxConcurrency: 5,
+                outputMode: 'field',
+                resultNodeId: 'var_1',
+                resultNodeType: 'variable',
+                resultField: 'score',
+                resultTemplate: '{{nodes.var_1.score}}',
+              }
+            }
+          }
+        ],
+        edges: []
+      }
+
+      const result = importFromBackend(draft)
+      const loopNode = result.nodes?.[0]
+
+      expect(loopNode?.type).toBe('loop')
+      expect(loopNode?.data?.config?.executionMode).toBe('parallel')
+      expect(loopNode?.data?.config?.maxConcurrency).toBe(5)
+      expect(loopNode?.data?.config?.resultNodeId).toBe('var_1')
+      expect(loopNode?.data?.config?.resultField).toBe('score')
+      expect(loopNode?.data?.config?.outputParams?.[0]).toEqual(
+        expect.objectContaining({
+          field: 'result',
+          type: 'array',
+          itemType: 'number',
+          itemLabel: '评分',
+        })
+      )
+    })
   });
 
-  describe('getAvailableVariables', () => {
-    it('should return variables from preceding nodes', () => {
-      const nodes = [
-        {
-          id: 'node_0',
-          type: 'start',
-          position: { x: 0, y: 0 },
-          data: {
-            label: '开始',
-            config: {
-              variables: [
-                { name: 'input', displayName: '输入', type: 'text' }
-              ]
+  describe('template compatibility', () => {
+    it('should normalize nodes template during export', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'node_0',
+            type: 'start' as WorkflowNodeType,
+            position: { x: 0, y: 0 },
+            data: {
+              label: '开始',
+              config: {
+                variables: [
+                  { name: 'input', displayName: '输入', type: 'text' }
+                ]
+              }
+            }
+          },
+          {
+            id: 'node_1',
+            type: 'llm' as WorkflowNodeType,
+            position: { x: 200, y: 0 },
+            data: {
+              label: 'LLM',
+              config: {
+                model: 'gpt-4',
+                userPrompt: 'Hello {{nodes.node_0.input}}'
+              }
             }
           }
-        },
-        {
-          id: 'node_1',
-          type: 'llm',
-          position: { x: 200, y: 0 },
-          data: {
-            label: 'LLM',
-            config: {
-              outputField: 'text'
-            }
-          }
-        },
-        {
-          id: 'node_2',
-          type: 'end',
-          position: { x: 400, y: 0 },
-          data: {
-            label: '结束'
-          }
-        }
-      ];
+        ],
+        edges: []
+      };
 
-      const result = getAvailableVariables(nodes as any, 'node_2');
-      
-      expect(result.length).toBeGreaterThan(0);
-      expect(result.some(v => v.nodeId === 'node_0')).toBe(true);
+      const exported = exportToBackend(workflow as any);
+      const llmNode = exported.nodes.find(n => n.type === 'llm');
+
+      expect(llmNode?.data.inputParams).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ nodeId: 'node_0', name: 'input' })
+        ])
+      );
     });
   });
 });

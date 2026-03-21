@@ -8,8 +8,9 @@
 }
 
 .output-params-item {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 120px) minmax(0, 1fr) auto;
+  align-items: start;
   gap: 8px;
   margin-bottom: 8px;
 }
@@ -19,20 +20,30 @@
 }
 
 .output-params-item .field-name {
-  flex: 1;
   min-width: 0;
 }
 
 .output-params-item .field-type {
-  flex: 0 0 100px;
+  min-width: 0;
 }
 
 .output-params-item .field-label {
-  flex: 0 0 100px;
+  min-width: 0;
 }
 
 .output-params-item .delete-btn {
   flex-shrink: 0;
+  justify-self: end;
+}
+
+@media (max-width: 640px) {
+  .output-params-item {
+    grid-template-columns: 1fr;
+  }
+
+  .output-params-item .delete-btn {
+    justify-self: start;
+  }
 }
 
 .output-params .ant-empty {

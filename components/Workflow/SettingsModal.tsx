@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useWorkflowStore } from './store/useWorkflowStore'
-import { WorkflowNodeType, WorkflowCategory, LayoutDirection } from './types'
+import { WorkflowCategory, LayoutDirection, WorkflowNodeType } from './types'
+import { getRegistryItems } from './config/nodeRegistry'
 import {
   X,
   Plus,
@@ -28,43 +29,6 @@ import {
   ArrowDown,
   ArrowRight,
 } from 'lucide-react'
-
-const NODE_META: Record<WorkflowNodeType, { label: string; icon: any; color: string }> = {
-  [WorkflowNodeType.START]: { label: '开始节点', icon: PlayCircle, color: 'text-emerald-500' },
-  [WorkflowNodeType.END]: { label: '结束节点', icon: StopCircle, color: 'text-rose-500' },
-  [WorkflowNodeType.APPROVAL]: { label: '审批节点', icon: CheckSquare, color: 'text-blue-500' },
-  [WorkflowNodeType.CC]: { label: '抄送节点', icon: Send, color: 'text-indigo-500' },
-  [WorkflowNodeType.CONDITION]: { label: '条件分支', icon: GitFork, color: 'text-amber-500' },
-  [WorkflowNodeType.PARALLEL]: { label: '并行分支', icon: GitMerge, color: 'text-teal-500' },
-  [WorkflowNodeType.API_CALL]: { label: 'API 调用', icon: Globe, color: 'text-violet-500' },
-  [WorkflowNodeType.NOTIFICATION]: { label: '消息通知', icon: Bell, color: 'text-orange-500' },
-  [WorkflowNodeType.DELAY]: { label: '延时等待', icon: Clock, color: 'text-yellow-500' },
-  [WorkflowNodeType.DATA_OP]: { label: '数据操作', icon: Database, color: 'text-cyan-500' },
-  [WorkflowNodeType.SQL]: { label: 'SQL 节点', icon: Database, color: 'text-indigo-500' },
-  [WorkflowNodeType.SCRIPT]: { label: '脚本代码', icon: Code, color: 'text-slate-700' },
-  [WorkflowNodeType.LLM]: { label: 'LLM 模型', icon: Bot, color: 'text-fuchsia-500' },
-  [WorkflowNodeType.LOOP]: { label: '循环迭代', icon: Repeat, color: 'text-indigo-600' },
-  [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: {
-    label: '知识库检索',
-    icon: BookOpen,
-    color: 'text-sky-600',
-  },
-  [WorkflowNodeType.DOCUMENT_EXTRACTOR]: {
-    label: '文档提取器',
-    icon: FileText,
-    color: 'text-amber-600',
-  },
-  [WorkflowNodeType.CLOUD_PHONE]: {
-    label: '云手机控制',
-    icon: Smartphone,
-    color: 'text-green-500',
-  },
-  [WorkflowNodeType.STORAGE]: {
-    label: '文件存储',
-    icon: HardDrive,
-    color: 'text-emerald-500',
-  },
-}
 
 export const SettingsModal: React.FC = () => {
   const {
@@ -141,6 +105,9 @@ export const SettingsModal: React.FC = () => {
     setEditingId(id)
   }
 
+  const currentCategory = categories.find(c => c.id === editingId)
+  const isSystemCategory = currentCategory?.isSystem
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-xl shadow-2xl w-[900px] h-[600px] flex overflow-hidden border border-slate-200">
@@ -189,6 +156,9 @@ export const SettingsModal: React.FC = () => {
             >
               <Plus size={16} /> 新建类型
             </button>
+            <p className="text-[11px] text-slate-400 mt-2 leading-5">
+              系统模式默认只读，如需定制请新建一个自定义类型。
+            </p>
           </div>
         </div>
 
@@ -245,7 +215,7 @@ export const SettingsModal: React.FC = () => {
                     setEditForm({ ...editForm, name: e.target.value })
                     updateCategory(editingId!, { name: e.target.value })
                   }}
-                  disabled={editForm.isSystem}
+                  disabled={isSystemCategory}
                 />
               </div>
               <div>
@@ -258,7 +228,7 @@ export const SettingsModal: React.FC = () => {
                     setEditForm({ ...editForm, description: e.target.value })
                     updateCategory(editingId!, { description: e.target.value })
                   }}
-                  disabled={editForm.isSystem}
+                  disabled={isSystemCategory}
                 />
               </div>
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
@@ -278,6 +248,7 @@ export const SettingsModal: React.FC = () => {
                   </span>
                   <button
                     onClick={() => {
+                      if (isSystemCategory) return
                       const newDirection: LayoutDirection =
                         editForm.layoutDirection === 'horizontal' ? 'vertical' : 'horizontal'
                       setEditForm({ ...editForm, layoutDirection: newDirection })
@@ -310,16 +281,20 @@ export const SettingsModal: React.FC = () => {
                 节点权限配置
               </h3>
               <div className="grid grid-cols-3 gap-3">
-                {Object.values(WorkflowNodeType).map(type => {
-                  const meta = NODE_META[type]
-                  if (!meta) return null // Safety check
-                  const isAllowed = editForm.allowedNodeTypes?.includes(type)
+                {getRegistryItems()
+                  .filter(item => item.visibleInSettings !== false)
+                  .map(item => {
+                    const Icon = item.icon
+                    const isAllowed = editForm.allowedNodeTypes?.includes(item.type)
 
-                  return (
-                    <div
-                      key={type}
-                      onClick={() => toggleNodeType(type)}
-                      className={`
+                    return (
+                      <div
+                        key={item.type}
+                        onClick={() => {
+                          if (isSystemCategory) return
+                          toggleNodeType(item.type)
+                        }}
+                        className={`
                                                 flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all select-none
                                                 ${
                                                   isAllowed
@@ -327,21 +302,21 @@ export const SettingsModal: React.FC = () => {
                                                     : 'bg-white border-slate-200 opacity-60 hover:opacity-100 hover:border-slate-300'
                                                 }
                                             `}
-                    >
-                      <div
-                        className={`p-1.5 rounded-md ${isAllowed ? 'bg-white shadow-sm' : 'bg-slate-100'}`}
                       >
-                        <meta.icon size={16} className={meta.color} />
+                        <div
+                          className={`p-1.5 rounded-md ${isAllowed ? 'bg-white shadow-sm' : 'bg-slate-100'}`}
+                        >
+                          <Icon size={16} className={item.color} />
+                        </div>
+                        <span
+                          className={`text-xs font-medium ${isAllowed ? 'text-indigo-900' : 'text-slate-500'}`}
+                        >
+                          {item.label}
+                        </span>
+                        {isAllowed && <Check size={14} className="ml-auto text-indigo-600" />}
                       </div>
-                      <span
-                        className={`text-xs font-medium ${isAllowed ? 'text-indigo-900' : 'text-slate-500'}`}
-                      >
-                        {meta.label}
-                      </span>
-                      {isAllowed && <Check size={14} className="ml-auto text-indigo-600" />}
-                    </div>
-                  )
-                })}
+                    )
+                  })}
               </div>
             </div>
           </div>

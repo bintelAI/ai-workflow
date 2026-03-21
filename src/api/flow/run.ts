@@ -1,5 +1,6 @@
 import request from '../request';
 import type { FlowRunRequest, FlowNodeResult, FlowNodeResultData, FlowLlmStreamData, FlowToolData, FlowData } from '../../types/flow';
+import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeToken } from '@/utils/runtime';
 
 export const flowRunApi = {
   debug: (data: FlowRunRequest) => {
@@ -16,10 +17,13 @@ export const createSSEConnection = (
   params: FlowRunRequest,
   onMessage: (data: FlowNodeResult) => void,
   onError?: (error: Error) => void,
-  onComplete?: () => void
+  onComplete?: () => void,
+  onOpen?: (meta: { status: number; contentType: string; hasBody: boolean }) => void,
+  onChunk?: (meta: { chunkText: string; chunkSize: number }) => void
 ): { close: () => void } => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
-  const token = localStorage.getItem('token');
+  const baseUrl = getRuntimeBaseURL();
+  const token = getRuntimeToken();
+  const projectId = getRuntimeProjectId();
 
   const controller = new AbortController();
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -31,6 +35,7 @@ export const createSSEConnection = (
       'Content-Type': 'application/json',
       'Authorization': token || '',
       'Accept': 'text/event-stream',
+      ...(projectId ? { 'x-project-id': projectId } : {}),
     },
     body: JSON.stringify(params),
     signal: controller.signal,
@@ -39,6 +44,13 @@ export const createSSEConnection = (
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      const contentType = response.headers.get('content-type') || '';
+      const hasBody = Boolean(response.body);
+      onOpen?.({
+        status: response.status,
+        contentType,
+        hasBody,
+      });
       reader = response.body?.getReader() || null;
       if (!reader) {
         throw new Error('Response body is null');
@@ -53,7 +65,12 @@ export const createSSEConnection = (
             return;
           }
 
-          buffer += decoder.decode(value, { stream: true });
+          const chunkText = decoder.decode(value, { stream: true });
+          onChunk?.({
+            chunkText,
+            chunkSize: value?.length || 0,
+          });
+          buffer += chunkText;
           const lines = buffer.split('\n');
           buffer = lines.pop() || '';
 
@@ -106,6 +123,9 @@ export const runFlowWithSSE = (
     onFlowError?: (error: string) => void;
     onFlowCancel?: () => void;
     onError?: (error: Error) => void;
+    onComplete?: () => void;
+    onOpen?: (meta: { status: number; contentType: string; hasBody: boolean }) => void;
+    onChunk?: (meta: { chunkText: string; chunkSize: number }) => void;
   }
 ): { close: () => void } => {
   return createSSEConnection(
@@ -125,7 +145,9 @@ export const runFlowWithSSE = (
             } else if (flowData.reason === 'cancel') {
               callbacks.onFlowCancel?.();
             } else if (flowData.reason === 'error') {
-              callbacks.onFlowError?.(flowData.result?.error || 'Unknown error');
+              callbacks.onFlowError?.(
+                flowData.error || flowData.result?.error || 'Unknown error'
+              );
             }
           }
           break;
@@ -137,11 +159,18 @@ export const runFlowWithSSE = (
             callbacks.onNodeStart?.(nodeData.nodeId, nodeData.nodeType);
           } else if (nodeData.status === 'running') {
             callbacks.onNodeRunning?.(nodeData.nodeId, nodeData.nodeType);
-          } else if (nodeData.status === 'done') {
-            if (nodeData.result?.success === false) {
-              callbacks.onNodeError?.(nodeData.nodeId, nodeData.nodeType, nodeData.result.error || 'Unknown error');
+          } else if (nodeData.status === 'done' || nodeData.status === 'end') {
+            const resultPayload = nodeData.output ?? nodeData.result;
+            const explicitError = nodeData.error || nodeData.result?.error;
+            const isError = nodeData.success === false || nodeData.result?.success === false || Boolean(explicitError);
+
+            if (isError) {
+              callbacks.onNodeError?.(nodeData.nodeId, nodeData.nodeType, explicitError || 'Unknown error');
             } else {
-              callbacks.onNodeComplete?.(nodeData.nodeId, nodeData.nodeType, nodeData.result);
+              callbacks.onNodeComplete?.(nodeData.nodeId, nodeData.nodeType, {
+                ...(resultPayload && typeof resultPayload === 'object' ? resultPayload : { result: resultPayload }),
+                __nodeInput: nodeData.input,
+              });
             }
           }
           break;
@@ -164,7 +193,10 @@ export const runFlowWithSSE = (
         }
       }
     },
-    callbacks.onError
+    callbacks.onError,
+    callbacks.onComplete,
+    callbacks.onOpen,
+    callbacks.onChunk
   );
 };
 

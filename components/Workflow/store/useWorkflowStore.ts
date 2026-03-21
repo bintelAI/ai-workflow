@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { WorkflowStoreState, WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../types'
+import { WorkflowStoreState, WorkflowNode, WorkflowEdge, WorkflowNodeType, WorkflowCategory } from '../types'
 import {
   createNodeActions,
   createEdgeActions,
@@ -14,6 +14,7 @@ import {
   createLayoutActions,
   DEFAULT_CATEGORIES,
 } from './modules'
+import { getDefaultCategoriesFromPluginModes } from '../config/pluginModeRegistry'
 
 export const DEFAULT_DEV_INPUT = JSON.stringify(
   {
@@ -52,6 +53,19 @@ const initialNodes: WorkflowNode[] = [
 
 const initialEdges: WorkflowEdge[] = []
 
+const normalizePersistedCategories = (persistedCategories?: WorkflowCategory[]) => {
+  const systemCategories = getDefaultCategoriesFromPluginModes()
+  const customCategories = (persistedCategories || []).filter(category => !category.isSystem)
+  return [...systemCategories, ...customCategories]
+}
+
+const normalizeActiveCategoryId = (activeCategoryId?: string | null, categories: WorkflowCategory[] = DEFAULT_CATEGORIES) => {
+  if (activeCategoryId && categories.some(category => category.id === activeCategoryId)) {
+    return activeCategoryId
+  }
+  return 'general'
+}
+
 export const useWorkflowStore = create<WorkflowStoreState>()(
   persist(
     (set, get) => ({
@@ -83,7 +97,7 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
       activeCategoryId: 'general',
       teamId: (() => {
         const stored = localStorage.getItem('workflow_teamId')
-        return stored || '1'
+        return stored || null
       })(),
 
       ...createNodeActions(set, get),
@@ -117,6 +131,16 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
         globalVariables: state.globalVariables,
         teamId: state.teamId,
       }),
+      merge: (persistedState: any, currentState) => {
+        const persisted = persistedState || {}
+        const categories = normalizePersistedCategories(persisted.categories)
+        return {
+          ...currentState,
+          ...persisted,
+          categories,
+          activeCategoryId: normalizeActiveCategoryId(persisted.activeCategoryId, categories),
+        }
+      },
     }
   )
 )

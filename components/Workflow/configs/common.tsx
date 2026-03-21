@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Trash2, ListPlus, ChevronDown, Variable, Braces, X, Check, Search } from 'lucide-react'
 import { VariableBindModal } from './VariableBindModal'
+import { normalizeLegacyTemplate } from '../utils/workflowVariables'
 
 // --- Helper: Flatten JSON object to dot notation ---
 export const flattenObject = (obj: any, parentKey = '', res: any[] = []) => {
@@ -53,6 +54,8 @@ export const VariableSelector: React.FC<VariableSelectorProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
+  const displayValue = normalizeLegacyTemplate(value)
+
   return (
     <>
       <div
@@ -60,11 +63,11 @@ export const VariableSelector: React.FC<VariableSelectorProps> = ({
         className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white cursor-pointer flex items-center justify-between hover:border-indigo-400 hover:shadow-sm transition-all group"
       >
         <div className="flex items-center gap-2 overflow-hidden flex-1">
-          {value ? (
+          {displayValue ? (
             <div className="flex items-center gap-1.5 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 max-w-full">
               <Variable size={12} className="text-indigo-500 shrink-0" />
               <span className="font-mono text-indigo-600 text-xs truncate">
-                {value.replace(/^{{|}}$/g, '')}
+                {displayValue.replace(/^{{|}}$/g, '')}
               </span>
             </div>
           ) : (
@@ -84,7 +87,7 @@ export const VariableSelector: React.FC<VariableSelectorProps> = ({
           onChange(val)
           setIsModalOpen(false)
         }}
-        currentValue={value}
+        currentValue={normalizeLegacyTemplate(value)}
         scope={scope}
       />
     </>
@@ -153,7 +156,7 @@ export const VariableInput: React.FC<VariableInputProps> = ({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSelect={handleInsert}
-        currentValue={value}
+        currentValue={normalizeLegacyTemplate(value)}
         scope={scope}
       />
     </div>
@@ -222,7 +225,7 @@ export const VariableTextArea: React.FC<VariableTextAreaProps> = ({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSelect={handleInsert}
-        currentValue={value}
+        currentValue={normalizeLegacyTemplate(value)}
         scope={scope}
       />
     </div>
@@ -476,12 +479,11 @@ export const getValueByPath = (obj: any, path: string): any => {
 export const replaceVariables = (str: string, context: any): string => {
   if (!str || typeof str !== 'string') return str
 
-  // 支持两种格式：{{ variable.path }} 和 ${{ variable.path }}
+  const normalized = normalizeLegacyTemplate(str)
   const variableRegex = /\$?\{\{\s*([^}]+?)\s*\}\}/g
 
-  return str.replace(variableRegex, (match, variablePath) => {
+  return normalized.replace(variableRegex, (match, variablePath) => {
     const value = getValueByPath(context, variablePath)
-    // 如果值不存在，保留原始占位符
     return value !== undefined ? String(value) : match
   })
 }

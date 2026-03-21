@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   X,
   Search,
@@ -8,18 +8,10 @@ import {
   Calendar,
   Box,
   LayoutList,
-  PlayCircle,
   Database,
-  Server,
-  Code,
-  MessageSquare,
-  Repeat,
-  GitBranch,
-  Clock,
 } from 'lucide-react'
-import { useWorkflowStore, DEFAULT_DEV_INPUT } from '../store/useWorkflowStore'
-import { WorkflowNodeType } from '../types'
-import { flattenObject } from './common/index'
+import { useWorkflowStore } from '../store/useWorkflowStore'
+import { buildVariableCatalog, type WorkflowVariableMeta } from '../utils/workflowVariables'
 
 interface VariableBindModalProps {
   isOpen: boolean
@@ -48,215 +40,18 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
 
   if (!isOpen) return null
 
-  // --- Data Gathering Logic ---
+  const allVars = useMemo(
+    () =>
+      buildVariableCatalog({
+        nodes,
+        edges,
+        currentNodeId: selectedNodeId,
+        globalVariables,
+        scope,
+      }).flatMap(group => group.variables),
+    [nodes, edges, selectedNodeId, globalVariables, scope]
+  )
 
-  // 1. Start Node Variables
-  const startNode = nodes.find(n => n.type === WorkflowNodeType.START)
-  const getStartNodeVariables = () => {
-    let vars: any[] = []
-    
-    // Get variables from devInput (backward compatibility)
-    const devInput = (startNode?.data.config as any)?.devInput || DEFAULT_DEV_INPUT
-    try {
-      const parsed = JSON.parse(devInput)
-      vars = flattenObject(parsed)
-    } catch (e) {
-      // If JSON parse fails, don't add error variable
-    }
-    
-    // Get variables from new variables config
-    const variablesConfig = (startNode?.data.config as any)?.variables || []
-    variablesConfig.forEach((variable: any) => {
-      const displayPath = `payload.${variable.name}`
-      vars.push({
-        label: variable.displayName || variable.name,
-        path: displayPath,
-        type: variable.type,
-        source: 'global',
-        nodeLabel: 'Start Node',
-        required: variable.required,
-        hidden: variable.hidden
-      })
-      
-      // If it's a dropdown type, add options as subvariables (for reference)
-      if (variable.type === 'dropdown' && variable.options) {
-        variable.options.forEach((option: any, index: number) => {
-          vars.push({
-            label: `${variable.displayName || variable.name} - ${option.label}`,
-            path: `${displayPath}.options.${index}`,
-            type: 'string',
-            value: option.value,
-            source: 'global',
-            nodeLabel: 'Start Node'
-          })
-        })
-      }
-    })
-    
-    // Get variables from global configuration
-    globalVariables.forEach((variable: any) => {
-      const displayPath = `global.${variable.name}`
-      vars.push({
-        label: variable.displayName || variable.name,
-        path: displayPath,
-        type: variable.type,
-        source: 'global',
-        nodeLabel: 'Global Config',
-        required: variable.required,
-        hidden: variable.hidden
-      })
-      
-      // If it's a dropdown type, add options as subvariables (for reference)
-      if (variable.type === 'dropdown' && variable.options) {
-        variable.options.forEach((option: any, index: number) => {
-          vars.push({
-            label: `${variable.displayName || variable.name} - ${option.label}`,
-            path: `${displayPath}.options.${index}`,
-            type: 'string',
-            value: option.value,
-            source: 'global',
-            nodeLabel: 'Global Config'
-          })
-        })
-      }
-    })
-    
-    // If no variables, add a placeholder
-    if (vars.length === 0) {
-      vars.push({ label: 'No global variables defined', path: 'payload', type: 'object', source: 'global', nodeLabel: 'Start Node' })
-    }
-    
-    return vars.map(v => ({ ...v, source: 'global', nodeLabel: v.nodeLabel || 'Start Node' }))
-  }
-
-  // 2. Upstream or Internal Node Variables
-  const getNodeVariables = () => {
-    if (!selectedNodeId) return []
-
-    let targetNodes: any[] = []
-
-    if (scope === 'internal') {
-      // Find all child nodes of the current node
-      targetNodes = nodes.filter(n => n.parentNode === selectedNodeId)
-    } else if (scope === 'upstream') {
-      // Backward traversal to find all upstream nodes
-      const visited = new Set<string>()
-      const queue = [selectedNodeId]
-
-      while (queue.length > 0) {
-        const curr = queue.shift()!
-        const incomingEdges = edges.filter(e => e.target === curr)
-        for (const edge of incomingEdges) {
-          if (!visited.has(edge.source)) {
-            visited.add(edge.source)
-            queue.push(edge.source)
-            const sourceNode = nodes.find(n => n.id === edge.source)
-            if (sourceNode) targetNodes.push(sourceNode)
-          }
-        }
-      }
-    } else {
-      // All other nodes
-      targetNodes = nodes.filter(n => n.id !== selectedNodeId)
-    }
-
-    const nodeVars: any[] = []
-
-    targetNodes.forEach(node => {
-      const nodeLabel = node.data.label || node.type
-      let outputVars: any[] = []
-
-      // Define standard outputs for each node type
-      switch (node.type) {
-        case WorkflowNodeType.API_CALL:
-          outputVars = [
-            { label: '响应体 (Body)', path: `nodes.${node.id}.data`, type: 'object' },
-            { label: '状态码 (Status)', path: `nodes.${node.id}.status`, type: 'number' },
-            { label: '响应头 (Headers)', path: `nodes.${node.id}.headers`, type: 'object' },
-          ]
-          break
-        case WorkflowNodeType.LLM:
-          outputVars = [
-            { label: 'AI 回复 (Text)', path: `nodes.${node.id}.text`, type: 'string' },
-            { label: '完整响应', path: `nodes.${node.id}.response`, type: 'object' },
-          ]
-          break
-        case WorkflowNodeType.SQL:
-          outputVars = [
-            { label: '查询结果 (Data)', path: `nodes.${node.id}.data`, type: 'array' },
-            { label: '受影响行数', path: `nodes.${node.id}.affectedRows`, type: 'number' },
-            { label: '完整执行结果', path: `nodes.${node.id}.output`, type: 'object' },
-          ]
-          break
-        case WorkflowNodeType.SCRIPT:
-          outputVars = [{ label: '输出结果', path: `nodes.${node.id}.output`, type: 'object' }]
-          break
-        case WorkflowNodeType.DATA_OP:
-          outputVars = [{ label: '处理结果', path: `nodes.${node.id}.result`, type: 'object' }]
-          break
-        case WorkflowNodeType.CONDITION:
-          outputVars = [{ label: '判断结果', path: `nodes.${node.id}.result`, type: 'boolean' }]
-          break
-        case WorkflowNodeType.LOOP:
-          outputVars = [{ label: '聚合结果', path: `nodes.${node.id}.result`, type: 'array' }]
-          break
-        case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
-          outputVars = [
-            { label: '检索结果 (Result)', path: `nodes.${node.id}.result`, type: 'string' },
-            { label: '上下文 (Context)', path: `nodes.${node.id}.context`, type: 'string' },
-            { label: '引用列表 (References)', path: `nodes.${node.id}.references`, type: 'array' },
-          ]
-          break
-        case WorkflowNodeType.DOCUMENT_EXTRACTOR:
-          outputVars = [{ label: '提取文本 (Text)', path: `nodes.${node.id}.text`, type: 'string' }]
-          break
-        // Add more types as needed
-        default:
-          outputVars = [{ label: '节点输出', path: `nodes.${node.id}.output`, type: 'object' }]
-      }
-
-      // Check if node has custom output config
-      // e.g., if APICall has a specific extract path, maybe we can hint it?
-
-      nodeVars.push(
-        ...outputVars.map(v => ({
-          ...v,
-          source: 'upstream',
-          nodeId: node.id,
-          nodeType: node.type,
-          nodeLabel: nodeLabel,
-        }))
-      )
-    })
-
-    return nodeVars
-  }
-
-  // 3. System Variables
-  const systemVars = [
-    { label: '当前时间 (ISO)', path: 'system.timestamp', type: 'date', source: 'system' },
-    { label: '工作流 ID', path: 'system.workflow_id', type: 'string', source: 'system' },
-    { label: '执行 ID', path: 'system.execution_id', type: 'string', source: 'system' },
-  ]
-
-  // 4. Loop Variables (if inside loop or IS a loop)
-  const currentNode = nodes.find(n => n.id === selectedNodeId)
-  const parentLoopNode = currentNode?.parentNode
-    ? nodes.find(n => n.id === currentNode.parentNode && n.type === WorkflowNodeType.LOOP)
-    : null
-  const isLoopNode = currentNode?.type === WorkflowNodeType.LOOP
-
-  const loopVars =
-    parentLoopNode || isLoopNode
-      ? [
-          { label: '当前项 (Item)', path: 'loop.item', type: 'object', source: 'loop' },
-          { label: '当前索引 (Index)', path: 'loop.index', type: 'number', source: 'loop' },
-        ]
-      : []
-
-  const allVars = [...loopVars, ...getStartNodeVariables(), ...getNodeVariables(), ...systemVars]
-
-  // Filter by search
   const filteredVars = allVars
     .filter(
       v =>
@@ -265,27 +60,22 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
     )
     .filter(v => {
       if (activeTab === 'all') return true
-      if (activeTab === 'upstream') return v.source === 'upstream' || v.source === 'loop'
-      if (activeTab === 'global') return v.source === 'global'
-      if (activeTab === 'system') return v.source === 'system'
+      if (activeTab === 'upstream') return v.scope === 'node' || v.scope === 'loop'
+      if (activeTab === 'global') return v.scope === 'payload' || v.scope === 'global'
+      if (activeTab === 'system') return v.scope === 'system'
       return true
     })
 
-  // Grouping for display
   const groupedVars = filteredVars.reduce(
     (acc, v) => {
       const key =
         v.nodeLabel ||
-        (v.source === 'system'
-          ? 'System'
-          : v.source === 'global'
-            ? 'Global Parameters'
-            : 'Loop Context')
+        (v.scope === 'system' ? 'System' : v.scope === 'global' || v.scope === 'payload' ? 'Global Parameters' : 'Loop Context')
       if (!acc[key]) acc[key] = []
       acc[key].push(v)
       return acc
     },
-    {} as Record<string, typeof allVars>
+    {} as Record<string, WorkflowVariableMeta[]>
   )
 
   // Helper for icons
@@ -308,21 +98,8 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
     }
   }
 
-  const getNodeIcon = (type: string) => {
-    switch (type) {
-      case WorkflowNodeType.API_CALL:
-        return <Server size={14} className="text-blue-500" />
-      case WorkflowNodeType.LLM:
-        return <SparklesIcon />
-      case WorkflowNodeType.SCRIPT:
-        return <Code size={14} className="text-pink-500" />
-      case WorkflowNodeType.CONDITION:
-        return <GitBranch size={14} className="text-orange-500" />
-      case WorkflowNodeType.START:
-        return <PlayCircle size={14} className="text-emerald-500" />
-      default:
-        return <Database size={14} className="text-slate-500" />
-    }
+  const getNodeIcon = (_type: string) => {
+    return <Database size={14} className="text-slate-500" />
   }
 
   return (
@@ -394,7 +171,7 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
                   <button
                     key={i}
                     onClick={() => {
-                      onSelect(`{{${v.path}}}`)
+                      onSelect(v.template)
                       onClose()
                     }}
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-50 transition-colors group text-left"
@@ -433,18 +210,3 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
   )
 }
 
-const SparklesIcon = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="text-indigo-500"
-  >
-    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-  </svg>
-)

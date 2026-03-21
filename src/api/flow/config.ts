@@ -22,8 +22,8 @@ export const flowConfigApi = {
     return flowConfigApi.getByNode(teamId, 'know');
   },
 
-  getFlows: (teamId: number) => {
-    return request.get<any, { data: any[] }>(`/app/flow/${teamId}/info/list`);
+  getFlows: (teamId: number | string) => {
+    return request.get<any, { data: any[] }>(`/app/flow/info/list`, { params: { teamId } });
   },
 };
 

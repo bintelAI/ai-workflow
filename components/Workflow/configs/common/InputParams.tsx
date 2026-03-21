@@ -57,7 +57,7 @@ const InputParams: React.FC<InputParamsProps> = ({
   );
 
   const handleVariableChange = useCallback(
-    (index: number, data: { field: string; nodeId: string; nodeType: string; value: string; name?: string }) => {
+    (index: number, data: { field: string; nodeId: string; nodeType: string; value: string; name?: string; template?: string; refPath?: string; label?: string }) => {
       const newValue = [...value];
       newValue[index] = {
         ...newValue[index],
@@ -65,6 +65,9 @@ const InputParams: React.FC<InputParamsProps> = ({
         nodeId: data.nodeId,
         nodeType: data.nodeType,
         value: data.value,
+        template: data.template,
+        refPath: data.refPath,
+        label: data.label,
       };
       onChange(newValue);
     },
@@ -80,6 +83,9 @@ const InputParams: React.FC<InputParamsProps> = ({
         nodeId: '',
         nodeType: '',
         value: '',
+        template: '',
+        refPath: '',
+        label: '',
       };
       onChange(newValue);
     },
@@ -124,6 +130,7 @@ const InputParams: React.FC<InputParamsProps> = ({
                 nodeId={item.nodeId}
                 nodeType={item.nodeType}
                 customValue={item.value}
+                value={item.template || item.refPath || item.value}
                 variables={variables}
                 inputable={inputable}
                 disabled={disabled}

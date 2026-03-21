@@ -2,15 +2,26 @@ import React, { useEffect, useState } from 'react'
 import { WorkflowApp } from '@/components/Workflow/WorkflowApp'
 import { useWorkflowStore } from '@/components/Workflow/store/useWorkflowStore'
 import { Layers } from 'lucide-react'
+import { getRuntimeFlowId, getRuntimeProjectId, getRuntimeTeamId, getRuntimePluginType } from '@/utils/runtime'
+import { getPluginMode, type WorkflowPluginModeType } from '@/components/Workflow/config/pluginModeRegistry'
 
 const App: React.FC = () => {
-  const { loadFlow, isFlowLoading, flowInfo } = useWorkflowStore()
+  const { loadFlow, isFlowLoading } = useWorkflowStore()
   const [error, setError] = useState<string | null>(null)
+  const urlParams = new URLSearchParams(window.location.search)
+  const resolvedPluginType = getPluginMode(
+    getRuntimePluginType() || urlParams.get('type') || undefined
+  ).type as WorkflowPluginModeType
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
-    const flowId = urlParams.get('id')
-    const teamId = urlParams.get('teamId')
+    const flowId = getRuntimeFlowId() || urlParams.get('id') || ''
+    const teamId = getRuntimeTeamId() || urlParams.get('teamId') || ''
+    const projectId = getRuntimeProjectId() || urlParams.get('projectId') || ''
+
+    if (projectId) {
+      localStorage.setItem('workflow_projectId', projectId)
+    }
 
     if (flowId) {
       const id = parseInt(flowId, 10)
@@ -51,7 +62,7 @@ const App: React.FC = () => {
     )
   }
 
-  return <WorkflowApp />
+  return <WorkflowApp pluginType={resolvedPluginType} />
 }
 
 export default App

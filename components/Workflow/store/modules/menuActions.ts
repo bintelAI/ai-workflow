@@ -1,27 +1,9 @@
 import { MarkerType } from 'reactflow'
 import { WorkflowNode, WorkflowNodeType, WorkflowEdge } from '../../types'
+import { createDefaultNodePayload, getNodeMeta } from '../../config/nodeRegistry'
 
 const getNodeLabel = (nodeType: WorkflowNodeType): string => {
-  const labels: Record<WorkflowNodeType, string> = {
-    [WorkflowNodeType.START]: '开始',
-    [WorkflowNodeType.END]: '结束',
-    [WorkflowNodeType.LLM]: 'LLM 调用',
-    [WorkflowNodeType.API_CALL]: 'API 调用',
-    [WorkflowNodeType.SCRIPT]: '脚本执行',
-    [WorkflowNodeType.DATA_OP]: '数据操作',
-    [WorkflowNodeType.CONDITION]: '条件判断',
-    [WorkflowNodeType.PARALLEL]: '并行分支',
-    [WorkflowNodeType.LOOP]: '循环节点',
-    [WorkflowNodeType.APPROVAL]: '审批节点',
-    [WorkflowNodeType.CC]: '抄送节点',
-    [WorkflowNodeType.NOTIFICATION]: '通知节点',
-    [WorkflowNodeType.DELAY]: '延迟节点',
-    [WorkflowNodeType.SQL]: 'SQL 执行',
-    [WorkflowNodeType.KNOWLEDGE_RETRIEVAL]: '知识库检索',
-    [WorkflowNodeType.DOCUMENT_EXTRACTOR]: '文档提取',
-    [WorkflowNodeType.CLOUD_PHONE]: '云手机',
-  }
-  return labels[nodeType] || nodeType
+  return getNodeMeta(nodeType)?.label || nodeType
 }
 
 export interface EdgeMenuState {
@@ -105,25 +87,13 @@ export const createMenuActions = (set: any, get: any): MenuActions => ({
     }
 
     let label = getNodeLabel(nodeType)
-    let description = '插入的新节点'
-
-    if (nodeType === WorkflowNodeType.KNOWLEDGE_RETRIEVAL) {
-      description = '添加知识库检索'
-    } else if (nodeType === WorkflowNodeType.DOCUMENT_EXTRACTOR) {
-      description = '从文档中提取内容'
-    }
-
-    let config: any = {}
-    if (nodeType === WorkflowNodeType.PARALLEL) {
-      config = { branches: ['分支 1', '分支 2'] }
-    }
-    if (nodeType === WorkflowNodeType.LOOP) {
-      config = { targetArray: '' }
-    }
+    const meta = getNodeMeta(nodeType)
+    let description = meta?.description || '插入的新节点'
+    const newNodeBase = createDefaultNodePayload(nodeType, newNodePosition)
 
     const newNode: WorkflowNode = {
+      ...newNodeBase,
       id: newNodeId,
-      type: nodeType,
       position: newNodePosition,
       parentNode:
         sourceNode.parentNode === targetNode.parentNode ? sourceNode.parentNode : undefined,
@@ -131,8 +101,7 @@ export const createMenuActions = (set: any, get: any): MenuActions => ({
         sourceNode.parentNode === targetNode.parentNode && sourceNode.parentNode
           ? 'parent'
           : undefined,
-      style: nodeType === WorkflowNodeType.LOOP ? { width: 350, height: 250 } : undefined,
-      data: { label, description, config },
+      data: { ...newNodeBase.data, label, description },
     }
 
     let sourceHandle = oldEdge?.sourceHandle
@@ -152,7 +121,7 @@ export const createMenuActions = (set: any, get: any): MenuActions => ({
 
     let sourceHandleForSecondEdge: string | undefined = undefined
     if (nodeType === WorkflowNodeType.PARALLEL) {
-      sourceHandleForSecondEdge = 'branch-0'
+      sourceHandleForSecondEdge = 'source'
     }
 
     let targetHandleForSecondEdge: string | undefined = undefined
@@ -229,30 +198,17 @@ export const createMenuActions = (set: any, get: any): MenuActions => ({
 
     const newNodeId = `${nodeType}_${Date.now()}`
     let label = getNodeLabel(nodeType)
-    let description = '追加的新节点'
-
-    if (nodeType === WorkflowNodeType.KNOWLEDGE_RETRIEVAL) {
-      description = '添加知识库检索'
-    } else if (nodeType === WorkflowNodeType.DOCUMENT_EXTRACTOR) {
-      description = '从文档中提取内容'
-    }
-
-    let config: any = {}
-    if (nodeType === WorkflowNodeType.PARALLEL) {
-      config = { branches: ['分支 1', '分支 2'] }
-    }
-    if (nodeType === WorkflowNodeType.LOOP) {
-      config = { targetArray: '' }
-    }
+    const meta = getNodeMeta(nodeType)
+    let description = meta?.description || '追加的新节点'
+    const newNodeBase = createDefaultNodePayload(nodeType, newNodePosition)
 
     const newNode: WorkflowNode = {
+      ...newNodeBase,
       id: newNodeId,
-      type: nodeType,
       position: newNodePosition,
       parentNode: parentNodeId || undefined,
       extent: parentNodeId ? 'parent' : undefined,
-      style: nodeType === WorkflowNodeType.LOOP ? { width: 350, height: 250 } : undefined,
-      data: { label, description, config },
+      data: { ...newNodeBase.data, label, description },
     }
 
     let newEdges = [...edges]
@@ -288,6 +244,7 @@ export const createMenuActions = (set: any, get: any): MenuActions => ({
           source: nodeMenu.parentNodeId,
           sourceHandle: 'loop-start',
           target: newNodeId,
+          targetHandle: undefined,
           type: 'custom',
           animated: true,
           markerEnd: { type: MarkerType.ArrowClosed },

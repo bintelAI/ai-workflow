@@ -2,25 +2,29 @@ import React, { useState, useEffect } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import { WorkflowCanvas, Sidebar, ConfigPanel, DataDrawer, AICommandCenter, SettingsModal } from '.'
 import GlobalConfigModal from './GlobalConfigModal'
-import { Layers, Share2, Settings, ShieldCheck, Eye, Database, Save } from 'lucide-react'
+import { Layers, Share2, Settings, ShieldCheck, Eye, Database, Save, PlayCircle, StopCircle } from 'lucide-react'
 import { useWorkflowStore } from './store/useWorkflowStore'
 import ValidationReportModal, { ValidationResult } from './ValidationReportModal'
 import { validateWorkflow } from './validators/workflowValidator'
 import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from './types'
 import { message } from '@/components/common/AntdStaticFunction'
+import { getRuntimeTeamId } from '@/utils/runtime'
+import { getPluginMode, type WorkflowPluginModeType } from './config/pluginModeRegistry'
 
 interface WorkflowAppProps {
   initialNodes?: WorkflowNode[]
   initialEdges?: WorkflowEdge[]
   allowedNodeTypes?: WorkflowNodeType[]
   teamId?: string
+  pluginType?: WorkflowPluginModeType
 }
 
-const App: React.FC<WorkflowAppProps> = ({ 
-  initialNodes, 
+const App: React.FC<WorkflowAppProps> = ({
+  initialNodes,
   initialEdges,
   allowedNodeTypes,
-  teamId: propTeamId 
+  teamId: propTeamId,
+  pluginType = 'all',
 }) => {
   const {
     validateWorkflow: storeValidateWorkflow,
@@ -34,7 +38,12 @@ const App: React.FC<WorkflowAppProps> = ({
     edges,
     setWorkflow,
     updateCategory,
+    setActiveCategory,
     saveFlow,
+    releaseFlow,
+    runFlow,
+    stopExecution,
+    isExecuting,
     isFlowSaving,
     flowInfo,
     teamId: storeTeamId,
@@ -47,10 +56,15 @@ const App: React.FC<WorkflowAppProps> = ({
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const urlTeamId = urlParams.get('teamId')
-    
-    // 优先级: props > URL参数 > localStorage > 默认值1
+    const runtimeTeamId = getRuntimeTeamId()
+
+    // 优先级: props > runtime > URL参数 > localStorage
     let finalTeamId = propTeamId
-    
+
+    if (!finalTeamId && runtimeTeamId) {
+      finalTeamId = runtimeTeamId
+    }
+
     if (!finalTeamId && urlTeamId) {
       finalTeamId = urlTeamId
     }
@@ -62,13 +76,12 @@ const App: React.FC<WorkflowAppProps> = ({
       }
     }
     
-    // 如果都没有，使用默认值 '1'
-    if (!finalTeamId) {
-      finalTeamId = '1'
-    }
-    
     console.log('[WorkflowApp] Setting teamId:', finalTeamId, 'current storeTeamId:', storeTeamId)
-    
+
+    if (!finalTeamId) {
+      return
+    }
+
     // 始终更新 teamId（即使值相同），确保 store 和 localStorage 同步
     setTeamId(finalTeamId)
     localStorage.setItem('workflow_teamId', finalTeamId)
@@ -84,10 +97,12 @@ const App: React.FC<WorkflowAppProps> = ({
   }, [initialNodes, initialEdges, setWorkflow])
 
   useEffect(() => {
+    const mode = getPluginMode(pluginType)
+    setActiveCategory(mode.categoryId)
     if (allowedNodeTypes && allowedNodeTypes.length > 0) {
-      updateCategory('general', { allowedNodeTypes })
+      updateCategory(mode.categoryId, { allowedNodeTypes })
     }
-  }, [allowedNodeTypes, updateCategory])
+  }, [pluginType, allowedNodeTypes, setActiveCategory, updateCategory])
 
   const activeCategoryName = categories.find(c => c.id === activeCategoryId)?.name || '未命名模式'
 
@@ -112,6 +127,46 @@ const App: React.FC<WorkflowAppProps> = ({
     } catch (error) {
       message.error('保存失败')
     }
+  }
+
+  const handleRelease = async () => {
+    if (!flowInfo?.id) {
+      message.warning('请先加载工作流')
+      return
+    }
+    try {
+      await saveFlow()
+      await releaseFlow()
+      message.success('发布成功')
+    } catch (error) {
+      message.error('发布失败')
+    }
+  }
+
+  const handleRun = async () => {
+    if (!flowInfo?.id) {
+      message.warning('请先加载工作流')
+      return
+    }
+
+    toggleDrawer(true)
+
+    if (!flowInfo?.label) {
+      message.warning('当前工作流缺少标签，无法调试运行')
+      return
+    }
+
+    try {
+      await runFlow()
+    } catch (error) {
+      console.error('Workflow run failed:', error)
+      message.error(error instanceof Error ? error.message : '运行失败')
+    }
+  }
+
+  const handleStop = () => {
+    stopExecution()
+    message.info('已停止执行')
   }
 
   return (
@@ -155,15 +210,35 @@ const App: React.FC<WorkflowAppProps> = ({
               <ShieldCheck size={16} /> 智能验证
             </button>
             <div className="h-5 w-px bg-slate-200 mx-1"></div>
-            <button 
+            <button
               onClick={handleSave}
               disabled={isFlowSaving || !flowInfo?.id}
               className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save size={16} className={isFlowSaving ? 'animate-pulse' : ''} /> 
+              <Save size={16} className={isFlowSaving ? 'animate-pulse' : ''} />
               {isFlowSaving ? '保存中...' : '保存'}
             </button>
-            <button className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md shadow-sm shadow-indigo-200 transition-colors">
+            {isExecuting ? (
+              <button
+                onClick={handleStop}
+                className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-md transition-colors"
+              >
+                <StopCircle size={16} /> 停止运行
+              </button>
+            ) : (
+              <button
+                onClick={handleRun}
+                disabled={!flowInfo?.id}
+                className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <PlayCircle size={16} /> 调试运行
+              </button>
+            )}
+            <button
+              onClick={handleRelease}
+              disabled={!flowInfo?.id}
+              className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md shadow-sm shadow-indigo-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Share2 size={16} /> 发布流程
             </button>
           </div>

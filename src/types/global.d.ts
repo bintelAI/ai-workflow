@@ -16,5 +16,12 @@ declare global {
     __WUJIE?: {
       id: string;
     };
+    __AI_FLOW_RUNTIME__?: {
+      id?: number | string;
+      teamId?: string;
+      projectId?: string;
+      token?: string;
+      baseURL?: string;
+    };
   }
 }

@@ -233,6 +233,19 @@ export interface WorkflowCategory {
   layoutDirection?: LayoutDirection
 }
 
+export interface WorkflowVariableRef {
+  source?: 'node' | 'const' | 'system' | 'loop' | 'start' | 'payload' | 'global'
+  template?: string
+  refPath?: string
+  nodeId?: string
+  nodeType?: string
+  name?: string
+  field?: string
+  type?: string
+  value?: any
+  label?: string
+}
+
 export interface WorkflowStoreState {
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]
