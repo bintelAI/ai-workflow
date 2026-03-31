@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { Input, Button, Select, Empty } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { FlowField, FlowFieldType } from '@/src/types/flow';
+import type { FlowField, FlowFieldType } from '@ai-flow/src/types/flow';
 import './OutputParams.css';
 
 interface OutputParamsProps {

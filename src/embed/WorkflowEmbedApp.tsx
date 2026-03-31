@@ -1,0 +1,95 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import 'reactflow/dist/style.css'
+import { WorkflowApp } from '@ai-flow/components/Workflow/WorkflowApp'
+import { useWorkflowStore } from '@ai-flow/components/Workflow/store/useWorkflowStore'
+import { setAiFlowRuntime } from '@ai-flow/utils/runtime'
+import { Layers } from 'lucide-react'
+import { getPluginMode, type WorkflowPluginModeType } from '@ai-flow/components/Workflow/config/pluginModeRegistry'
+
+export interface WorkflowEmbedProps {
+  workflowId?: number | string
+  teamId?: string
+  projectId?: string
+  token?: string
+  baseURL?: string
+  type?: string
+  mode?: 'default' | 'dev'
+}
+
+const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
+  workflowId,
+  teamId,
+  projectId,
+  token,
+  baseURL,
+  type,
+  mode = 'default',
+}) => {
+  const { loadFlow, isFlowLoading } = useWorkflowStore()
+  const [error, setError] = useState<string | null>(null)
+
+  const resolvedPluginType = useMemo(() => {
+    return getPluginMode(type || undefined).type as WorkflowPluginModeType
+  }, [type])
+
+  useEffect(() => {
+    setAiFlowRuntime({
+      id: workflowId,
+      teamId,
+      projectId,
+      token,
+      baseURL,
+      type,
+      mode,
+    } as any)
+  }, [workflowId, teamId, projectId, token, baseURL, type, mode])
+
+  useEffect(() => {
+    const flowId = workflowId === undefined || workflowId === null ? '' : String(workflowId)
+    if (!flowId) {
+      setError(null)
+      return
+    }
+
+    const id = parseInt(flowId, 10)
+    if (isNaN(id)) {
+      setError('无效的工作流ID')
+      return
+    }
+
+    setError(null)
+    loadFlow(id, teamId || undefined).catch((err) => {
+      console.error('Failed to load flow:', err)
+      setError('加载工作流失败，请检查ID是否正确')
+    })
+  }, [workflowId, teamId, loadFlow])
+
+  if (error) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Layers size={32} className="text-red-500" />
+          </div>
+          <h2 className="text-xl font-semibold text-slate-800 mb-2">加载失败</h2>
+          <p className="text-slate-500">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isFlowLoading) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">正在加载工作流...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <WorkflowApp teamId={teamId} pluginType={resolvedPluginType} embedded mode={mode} />
+}
+
+export default WorkflowEmbedApp

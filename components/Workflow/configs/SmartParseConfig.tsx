@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { Select, Input, Divider, Alert, Empty, Spin, Popover } from 'antd'
 import { SearchOutlined, CheckOutlined, DownOutlined, BulbOutlined } from '@ant-design/icons'
 import { InputParams, OutputParams } from './common/index'
-import { flowConfigApi } from '@/src/api/flow'
+import { flowConfigApi } from '@ai-flow/src/api/flow'
 import { useWorkflowStore } from '../store/useWorkflowStore'
-import type { FlowField } from '@/src/types/flow'
+import type { FlowField } from '@ai-flow/src/types/flow'
 import './SmartParseConfig.css'
 
 interface SmartParseConfigProps {

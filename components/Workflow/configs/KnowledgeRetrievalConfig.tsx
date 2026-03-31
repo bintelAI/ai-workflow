@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Select, InputNumber, Slider, Divider, Alert, Tag, Empty, Spin } from 'antd';
 import { DatabaseOutlined, SettingOutlined } from '@ant-design/icons';
 import { InputParams } from './common/index';
-import { flowConfigApi } from '@/src/api/flow';
+import { flowConfigApi } from '@ai-flow/src/api/flow';
 import { useWorkflowStore } from '../store/useWorkflowStore';
-import type { FlowField, KnowOptions } from '@/src/types/flow';
+import type { FlowField, KnowOptions } from '@ai-flow/src/types/flow';
 import './KnowledgeRetrievalConfig.css';
 
 interface KnowledgeRetrievalConfigProps {

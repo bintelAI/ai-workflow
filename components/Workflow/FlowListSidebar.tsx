@@ -12,8 +12,8 @@ import {
   ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useWorkflowStore } from './store/useWorkflowStore';
-import { flowInfoApi } from '@/src/api/flow';
-import type { FlowInfoEntity } from '@/src/types/flow';
+import { flowInfoApi } from '@ai-flow/src/api/flow';
+import type { FlowInfoEntity } from '@ai-flow/src/types/flow';
 import './FlowListSidebar.css';
 
 interface FlowListSidebarProps {

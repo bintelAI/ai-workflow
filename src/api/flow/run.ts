@@ -1,6 +1,6 @@
 import request from '../request';
 import type { FlowRunRequest, FlowNodeResult, FlowNodeResultData, FlowLlmStreamData, FlowToolData, FlowData } from '../../types/flow';
-import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeToken } from '@/utils/runtime';
+import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeToken } from '@ai-flow/utils/runtime';
 
 export const flowRunApi = {
   debug: (data: FlowRunRequest) => {

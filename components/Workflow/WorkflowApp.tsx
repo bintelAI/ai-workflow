@@ -7,8 +7,8 @@ import { useWorkflowStore } from './store/useWorkflowStore'
 import ValidationReportModal, { ValidationResult } from './ValidationReportModal'
 import { validateWorkflow } from './validators/workflowValidator'
 import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from './types'
-import { message } from '@/components/common/AntdStaticFunction'
-import { getRuntimeTeamId } from '@/utils/runtime'
+import { message } from '@ai-flow/components/common/AntdStaticFunction'
+import { getRuntimeTeamId } from '@ai-flow/utils/runtime'
 import { getPluginMode, type WorkflowPluginModeType } from './config/pluginModeRegistry'
 
 interface WorkflowAppProps {
@@ -17,6 +17,8 @@ interface WorkflowAppProps {
   allowedNodeTypes?: WorkflowNodeType[]
   teamId?: string
   pluginType?: WorkflowPluginModeType
+  embedded?: boolean
+  mode?: 'default' | 'dev'
 }
 
 const App: React.FC<WorkflowAppProps> = ({
@@ -25,6 +27,8 @@ const App: React.FC<WorkflowAppProps> = ({
   allowedNodeTypes,
   teamId: propTeamId,
   pluginType = 'all',
+  embedded = false,
+  mode = 'default',
 }) => {
   const {
     validateWorkflow: storeValidateWorkflow,
@@ -171,7 +175,10 @@ const App: React.FC<WorkflowAppProps> = ({
 
   return (
     <ReactFlowProvider>
-      <div className="h-screen w-screen flex flex-col overflow-hidden bg-slate-50 text-slate-900 font-sans">
+      <div
+        className="flex flex-col overflow-hidden bg-slate-50 text-slate-900 font-sans"
+        style={embedded ? { height: 'calc(100vh - 63px)', width: '100%' } : { height: '100vh', width: '100vw' }}
+      >
         <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shadow-sm shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-200">
@@ -197,12 +204,16 @@ const App: React.FC<WorkflowAppProps> = ({
             >
               <Database size={16} /> 全局配置
             </button>
-            <button
-              onClick={() => toggleSettings(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-            >
-              <Settings size={16} /> 配置工作流
-            </button>
+              {mode !== 'dev' && (
+                <>
+                  <button
+                    onClick={() => toggleSettings(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                  >
+                    <Settings size={16} /> 配置工作流
+                  </button>
+                </>
+              )}
             <button
               onClick={handleVerify}
               className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
@@ -226,13 +237,15 @@ const App: React.FC<WorkflowAppProps> = ({
                 <StopCircle size={16} /> 停止运行
               </button>
             ) : (
-              <button
-                onClick={handleRun}
-                disabled={!flowInfo?.id}
-                className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <PlayCircle size={16} /> 调试运行
-              </button>
+              mode !== 'dev' && (
+                <button
+                  onClick={handleRun}
+                  disabled={!flowInfo?.id}
+                  className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <PlayCircle size={16} /> 调试运行
+                </button>
+              )
             )}
             <button
               onClick={handleRelease}

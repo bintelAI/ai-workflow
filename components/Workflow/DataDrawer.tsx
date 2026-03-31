@@ -4,9 +4,9 @@ import { ValidationResult } from './ValidationReportModal'
 import ValidationReportModal from './ValidationReportModal'
 import { WorkflowNodeType } from './types'
 import { validateWorkflow } from './validators/workflowValidator'
-import { flowOpenApi, invokeOpenFlowWithSSE } from '@/src/api/flow/open'
-import request from '@/src/api/request'
-import { message } from '@/components/common/AntdStaticFunction'
+import { flowOpenApi, invokeOpenFlowWithSSE } from '@ai-flow/src/api/flow/open'
+import request from '@ai-flow/src/api/request'
+import { message } from '@ai-flow/components/common/AntdStaticFunction'
 import {
   DataDrawerHeader,
   DataDrawerTimeline,
@@ -862,7 +862,7 @@ export const DataDrawer: React.FC = () => {
 
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out z-30 flex flex-col ${isDrawerOpen ? '' : 'h-0'}`}
+      className={`absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ease-in-out z-30 flex flex-col ${isDrawerOpen ? '' : 'h-0'}`}
       style={isDrawerOpen ? { height: `${drawerHeight}px` } : undefined}
     >
       <div

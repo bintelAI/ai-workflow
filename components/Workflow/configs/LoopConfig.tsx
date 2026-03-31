@@ -3,7 +3,7 @@ import { Input, Select, Divider, Alert, InputNumber, Tag } from 'antd';
 import { Repeat } from 'lucide-react';
 import { OutputParams } from './common/index';
 import VariableSelector from './common/VariableSelector';
-import type { FlowField } from '@/src/types/flow';
+import type { FlowField } from '@ai-flow/src/types/flow';
 import './LoopConfig.css';
 
 interface VariableGroup {

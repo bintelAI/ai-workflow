@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Popover, Input, Button, Empty, Tooltip } from 'antd';
 import { SearchOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
-import type { FlowField } from '@/src/types/flow';
+import type { FlowField } from '@ai-flow/src/types/flow';
 import type { WorkflowVariableMeta } from '../../utils/workflowVariables';
 import './VariableSelector.css';
 

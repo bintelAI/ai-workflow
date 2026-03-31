@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react'
 import { StopCircle, LogOut, Plus, Trash2 } from 'lucide-react'
 import { VariableSelector } from './common/index'
-import type { FlowField } from '@/src/types/flow'
+import type { FlowField } from '@ai-flow/src/types/flow'
 
 interface EndConfigProps {
   config: any

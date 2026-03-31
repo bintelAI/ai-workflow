@@ -76,15 +76,19 @@ const ConfigPanel: React.FC = () => {
   const [loadingField, setLoadingField] = useState<string | null>(null)
   const [panelWidth, setPanelWidth] = useState(450)
   const [isResizing, setIsResizing] = useState(false)
+  const panelContainerRef = React.useRef<HTMLDivElement>(null)
 
   // ... (Resizing logic)
   const startResizing = useCallback(() => setIsResizing(true), [])
   const stopResizing = useCallback(() => setIsResizing(false), [])
   const resize = useCallback(
     (e: MouseEvent) => {
-      if (isResizing) {
-        const newWidth = document.body.clientWidth - e.clientX
-        if (newWidth > 300 && newWidth < 800) setPanelWidth(newWidth)
+      if (!isResizing) return
+      const containerRect = panelContainerRef.current?.getBoundingClientRect()
+      if (!containerRect) return
+      const newWidth = containerRect.right - e.clientX
+      if (newWidth >= 320 && newWidth <= 800) {
+        setPanelWidth(newWidth)
       }
     },
     [isResizing]
@@ -228,8 +232,9 @@ const ConfigPanel: React.FC = () => {
 
   return (
     <aside
-      className="bg-white border-l border-slate-200 h-full flex flex-col shadow-xl z-20 relative group"
-      style={{ width: panelWidth }}
+      ref={panelContainerRef}
+      className="bg-white border-l border-slate-200 h-full flex flex-col shrink-0 shadow-xl z-20 relative group"
+      style={{ width: panelWidth, minWidth: panelWidth, maxWidth: panelWidth }}
     >
       <div
         className="absolute top-0 left-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-400 active:bg-indigo-600 transition-colors z-30 flex items-center justify-center opacity-0 group-hover:opacity-100"

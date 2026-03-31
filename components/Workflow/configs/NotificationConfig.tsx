@@ -1,6 +1,6 @@
 import React from 'react'
 import { Bell } from 'lucide-react'
-import { VariableSelector } from './common/index'
+import { VariableTextArea } from './common'
 
 interface NotificationConfigProps {
   config: any
@@ -39,25 +39,13 @@ export const NotificationConfig: React.FC<NotificationConfigProps> = ({
         <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">
           消息内容模板
         </label>
-        <div className="flex flex-col gap-2">
-          <textarea
-            className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs resize-y"
-            rows={4}
-            placeholder="支持使用变量 {{payload.key}}"
-            value={config?.message || ''}
-            onChange={e => onConfigChange('message', e.target.value)}
-          />
-          <div className="w-full">
-            <VariableSelector
-              value=""
-              onChange={val => {
-                const nextValue = typeof val === 'string' && val.startsWith('{{') ? val : `{{${val}}}`
-                onConfigChange('message', `${config?.message || ''} ${nextValue}`.trim())
-              }}
-              placeholder="插入变量..."
-            />
-          </div>
-        </div>
+        <VariableTextArea
+          value={config?.message || ''}
+          onChange={value => onConfigChange('message', value)}
+          placeholder="支持使用变量 {{payload.key}}"
+          rows={4}
+          scope="all"
+        />
       </div>
     </div>
   )

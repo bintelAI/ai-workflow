@@ -1,7 +1,7 @@
-import { WorkflowStoreState, WorkflowNode, WorkflowEdge } from '../types'
-import { flowInfoApi } from '@/src/api/flow'
+import { WorkflowStoreState, WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../../types'
+import { flowInfoApi } from '@ai-flow/src/api/flow'
 import { exportToBackend, importFromBackend } from '../../adapters/backendAdapter'
-import type { FlowInfoEntity, FlowDraft } from '@/src/types/flow'
+import type { FlowInfoEntity, FlowDraft } from '@ai-flow/src/types/flow'
 import { getPluginModeByFlowType } from '../../config/pluginModeRegistry'
 
 export interface FlowState {
@@ -49,16 +49,151 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
     try {
       const res = await flowInfoApi.info(flowId, currentTeamId || undefined)
       const flowInfo = res.data
+      
+      if (!flowInfo) {
+        // 当检查不到数据的时候 直接给他一个开始和结束节点
+        const defaultNodes: WorkflowNode[] = [
+          {
+            id: '1',
+            type: WorkflowNodeType.START,
+            position: { x: 250, y: 50 },
+            data: {
+              label: '流程开始',
+              description: 'Webhook 触发',
+              config: { 
+                devMode: true, 
+                devInput: '{\n  "content": ""\n}',
+                variables: [
+                  {
+                    name: 'content',
+                    displayName: '输入的内容',
+                    type: 'text',
+                    required: false,
+                    hidden: false
+                  }
+                ]
+              },
+            },
+          },
+          {
+            id: '2',
+            type: WorkflowNodeType.END,
+            position: { x: 250, y: 250 },
+            data: {
+              label: '流程结束',
+              description: '流程执行完成',
+            },
+          }
+        ]
+        const defaultEdges: WorkflowEdge[] = [
+          {
+            id: 'e1-2',
+            source: '1',
+            target: '2',
+            type: 'custom',
+          }
+        ]
+        get().setWorkflow(defaultNodes, defaultEdges)
+        set({ isFlowLoading: false })
+        return
+      }
+
       const pluginMode = getPluginModeByFlowType(flowInfo?.type)
       set({ flowInfo, activeCategoryId: pluginMode.categoryId })
 
       if (flowInfo?.draft) {
         const { nodes, edges } = importFromBackend(flowInfo.draft)
         get().setWorkflow(nodes as WorkflowNode[], edges as WorkflowEdge[])
+      } else {
+        // 如果有 flowInfo 但没有 draft，也给默认节点
+        const defaultNodes: WorkflowNode[] = [
+          {
+            id: '1',
+            type: WorkflowNodeType.START,
+            position: { x: 250, y: 50 },
+            data: {
+              label: '流程开始',
+              description: 'Webhook 触发',
+              config: { 
+                devMode: true, 
+                devInput: '{\n  "content": ""\n}',
+                variables: [
+                  {
+                    name: 'content',
+                    displayName: '输入的内容',
+                    type: 'text',
+                    required: false,
+                    hidden: false
+                  }
+                ]
+              },
+            },
+          },
+          {
+            id: '2',
+            type: WorkflowNodeType.END,
+            position: { x: 250, y: 250 },
+            data: {
+              label: '流程结束',
+              description: '流程执行完成',
+            },
+          }
+        ]
+        const defaultEdges: WorkflowEdge[] = [
+          {
+            id: 'e1-2',
+            source: '1',
+            target: '2',
+            type: 'custom',
+          }
+        ]
+        get().setWorkflow(defaultNodes, defaultEdges)
       }
     } catch (error) {
       console.error('Failed to load flow:', error)
-      throw error
+      // 当检查不到数据或接口报错的时候 直接给他一个开始和结束节点
+      const defaultNodes: WorkflowNode[] = [
+        {
+          id: '1',
+          type: WorkflowNodeType.START,
+          position: { x: 250, y: 50 },
+          data: {
+            label: '流程开始',
+            description: 'Webhook 触发',
+            config: { 
+              devMode: true, 
+              devInput: '{\n  "content": ""\n}',
+              variables: [
+                {
+                  name: 'content',
+                  displayName: '输入的内容',
+                  type: 'text',
+                  required: false,
+                  hidden: false
+                }
+              ]
+            },
+          },
+        },
+        {
+          id: '2',
+          type: WorkflowNodeType.END,
+          position: { x: 250, y: 250 },
+          data: {
+            label: '流程结束',
+            description: '流程执行完成',
+          },
+        }
+      ]
+      const defaultEdges: WorkflowEdge[] = [
+        {
+          id: 'e1-2',
+          source: '1',
+          target: '2',
+          type: 'custom',
+        }
+      ]
+      get().setWorkflow(defaultNodes, defaultEdges)
     } finally {
       set({ isFlowLoading: false })
     }

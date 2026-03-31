@@ -1,41 +1,39 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { WorkflowApp } from '@/components/Workflow/WorkflowApp'
 import { useWorkflowStore } from '@/components/Workflow/store/useWorkflowStore'
 import { Layers } from 'lucide-react'
-import { getRuntimeFlowId, getRuntimeProjectId, getRuntimeTeamId, getRuntimePluginType } from '@/utils/runtime'
+import { resolveAiFlowRuntime } from '@/utils/runtime'
 import { getPluginMode, type WorkflowPluginModeType } from '@/components/Workflow/config/pluginModeRegistry'
 
 const App: React.FC = () => {
   const { loadFlow, isFlowLoading } = useWorkflowStore()
   const [error, setError] = useState<string | null>(null)
-  const urlParams = new URLSearchParams(window.location.search)
+  const runtime = useMemo(() => resolveAiFlowRuntime(), [])
   const resolvedPluginType = getPluginMode(
-    getRuntimePluginType() || urlParams.get('type') || undefined
+    runtime.type || undefined
   ).type as WorkflowPluginModeType
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const flowId = getRuntimeFlowId() || urlParams.get('id') || ''
-    const teamId = getRuntimeTeamId() || urlParams.get('teamId') || ''
-    const projectId = getRuntimeProjectId() || urlParams.get('projectId') || ''
+    const flowId = runtime.id === undefined || runtime.id === null ? '' : String(runtime.id)
+    const teamId = runtime.teamId || ''
 
-    if (projectId) {
-      localStorage.setItem('workflow_projectId', projectId)
+    if (!flowId) {
+      setError('缺少工作流ID')
+      return
     }
 
-    if (flowId) {
-      const id = parseInt(flowId, 10)
-      const tId = teamId || undefined
-      if (!isNaN(id)) {
-        loadFlow(id, tId).catch((err) => {
-          console.error('Failed to load flow:', err)
-          setError('加载工作流失败，请检查ID是否正确')
-        })
-      } else {
-        setError('无效的工作流ID')
-      }
+    const id = parseInt(flowId, 10)
+    if (isNaN(id)) {
+      setError('无效的工作流ID')
+      return
     }
-  }, [loadFlow])
+
+    setError(null)
+    loadFlow(id, teamId || undefined).catch((err) => {
+      console.error('Failed to load flow:', err)
+      setError('加载工作流失败，请检查ID是否正确')
+    })
+  }, [loadFlow, runtime.id, runtime.teamId])
 
   if (error) {
     return (

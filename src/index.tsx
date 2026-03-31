@@ -6,11 +6,7 @@ import { setAiFlowRuntime } from '@/utils/runtime'
 
 let root: ReactDOM.Root | null = null;
 
-// 渲染函数
-function render(props: any) {
-  const container = document.getElementById('root');
-  if (!container) return;
-
+const applyRuntimeFromProps = (props: any) => {
   setAiFlowRuntime({
     id: props?.id,
     teamId: props?.teamId,
@@ -19,23 +15,19 @@ function render(props: any) {
     baseURL: props?.baseURL,
     type: props?.type,
   });
+};
 
-  const url = new URL(window.location.href);
-  if (props?.id !== undefined && props?.id !== null) {
-    url.searchParams.set('id', String(props.id));
-  }
-  if (props?.projectId) {
-    url.searchParams.set('projectId', String(props.projectId));
-  }
-  if (props?.teamId) {
-    url.searchParams.set('teamId', String(props.teamId));
-  }
-  if (props?.type) {
-    url.searchParams.set('type', String(props.type));
-  }
-  window.history.replaceState({}, '', url.toString());
+// 渲染函数
+function render(props: any = {}) {
+  const container = document.getElementById('root');
+  if (!container) return;
 
-  root = ReactDOM.createRoot(container);
+  applyRuntimeFromProps(props);
+
+  if (!root) {
+    root = ReactDOM.createRoot(container);
+  }
+
   root.render(
     <React.StrictMode>
       <App />
@@ -61,10 +53,10 @@ export async function mount(props: any) {
   render(props);
 }
 
-export async function unmount(props: any) {
+export async function unmount() {
   destroy();
 }
 
 export async function update(props: any) {
-  console.log('update props', props);
+  render(props);
 }

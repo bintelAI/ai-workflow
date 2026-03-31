@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { message } from '@/components/common/AntdStaticFunction';
-import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeToken } from '@/utils/runtime';
+import { message } from '@ai-flow/components/common/AntdStaticFunction';
+import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeToken } from '@ai-flow/utils/runtime';
 
 // 定义通用响应结构
 interface ApiResponse<T = any> {

@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { Select, Input, Button, Divider, Alert, Radio, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined, ForkOutlined } from '@ant-design/icons';
 import { VariableSelector } from './common/index';
-import type { FlowField, ConditionOperator, ConditionItem } from '@/src/types/flow';
+import type { FlowField, ConditionOperator, ConditionItem } from '@ai-flow/src/types/flow';
 import './ConditionConfig.css';
 
 interface ConditionConfigProps {

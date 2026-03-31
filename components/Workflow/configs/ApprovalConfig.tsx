@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { VariableTextArea } from './common'
 import {
   CheckSquare,
   Users,
@@ -371,12 +372,12 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
 
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">表单描述</label>
-                  <textarea
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs resize-y"
-                    rows={2}
-                    placeholder="审批表单的描述信息"
+                  <VariableTextArea
                     value={config?.formDescription || ''}
-                    onChange={e => onConfigChange('formDescription', e.target.value)}
+                    onChange={value => onConfigChange('formDescription', value)}
+                    placeholder="审批表单的描述信息"
+                    rows={2}
+                    scope="all"
                   />
                 </div>
               </div>

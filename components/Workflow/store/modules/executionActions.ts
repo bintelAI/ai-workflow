@@ -1,6 +1,6 @@
 import { WorkflowStoreState } from '../types'
-import { runFlowWithSSE } from '@/src/api/flow'
-import type { FlowNodeResultData } from '@/src/types/flow'
+import { runFlowWithSSE } from '@ai-flow/src/api/flow'
+import type { FlowNodeResultData } from '@ai-flow/src/types/flow'
 
 export interface ExecutionState {
   isExecuting: boolean

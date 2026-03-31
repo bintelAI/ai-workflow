@@ -10,7 +10,7 @@ import {
   SettingOutlined,
 } from '@ant-design/icons';
 import { useWorkflowStore } from './store/useWorkflowStore';
-import type { FlowInfoEntity } from '@/src/types/flow';
+import type { FlowInfoEntity } from '@ai-flow/src/types/flow';
 import './FlowToolbar.css';
 
 interface FlowToolbarProps {

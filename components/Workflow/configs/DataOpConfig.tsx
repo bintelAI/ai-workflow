@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Input, Button, Divider, Alert, Select } from 'antd';
 import { FunctionOutlined, CodeOutlined } from '@ant-design/icons';
 import { InputParams, OutputParams } from './common/index';
-import type { FlowField } from '@/src/types/flow';
+import type { FlowField } from '@ai-flow/src/types/flow';
 import './DataOpConfig.css';
 
 interface DataOpConfigProps {

@@ -2,7 +2,7 @@ import React, { useCallback } from 'react'
 import { Divider, Alert } from 'antd'
 import { CodeOutlined } from '@ant-design/icons'
 import { InputParams } from './common/index'
-import type { FlowField } from '@/src/types/flow'
+import type { FlowField } from '@ai-flow/src/types/flow'
 import './JSONParseConfig.css'
 
 interface JSONParseConfigProps {

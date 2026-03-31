@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Select, Input, Button, Divider, Tabs, Alert } from 'antd';
 import { CodeOutlined, DatabaseOutlined, CodeSandboxOutlined } from '@ant-design/icons';
 import { InputParams, OutputParams } from './common/index';
-import type { FlowField } from '@/src/types/flow';
+import type { FlowField } from '@ai-flow/src/types/flow';
 import './ScriptConfig.css';
 
 interface ScriptConfigProps {

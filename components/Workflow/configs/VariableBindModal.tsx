@@ -38,8 +38,6 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'all' | 'upstream' | 'global' | 'system'>('all')
 
-  if (!isOpen) return null
-
   const allVars = useMemo(
     () =>
       buildVariableCatalog({
@@ -51,6 +49,8 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
       }).flatMap(group => group.variables),
     [nodes, edges, selectedNodeId, globalVariables, scope]
   )
+
+  if (!isOpen) return null
 
   const filteredVars = allVars
     .filter(

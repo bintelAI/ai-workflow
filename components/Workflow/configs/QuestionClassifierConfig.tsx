@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Select, Input, Button, Divider, Alert, Empty, Popover, Spin } from 'antd';
 import { PlusOutlined, DeleteOutlined, SearchOutlined, CheckOutlined, DownOutlined, TagsOutlined } from '@ant-design/icons';
 import { InputParams } from './common/index';
-import { flowConfigApi } from '@/src/api/flow';
+import { flowConfigApi } from '@ai-flow/src/api/flow';
 import { useWorkflowStore } from '../store/useWorkflowStore';
-import type { FlowField, FlowModelOption, ClassifyOptions } from '@/src/types/flow';
+import type { FlowField, FlowModelOption, ClassifyOptions } from '@ai-flow/src/types/flow';
 import './QuestionClassifierConfig.css';
 
 interface QuestionClassifierConfigProps {

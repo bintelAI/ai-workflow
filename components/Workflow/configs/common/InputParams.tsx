@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { Input, Button, Empty } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { FlowField } from '@/src/types/flow';
+import type { FlowField } from '@ai-flow/src/types/flow';
 import VariableSelector from './VariableSelector';
 import './InputParams.css';
 

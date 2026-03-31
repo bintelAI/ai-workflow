@@ -38,9 +38,9 @@ export const flowPluginApi = {
     return request.get<any, { data: PluginEntity[] }>(`/app/plugin/${teamId}/info/list`);
   },
 
-  page: (teamId: number, params: PluginPageParams) => {
-    return request.post<any, { data: PluginPageResponse }>(`/app/plugin/${teamId}/info/page`, params);
-  },
+  // page: (teamId: number, params: PluginPageParams) => {
+  //   return request.post<any, { data: PluginPageResponse }>(`/app/plugin/${teamId}/info/page`, params);
+  // },
 
   info: (teamId: number, id: number) => {
     return request.get<any, { data: PluginEntity }>(`/app/plugin/${teamId}/info/info`, { params: { id } });

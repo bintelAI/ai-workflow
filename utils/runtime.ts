@@ -7,7 +7,58 @@ export interface AiFlowRuntimeConfig {
   type?: string;
 }
 
+declare global {
+  interface Window {
+    __AI_FLOW_RUNTIME__?: AiFlowRuntimeConfig;
+  }
+}
+
 const RUNTIME_KEY = '__AI_FLOW_RUNTIME__';
+
+const getUrlSearchParams = (): URLSearchParams => {
+  if (typeof window === 'undefined') {
+    return new URLSearchParams();
+  }
+  return new URLSearchParams(window.location.search);
+};
+
+const getUrlParam = (key: keyof AiFlowRuntimeConfig): string => {
+  const value = getUrlSearchParams().get(key);
+  return value ?? '';
+};
+
+const readStorageValue = (key: keyof AiFlowRuntimeConfig): string => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  switch (key) {
+    case 'token':
+      return localStorage.getItem('token') || '';
+    case 'projectId':
+      return localStorage.getItem('workflow_projectId') || '';
+    case 'teamId':
+      return localStorage.getItem('workflow_teamId') || '';
+    default:
+      return '';
+  }
+};
+
+const persistRuntime = (runtime: AiFlowRuntimeConfig) => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (runtime.token) {
+    localStorage.setItem('token', runtime.token);
+  }
+  if (runtime.projectId) {
+    localStorage.setItem('workflow_projectId', runtime.projectId);
+  }
+  if (runtime.teamId) {
+    localStorage.setItem('workflow_teamId', runtime.teamId);
+  }
+};
 
 export const getAiFlowRuntime = (): AiFlowRuntimeConfig => {
   if (typeof window === 'undefined') {
@@ -24,43 +75,54 @@ export const setAiFlowRuntime = (runtime: AiFlowRuntimeConfig) => {
   const current = getAiFlowRuntime();
   const next = { ...current, ...runtime };
   window[RUNTIME_KEY] = next;
+  persistRuntime(next);
+};
 
-  if (next.token) {
-    localStorage.setItem('token', next.token);
-  }
-  if (next.projectId) {
-    localStorage.setItem('workflow_projectId', next.projectId);
-  }
-  if (next.teamId) {
-    localStorage.setItem('workflow_teamId', next.teamId);
-  }
+export const resolveAiFlowRuntime = (): Required<Pick<AiFlowRuntimeConfig, 'teamId' | 'projectId' | 'token' | 'baseURL' | 'type'>> & Pick<AiFlowRuntimeConfig, 'id'> => {
+  const runtime = getAiFlowRuntime();
+  const urlId = getUrlParam('id');
+  const urlTeamId = getUrlParam('teamId');
+  const urlProjectId = getUrlParam('projectId');
+  const urlType = getUrlParam('type');
+  const urlBaseURL = getUrlParam('baseURL');
+  const resolved: Required<Pick<AiFlowRuntimeConfig, 'teamId' | 'projectId' | 'token' | 'baseURL' | 'type'>> & Pick<AiFlowRuntimeConfig, 'id'> = {
+    id: runtime.id ?? (urlId || undefined),
+    teamId: runtime.teamId || urlTeamId || readStorageValue('teamId'),
+    projectId: runtime.projectId || urlProjectId || readStorageValue('projectId'),
+    token: runtime.token || readStorageValue('token'),
+    baseURL: runtime.baseURL || urlBaseURL || import.meta.env.VITE_API_BASE_URL || '/api',
+    type: runtime.type || urlType || '',
+  };
+
+  persistRuntime(resolved);
+  return resolved;
 };
 
 export const getRuntimeValue = <T extends keyof AiFlowRuntimeConfig>(key: T): AiFlowRuntimeConfig[T] => {
-  return getAiFlowRuntime()[key];
+  return resolveAiFlowRuntime()[key];
 };
 
 export const getRuntimeBaseURL = (): string => {
-  return getRuntimeValue('baseURL') || import.meta.env.VITE_API_BASE_URL || '/api';
+  return resolveAiFlowRuntime().baseURL;
 };
 
 export const getRuntimeToken = (): string => {
-  return getRuntimeValue('token') || localStorage.getItem('token') || '';
+  return resolveAiFlowRuntime().token;
 };
 
 export const getRuntimeProjectId = (): string => {
-  return getRuntimeValue('projectId') || localStorage.getItem('workflow_projectId') || '';
+  return resolveAiFlowRuntime().projectId;
 };
 
 export const getRuntimeTeamId = (): string => {
-  return getRuntimeValue('teamId') || localStorage.getItem('workflow_teamId') || '';
+  return resolveAiFlowRuntime().teamId;
 };
 
 export const getRuntimeFlowId = (): string => {
-  const value = getRuntimeValue('id');
+  const value = resolveAiFlowRuntime().id;
   return value === undefined || value === null ? '' : String(value);
 };
 
 export const getRuntimePluginType = (): string => {
-  return getRuntimeValue('type') || '';
+  return resolveAiFlowRuntime().type;
 };

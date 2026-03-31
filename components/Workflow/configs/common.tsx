@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
-import { Plus, Trash2, ListPlus, ChevronDown, Variable, Braces, X, Check, Search } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import { Plus, Trash2, ListPlus, ChevronDown, Variable, Braces, X, Check, Search, CircleX, Info } from 'lucide-react'
 import { VariableBindModal } from './VariableBindModal'
-import { normalizeLegacyTemplate } from '../utils/workflowVariables'
+import { normalizeLegacyTemplate, parseVariableTemplate } from '../utils/workflowVariables'
 
 // --- Helper: Flatten JSON object to dot notation ---
 export const flattenObject = (obj: any, parentKey = '', res: any[] = []) => {
@@ -113,6 +113,72 @@ export const VariableInput: React.FC<VariableInputProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
 
+  const removeVariableToken = (targetToken: TemplateToken) => {
+    if (targetToken.type !== 'variable' || targetToken.start === undefined || targetToken.end === undefined) {
+      return
+    }
+
+    const nextCursor = targetToken.start
+    const newValue = `${value.slice(0, targetToken.start)}${value.slice(targetToken.end)}`
+    onChange(newValue)
+
+    setTimeout(() => {
+      const textarea = textAreaRef.current
+      if (!textarea) return
+      textarea.focus()
+      textarea.setSelectionRange(nextCursor, nextCursor)
+      selectionRef.current = { start: nextCursor, end: nextCursor }
+      syncScroll()
+    }, 0)
+  }
+
+  const findVariableTokenByRange = (start: number, end: number) => {
+    return parsedTokens.find(
+      token =>
+        token.type === 'variable' &&
+        token.start !== undefined &&
+        token.end !== undefined &&
+        start < token.end && end > token.start
+    )
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Backspace' && event.key !== 'Delete') {
+      return
+    }
+
+    const textarea = textAreaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart || 0
+    const end = textarea.selectionEnd || 0
+
+    if (start !== end) {
+      const selectedToken = findVariableTokenByRange(start, end)
+      if (selectedToken) {
+        event.preventDefault()
+        removeVariableToken(selectedToken)
+      }
+      return
+    }
+
+    const targetIndex = event.key === 'Backspace' ? start - 1 : start
+    if (targetIndex < 0) return
+
+    const targetToken = parsedTokens.find(
+      token =>
+        token.type === 'variable' &&
+        token.start !== undefined &&
+        token.end !== undefined &&
+        targetIndex >= token.start && targetIndex < token.end
+    )
+
+    if (targetToken) {
+      event.preventDefault()
+      removeVariableToken(targetToken)
+    }
+  }
+
   const handleInsert = (variable: string) => {
     // Insert at cursor position or append
     const input = inputRef.current
@@ -171,6 +237,126 @@ export interface VariableTextAreaProps {
   className?: string
   rows?: number
   scope?: 'upstream' | 'internal' | 'all'
+  disabled?: boolean
+  stableMode?: boolean
+  plainTextMode?: boolean
+}
+
+interface TemplateToken {
+  type: 'text' | 'variable'
+  value: string
+  displayValue?: string
+  start?: number
+  end?: number
+  scope?: 'payload' | 'global' | 'system' | 'loop' | 'node' | 'unknown'
+  path?: string
+}
+
+const VARIABLE_TOKEN_REGEX = /(\$?\{\{\s*[^}]+?\s*\}\})/g
+
+const getTokenStyleByScope = (scope?: TemplateToken['scope']) => {
+  switch (scope) {
+    case 'system':
+      return {
+        chip: 'bg-amber-100/80 text-amber-700 shadow-[inset_0_-1px_0_rgba(245,158,11,0.18)]',
+        label: '系统变量',
+      }
+    case 'global':
+    case 'payload':
+      return {
+        chip: 'bg-emerald-100/80 text-emerald-700 shadow-[inset_0_-1px_0_rgba(16,185,129,0.18)]',
+        label: '全局变量',
+      }
+    case 'loop':
+      return {
+        chip: 'bg-fuchsia-100/80 text-fuchsia-700 shadow-[inset_0_-1px_0_rgba(217,70,239,0.18)]',
+        label: '循环变量',
+      }
+    case 'node':
+      return {
+        chip: 'bg-indigo-100/80 text-indigo-700 shadow-[inset_0_-1px_0_rgba(99,102,241,0.18)]',
+        label: '节点变量',
+      }
+    default:
+      return {
+        chip: 'bg-slate-100 text-slate-700 shadow-[inset_0_-1px_0_rgba(100,116,139,0.16)]',
+        label: '变量',
+      }
+  }
+}
+
+const getTokenDisplayText = (token: TemplateToken) => {
+  if (token.scope === 'node' && token.path?.startsWith('nodes.')) {
+    const parts = token.path.split('.')
+    if (parts.length >= 3) {
+      return parts.slice(2).join('.')
+    }
+  }
+
+  if (token.path) {
+    return token.path.replace(/^(payload|global|system|loop|nodes\.[^.]+)\./, '')
+  }
+
+  return token.displayValue || token.value
+}
+
+const parseTemplateTokens = (value: string): TemplateToken[] => {
+  if (!value) {
+    return []
+  }
+
+  const tokens: TemplateToken[] = []
+  let lastIndex = 0
+
+  value.replace(VARIABLE_TOKEN_REGEX, (match, _group, offset: number) => {
+    if (offset > lastIndex) {
+      tokens.push({
+        type: 'text',
+        value: value.slice(lastIndex, offset),
+        start: lastIndex,
+        end: offset,
+      })
+    }
+
+    const normalized = normalizeLegacyTemplate(match)
+    const parsedRef = parseVariableTemplate(normalized)[0]
+    const displayValue = normalized.replace(/^\{\{\s*|\s*\}\}$/g, '')
+
+    tokens.push({
+      type: 'variable',
+      value: normalized,
+      displayValue,
+      start: offset,
+      end: offset + match.length,
+      scope: parsedRef?.kind,
+      path: parsedRef?.path,
+    })
+
+    lastIndex = offset + match.length
+    return match
+  })
+
+  if (lastIndex < value.length) {
+    tokens.push({
+      type: 'text',
+      value: value.slice(lastIndex),
+      start: lastIndex,
+      end: value.length,
+    })
+  }
+
+  if (tokens.length === 0) {
+    return [
+      {
+        type: 'text',
+        value,
+        start: 0,
+        end: value.length,
+      },
+    ]
+  }
+
+  return tokens
 }
 
 export const VariableTextArea: React.FC<VariableTextAreaProps> = ({
@@ -180,46 +366,212 @@ export const VariableTextArea: React.FC<VariableTextAreaProps> = ({
   className = '',
   rows = 4,
   scope = 'upstream',
+  disabled = false,
+  stableMode = false,
+  plainTextMode = false,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const textAreaRef = React.useRef<HTMLTextAreaElement>(null)
+  const overlayRef = React.useRef<HTMLDivElement>(null)
+  const selectionRef = React.useRef({ start: 0, end: 0 })
+
+  const parsedTokens = useMemo(() => parseTemplateTokens(value), [value])
+
+  const textAreaClassName = plainTextMode
+    ? 'relative z-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 pr-12 text-sm font-mono leading-[22px] text-slate-700 caret-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none min-h-[120px]'
+    : stableMode
+      ? 'relative z-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 pr-12 text-sm font-mono leading-[22px] text-transparent caret-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none min-h-[120px]'
+      : 'relative z-10 w-full resize-y rounded-md border border-slate-300 bg-transparent px-3 py-2 pr-12 text-sm font-mono leading-[22px] text-transparent caret-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none min-h-[120px]'
+
+  const overlayClassName = stableMode && !plainTextMode
+    ? 'pointer-events-none absolute inset-0 overflow-auto whitespace-pre-wrap break-words rounded-md border border-transparent px-3 py-2 pr-12 text-sm font-mono leading-[22px] opacity-100'
+    : 'absolute inset-0 overflow-auto whitespace-pre-wrap break-words rounded-md border border-transparent px-3 py-2 pr-12 text-sm font-mono leading-[22px]'
+
+  const syncScroll = () => {
+    const textarea = textAreaRef.current
+    const overlay = overlayRef.current
+    if (!textarea || !overlay) return
+    overlay.scrollTop = textarea.scrollTop
+    overlay.scrollLeft = textarea.scrollLeft
+  }
+
+  const rememberSelection = () => {
+    const textarea = textAreaRef.current
+    if (!textarea) return
+    selectionRef.current = {
+      start: textarea.selectionStart || 0,
+      end: textarea.selectionEnd || 0,
+    }
+  }
+
+  const removeVariableToken = (targetToken: TemplateToken) => {
+    if (targetToken.type !== 'variable' || targetToken.start === undefined || targetToken.end === undefined) {
+      return
+    }
+
+    const nextCursor = targetToken.start
+    const newValue = `${value.slice(0, targetToken.start)}${value.slice(targetToken.end)}`
+    onChange(newValue)
+
+    setTimeout(() => {
+      const textarea = textAreaRef.current
+      if (!textarea) return
+      textarea.focus()
+      textarea.setSelectionRange(nextCursor, nextCursor)
+      selectionRef.current = { start: nextCursor, end: nextCursor }
+      syncScroll()
+    }, 0)
+  }
+
+  const findVariableTokenByRange = (start: number, end: number) => {
+    return parsedTokens.find(
+      token =>
+        token.type === 'variable' &&
+        token.start !== undefined &&
+        token.end !== undefined &&
+        start < token.end && end > token.start
+    )
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Backspace' && event.key !== 'Delete') {
+      return
+    }
+
+    const textarea = textAreaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart || 0
+    const end = textarea.selectionEnd || 0
+
+    if (start !== end) {
+      const selectedToken = findVariableTokenByRange(start, end)
+      if (selectedToken) {
+        event.preventDefault()
+        removeVariableToken(selectedToken)
+      }
+      return
+    }
+
+    const targetIndex = event.key === 'Backspace' ? start - 1 : start
+    if (targetIndex < 0) return
+
+    const targetToken = parsedTokens.find(
+      token =>
+        token.type === 'variable' &&
+        token.start !== undefined &&
+        token.end !== undefined &&
+        targetIndex >= token.start && targetIndex < token.end
+    )
+
+    if (targetToken) {
+      event.preventDefault()
+      removeVariableToken(targetToken)
+    }
+  }
 
   const handleInsert = (variable: string) => {
     const textarea = textAreaRef.current
-    if (textarea) {
-      const start = textarea.selectionStart || 0
-      const end = textarea.selectionEnd || 0
-      const newValue = value.substring(0, start) + variable + value.substring(end)
-      onChange(newValue)
+    const { start, end } = textarea
+      ? { start: textarea.selectionStart || 0, end: textarea.selectionEnd || 0 }
+      : selectionRef.current
 
-      setTimeout(() => {
-        textarea.focus()
-        const newCursorPos = start + variable.length
-        textarea.setSelectionRange(newCursorPos, newCursorPos)
-      }, 0)
-    } else {
-      onChange(value + variable)
-    }
+    const newValue = value.substring(0, start) + variable + value.substring(end)
+    onChange(newValue)
+
+    setTimeout(() => {
+      if (!textarea) return
+      textarea.focus()
+      const newCursorPos = start + variable.length
+      textarea.setSelectionRange(newCursorPos, newCursorPos)
+      selectionRef.current = { start: newCursorPos, end: newCursorPos }
+      syncScroll()
+    }, 0)
+
     setIsModalOpen(false)
   }
 
   return (
     <div className={`relative ${className}`}>
+      <div className="absolute right-2 top-2 z-20">
+        <button
+          type="button"
+          onMouseDown={rememberSelection}
+          onClick={() => !disabled && setIsModalOpen(true)}
+          className="flex h-7 min-w-7 items-center justify-center rounded-full border border-indigo-200 bg-white/95 px-2 text-[11px] font-semibold text-indigo-600 shadow-sm backdrop-blur transition-all hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          title="插入变量"
+          disabled={disabled}
+        >
+          <Braces size={12} />
+        </button>
+      </div>
+
+        <div
+          ref={overlayRef}
+          className={overlayClassName}
+          style={{ display: plainTextMode ? 'none' : undefined }}
+        >
+        {value ? (
+          parsedTokens.map((token, index) =>
+            token.type === 'variable' ? (
+              (() => {
+                const tokenStyle = getTokenStyleByScope(token.scope)
+                return (
+                  <span
+                    key={`${token.value}-${index}`}
+                    className={`group/token relative mx-[1px] rounded px-0.5 transition-colors duration-150 ${tokenStyle.chip}`}
+                    title={`${tokenStyle.label}\n${token.path || token.displayValue || token.value}`}
+                  >
+                    <span className="inline-flex items-center gap-1 align-baseline">
+                      <Info size={11} className="text-current opacity-55 transition-opacity group-hover/token:opacity-80" />
+                      <span>{getTokenDisplayText(token)}</span>
+                    </span>
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onMouseDown={event => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                      }}
+                      onClick={event => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        removeVariableToken(token)
+                      }}
+                      className="pointer-events-auto absolute -right-2 -top-2 hidden h-4 w-4 items-center justify-center rounded-full border border-white bg-slate-700 text-white shadow-sm transition-colors hover:bg-rose-500 group-hover/token:flex"
+                      title={`删除${tokenStyle.label}`}
+                    >
+                      <CircleX size={12} />
+                    </button>
+                  </span>
+                )
+              })()
+            ) : (
+              <span key={`${token.value}-${index}`} className="text-slate-700">
+                {token.value}
+              </span>
+            )
+          )
+        ) : (
+          <span className="text-slate-400">{placeholder}</span>
+        )}
+        </div>
+
       <textarea
         ref={textAreaRef}
-        className="w-full pl-3 pr-8 py-2 border border-slate-300 rounded-md text-sm font-mono text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none resize-y min-h-[100px]"
+        className={textAreaClassName}
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
+        onScroll={syncScroll}
+        onClick={rememberSelection}
+        onKeyUp={rememberSelection}
+        onKeyDown={handleKeyDown}
+        onSelect={rememberSelection}
+        onBlur={rememberSelection}
+        placeholder={value ? '' : placeholder}
         rows={rows}
+        disabled={disabled}
       />
-      <button
-        onClick={() => setIsModalOpen(true)}
-        className="absolute right-2 top-2 p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-        title="插入变量"
-      >
-        <Braces size={14} />
-      </button>
 
       <VariableBindModal
         isOpen={isModalOpen}

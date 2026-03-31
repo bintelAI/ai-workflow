@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Select, Divider, Alert, Empty, Spin } from 'antd'
 import { BranchesOutlined } from '@ant-design/icons'
 import { InputParams, OutputParams } from './common/index'
-import { flowConfigApi, flowInfoApi } from '@/src/api/flow'
+import { flowConfigApi, flowInfoApi } from '@ai-flow/src/api/flow'
 import { useWorkflowStore } from '../store/useWorkflowStore'
-import type { FlowField } from '@/src/types/flow'
+import type { FlowField } from '@ai-flow/src/types/flow'
 import './FlowCallConfig.css'
 
 interface FlowCallConfigProps {

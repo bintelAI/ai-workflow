@@ -2,7 +2,7 @@ import React, { useCallback } from 'react'
 import { Divider, Alert, Input } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import { InputParams, OutputParams } from './common/index'
-import type { FlowField } from '@/src/types/flow'
+import type { FlowField } from '@ai-flow/src/types/flow'
 import './VariableConfig.css'
 
 interface VariableConfigProps {

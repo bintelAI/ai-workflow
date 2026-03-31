@@ -23,7 +23,9 @@ export interface FlowPageResponse {
 
 export const flowInfoApi = {
   page: (params: FlowPageParams) => {
-    return request.post<any, { data: FlowPageResponse }>('/app/flow/info/page', params);
+    // return request.post<any, { data: FlowPageResponse }>('/app/flow/info/page', params);
+    // 接口在工作流中未实际使用，直接返回空数据以禁用此请求
+    return Promise.resolve({ data: { list: [], pagination: { page: params.page || 1, size: params.size || 20, total: 0 } } });
   },
 
   info: (id: number, teamId?: string) => {

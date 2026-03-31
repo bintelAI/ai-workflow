@@ -1,6 +1,6 @@
 import request from '../request';
 import type { FlowNodeResult, FlowLlmStreamData, FlowToolData, FlowData, FlowNodeResultData } from '../../types/flow';
-import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeToken } from '@/utils/runtime';
+import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeToken } from '@ai-flow/utils/runtime';
 
 export interface FlowOpenInvokeParams {
   params?: Record<string, any>;

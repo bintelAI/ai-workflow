@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Globe, Plus, Trash2, ChevronDown, ChevronUp, RefreshCcw } from 'lucide-react'
 import { APICallConfig as APICallConfigType, QueryParam, HeaderParam } from '../types'
-import { VariableInput } from './common/index'
+import { VariableInput, VariableTextArea } from './common/index'
 import { normalizeLegacyTemplate } from '../utils/workflowVariables'
 
 interface APICallConfigProps {
@@ -512,15 +512,14 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
                     onParamsChange={handleBodyParamsChange}
                   />
                 ) : (
-                  <div className="relative">
-                    <textarea
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono bg-slate-50 resize-y"
-                      rows={5}
-                      placeholder={localConfig.bodyType === 'json' ? '{ "key": "value" }' : ''}
-                      value={localConfig.body}
-                      onChange={e => handleConfigChange('body', e.target.value)}
-                    />
-                  </div>
+                  <VariableTextArea
+                    value={localConfig.body}
+                    onChange={value => handleConfigChange('body', value)}
+                    placeholder={localConfig.bodyType === 'json' ? '{ "key": "value" }' : ''}
+                    rows={5}
+                    className="text-xs"
+                    scope="all"
+                  />
                 )}
               </div>
             )}
@@ -806,12 +805,13 @@ export const APICallConfig: React.FC<APICallConfigProps> = ({ config, onConfigCh
             <label className="block text-xs font-medium text-slate-500 mb-1 uppercase">
               测试输入 (JSON)
             </label>
-            <textarea
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono bg-slate-50 resize-y"
-              rows={3}
-              placeholder='{ "key": "value" }'
+            <VariableTextArea
               value={testInput}
-              onChange={e => setTestInput(e.target.value)}
+              onChange={value => setTestInput(value)}
+              placeholder='{ "key": "value" }'
+              rows={3}
+              className="text-xs"
+              scope="all"
             />
           </div>
 

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Select, Input, InputNumber, Switch, Slider, Divider, Empty, Spin, Popover, Button, Tag } from 'antd';
+import { Select, Input, InputNumber, Switch, Slider, Divider, Empty, Spin, Popover, Tag, Space } from 'antd';
 import { SearchOutlined, CheckOutlined, DownOutlined, ToolOutlined, ApiOutlined } from '@ant-design/icons';
-import { InputParams, VariableSelector } from './common/index';
-import { flowConfigApi } from '@/src/api/flow';
+import { InputParams } from './common/index';
+import { VariableTextArea } from './common';
+import { flowConfigApi } from '@ai-flow/src/api/flow';
 import { useWorkflowStore } from '../store/useWorkflowStore';
-import type { FlowField } from '@/src/types/flow';
+import type { FlowField } from '@ai-flow/src/types/flow';
 import './LLMConfig.css';
 
 interface LLMConfigProps {
@@ -415,46 +416,43 @@ const LLMConfig: React.FC<LLMConfigProps> = ({
 
       <div className="config-section">
         <label className="config-label">系统提示词 (System)</label>
-        <Input.TextArea
+        <VariableTextArea
           rows={3}
           placeholder="设定 AI 的角色和行为准则..."
           value={config.systemPrompt || ''}
-          onChange={e => onConfigChange('systemPrompt', e.target.value)}
+          onChange={value => onConfigChange('systemPrompt', value)}
+          scope="all"
+          plainTextMode
         />
       </div>
 
       <div className="config-section">
         <label className="config-label">用户提示词 (User)</label>
-        <Input.TextArea
+        <VariableTextArea
           rows={4}
           placeholder="输入具体任务..."
           value={config.userPrompt || ''}
-          onChange={e => onConfigChange('userPrompt', e.target.value)}
+          onChange={value => onConfigChange('userPrompt', value)}
+          scope="all"
+          plainTextMode
         />
-        <div className="variable-insert">
-          <VariableSelector
-            variables={variables}
-            onChange={data => {
-              const varRef = data.template || data.value;
-              onConfigChange('userPrompt', `${config.userPrompt || ''} ${varRef}`.trim());
-            }}
-            placeholder="插入变量..."
-          />
-        </div>
       </div>
 
       <Divider />
 
       <div className="config-section inline">
         <label className="config-label">历史消息</label>
-        <InputNumber
-          min={0}
-          max={100}
-          value={config.history ?? 0}
-          onChange={val => onConfigChange('history', val)}
-          addonBefore="保存"
-          addonAfter="条"
-        />
+        <Space.Compact style={{ width: '100%' }}>
+          <span className="ant-input-group-addon">保存</span>
+          <InputNumber
+            min={0}
+            max={100}
+            style={{ width: '100%' }}
+            value={config.history ?? 0}
+            onChange={val => onConfigChange('history', val)}
+          />
+          <span className="ant-input-group-addon">条</span>
+        </Space.Compact>
       </div>
 
       <div className="config-section inline">

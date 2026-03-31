@@ -8,7 +8,7 @@ import {
   NODE_TYPE_MAP, 
   REVERSE_NODE_TYPE_MAP,
   ConditionOperator 
-} from '@/src/types/flow';
+} from '@ai-flow/src/types/flow';
 import { WorkflowStoreState, WorkflowNodeType, VariableConfig } from '../types';
 import { extractVariableTemplates, normalizeLegacyTemplate } from '../utils/workflowVariables';
 
