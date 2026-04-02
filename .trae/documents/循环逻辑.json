@@ -1,0 +1,239 @@
+{
+  "nodes": [
+    {
+      "id": "loop_1766452485653",
+      "type": "loop",
+      "position": {
+        "x": 867.3900386596781,
+        "y": 514.5124361522749
+      },
+      "style": {
+        "width": 873,
+        "height": 387
+      },
+      "data": {
+        "label": "循环执行",
+        "description": "新添加的节点",
+        "config": {
+          "targetArray": "{{payload.items}}",
+          "exportOutput": "{{nodes.llm_1766453326009.text}}",
+          "concurrency": 1,
+          "mode": "iteration"
+        }
+      },
+      "width": 873,
+      "height": 387,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 867.3900386596781,
+        "y": 514.5124361522749
+      },
+      "dragging": false,
+      "resizing": false
+    },
+    {
+      "id": "data_op_1766452535004",
+      "type": "data_op",
+      "position": {
+        "x": 50.5,
+        "y": 77.25
+      },
+      "data": {
+        "label": "数据操作",
+        "description": "新添加的节点",
+        "config": {}
+      },
+      "width": 200,
+      "height": 105,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 331.5,
+        "y": 378.75
+      },
+      "dragging": false,
+      "parentNode": "loop_1766452485653",
+      "extent": "parent"
+    },
+    {
+      "id": "start_1766453281001",
+      "type": "start",
+      "position": {
+        "x": 1034.1784688397283,
+        "y": 155.21680588101157
+      },
+      "data": {
+        "label": "开始节点",
+        "description": "新添加的节点",
+        "config": {}
+      },
+      "width": 200,
+      "height": 105,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1034.1784688397283,
+        "y": 155.21680588101157
+      },
+      "dragging": false
+    },
+    {
+      "id": "end_1766453288258",
+      "type": "end",
+      "position": {
+        "x": 1309.6204024161902,
+        "y": 1365.6151353088728
+      },
+      "data": {
+        "label": "结束节点",
+        "description": "新添加的节点",
+        "config": {
+          "outputs": [
+            {
+              "key": "sfs",
+              "value": "{{nodes.loop_1766452485653.result}}"
+            }
+          ]
+        }
+      },
+      "width": 200,
+      "height": 105,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1309.6204024161902,
+        "y": 1365.6151353088728
+      },
+      "dragging": false
+    },
+    {
+      "id": "llm_1766453326009",
+      "type": "llm",
+      "position": {
+        "x": 560.7469142466232,
+        "y": 154.54253145689881
+      },
+      "data": {
+        "label": "LLM 模型",
+        "description": "新添加的节点",
+        "config": {
+          "systemPrompt": "sdfd ",
+          "userPrompt": "dg "
+        }
+      },
+      "width": 200,
+      "height": 105,
+      "selected": false,
+      "positionAbsolute": {
+        "x": 1147.1556226578411,
+        "y": 554.7790356739094
+      },
+      "dragging": false,
+      "parentNode": "loop_1766452485653",
+      "extent": "parent"
+    }
+  ],
+  "edges": [
+    {
+      "source": "start_1766453281001",
+      "sourceHandle": null,
+      "target": "loop_1766452485653",
+      "targetHandle": null,
+      "type": "custom",
+      "animated": true,
+      "markerEnd": {
+        "type": "arrowclosed"
+      },
+      "id": "reactflow__edge-start_1766453281001-loop_1766452485653"
+    },
+    {
+      "source": "loop_1766452485653",
+      "sourceHandle": null,
+      "target": "end_1766453288258",
+      "targetHandle": null,
+      "type": "custom",
+      "animated": true,
+      "markerEnd": {
+        "type": "arrowclosed"
+      },
+      "id": "reactflow__edge-loop_1766452485653-end_1766453288258"
+    },
+    {
+      "source": "data_op_1766452535004",
+      "sourceHandle": null,
+      "target": "llm_1766453326009",
+      "targetHandle": null,
+      "type": "custom",
+      "animated": true,
+      "markerEnd": {
+        "type": "arrowclosed"
+      },
+      "id": "reactflow__edge-data_op_1766452535004-llm_1766453326009"
+    }
+  ],
+  "categories": [
+    {
+      "id": "general",
+      "name": "全功能模式 (General)",
+      "description": "包含所有可用节点，适用于复杂混合场景。",
+      "isSystem": true,
+      "allowedNodeTypes": [
+        "start",
+        "end",
+        "approval",
+        "cc",
+        "condition",
+        "api_call",
+        "notification",
+        "delay",
+        "data_op",
+        "script",
+        "parallel",
+        "llm",
+        "loop",
+        "sql",
+        "document_extractor",
+        "knowledge_retrieval"
+      ]
+    },
+    {
+      "id": "business_approval",
+      "name": "行政审批流 (BPM)",
+      "description": "专注于OA审批、报销、请假等业务流程。屏蔽技术性节点。",
+      "isSystem": true,
+      "allowedNodeTypes": [
+        "start",
+        "end",
+        "approval",
+        "cc",
+        "condition",
+        "parallel",
+        "notification",
+        "delay",
+        "loop"
+      ]
+    },
+    {
+      "id": "ai_agent",
+      "name": "AI Agent 编排",
+      "description": "专注于 LLM 调用、数据处理和 API 集成。屏蔽人工审批节点。",
+      "isSystem": true,
+      "allowedNodeTypes": [
+        "start",
+        "end",
+        "llm",
+        "api_call",
+        "script",
+        "data_op",
+        "condition",
+        "parallel",
+        "loop"
+      ]
+    }
+  ],
+  "activeCategoryId": "general",
+  "viewport": {
+    "x": -32.31327845045348,
+    "y": -66.17904760085935,
+    "zoom": 0.5
+  },
+  "exportedAt": "2025-12-23T02:19:30.892Z",
+  "version": "1.4"
+}
