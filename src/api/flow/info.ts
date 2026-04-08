@@ -4,12 +4,13 @@ import type { FlowInfoEntity, FlowDraft } from '../../types/flow';
 export interface FlowPageParams {
   page: number;
   size: number;
-  name?: string;
-  status?: number;
-  type?: number;
+  keyWord?: string;
   flowId?: number;
   isRelease?: boolean;
-  teamId?: string;
+  visibility?: 'private' | 'team_public' | 'all';
+  bindScope?: 'unbound' | 'global' | 'project' | 'all';
+  onlyMine?: boolean;
+  onlyTeamPublic?: boolean;
 }
 
 export interface FlowPageResponse {
@@ -19,41 +20,72 @@ export interface FlowPageResponse {
     size: number;
     total: number;
   };
+  summary?: {
+    myCount: number;
+    teamPublicCount: number;
+    unboundCount: number;
+    globalCount: number;
+    projectBoundCount: number;
+  };
 }
 
 export const flowInfoApi = {
-  page: (params: FlowPageParams) => {
-    // return request.post<any, { data: FlowPageResponse }>('/app/flow/info/page', params);
-    // 接口在工作流中未实际使用，直接返回空数据以禁用此请求
-    return Promise.resolve({ data: { list: [], pagination: { page: params.page || 1, size: params.size || 20, total: 0 } } });
+  page: (teamId: string, params: FlowPageParams) => {
+    return request.post<any, { data: FlowPageResponse }>(`/app/flow/${teamId}/info/page`, params);
   },
 
-  info: (id: number, teamId?: string) => {
-    return request.get<any, { data: FlowInfoEntity }>('/app/flow/info/info', { params: { id, teamId } });
+  info: (teamId: string, id: number) => {
+    return request.get<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/info`, { params: { id } });
   },
 
-  add: (data: Partial<FlowInfoEntity> & { teamId?: string }) => {
-    return request.post<any, { data: FlowInfoEntity }>('/app/flow/info/add', data);
+  add: (teamId: string, data: Partial<FlowInfoEntity>) => {
+    return request.post<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/add`, data);
   },
 
-  update: (data: Partial<FlowInfoEntity> & { teamId?: string }) => {
-    return request.post<any, { data: FlowInfoEntity }>('/app/flow/info/update', data);
+  update: (teamId: string, data: Partial<FlowInfoEntity>) => {
+    return request.post<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/update`, data);
   },
 
-  delete: (id: number, teamId?: string) => {
-    return request.post<any, { data: void }>('/app/flow/info/delete', { id, teamId });
+  delete: (teamId: string, id: number) => {
+    return request.post<any, { data: void }>(`/app/flow/${teamId}/info/delete`, { id });
   },
 
-  release: (flowId: number, teamId?: string) => {
-    return request.post<any, { data: FlowInfoEntity }>('/app/flow/info/release', { flowId, teamId });
+  release: (teamId: string, flowId: number) => {
+    return request.post<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/release`, { flowId });
   },
 
-  save: (id: number, draft: FlowDraft, teamId?: string) => {
-    return request.post<any, { data: FlowInfoEntity }>('/app/flow/info/update', {
+  save: (teamId: string, id: number, draft: FlowDraft) => {
+    return request.post<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/update`, {
       id,
       draft,
-      teamId,
     });
+  },
+
+  setVisibility: (teamId: string, flowId: number, visibility: 'private' | 'team_public') => {
+    return request.post<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/setVisibility`, {
+      flowId,
+      visibility,
+    });
+  },
+
+  setBindScope: (
+    teamId: string,
+    flowId: number,
+    bindScope: 'unbound' | 'global' | 'project',
+    bindProjectIds?: string[]
+  ) => {
+    return request.post<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/setBindScope`, {
+      flowId,
+      bindScope,
+      bindProjectIds,
+    });
+  },
+
+  availableForProject: (teamId: string, projectId: string) => {
+    return request.get<any, { data: FlowInfoEntity[] }>(
+      `/app/flow/${teamId}/info/availableForProject`,
+      { params: { projectId } }
+    );
   },
 };
 

@@ -43,7 +43,7 @@ const FlowListSidebar: React.FC<FlowListSidebarProps> = ({ visible, onClose }) =
     if (!teamId) return;
     setLoading(true);
     try {
-      const res = await flowInfoApi.page({ page: 1, size: 100, teamId });
+      const res = await flowInfoApi.page(teamId, { page: 1, size: 100 });
       setFlowList(res.data.list || []);
     } catch (error) {
       console.error('Failed to load flow list:', error);

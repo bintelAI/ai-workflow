@@ -159,6 +159,7 @@ export const createExecutionActions = (set: any, get: any): ExecutionStore => ({
             label: flowInfo.label,
             flowId: flowInfo.id || null,
             teamId: teamId || null,
+            projectId: (window as any).__AI_FLOW_RUNTIME__?.projectId || localStorage.getItem('workflow_projectId') || null,
             nodeId: options.nodeId || null,
           },
         }),

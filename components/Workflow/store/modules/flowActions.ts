@@ -47,7 +47,7 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
     const currentTeamId = teamId || get().teamId
     set({ isFlowLoading: true })
     try {
-      const res = await flowInfoApi.info(flowId, currentTeamId || undefined)
+      const res = await flowInfoApi.info(currentTeamId || '', flowId)
       const flowInfo = res.data
       
       if (!flowInfo) {
@@ -201,12 +201,12 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
 
   saveFlow: async () => {
     const { flowInfo, nodes, edges, teamId } = get()
-    if (!flowInfo?.id) return
+    if (!flowInfo?.id || !teamId) return
 
     set({ isFlowSaving: true })
     try {
       const draft = exportToBackend({ nodes, edges } as any)
-      await flowInfoApi.save(flowInfo.id, draft, teamId || undefined)
+      await flowInfoApi.save(teamId, flowInfo.id, draft)
     } catch (error) {
       console.error('Failed to save flow:', error)
       throw error
@@ -217,9 +217,10 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
 
   loadFlowList: async (params = { page: 1, size: 20 }) => {
     const teamId = params.teamId || get().teamId
+    if (!teamId) return
     set({ isFlowLoading: true })
     try {
-      const res = await flowInfoApi.page({ ...params, teamId: teamId || undefined })
+      const res = await flowInfoApi.page(teamId, params)
       set({ flowList: res.data.list || [] })
     } catch (error) {
       console.error('Failed to load flow list:', error)
@@ -231,8 +232,12 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
 
   createFlow: async (data: Partial<FlowInfoEntity> & { teamId?: string }) => {
     const teamId = data.teamId || get().teamId
+    if (!teamId) {
+      throw new Error('团队ID不能为空')
+    }
     try {
-      const res = await flowInfoApi.add({ ...data, teamId: teamId || undefined })
+      const { teamId: _teamId, ...payload } = data
+      const res = await flowInfoApi.add(teamId, payload)
       const newFlow = res.data
       set((state: any) => ({ flowList: [...state.flowList, newFlow] }))
       return newFlow
@@ -244,8 +249,12 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
 
   updateFlow: async (data: Partial<FlowInfoEntity> & { teamId?: string }) => {
     const teamId = data.teamId || get().teamId
+    if (!teamId) {
+      throw new Error('团队ID不能为空')
+    }
     try {
-      await flowInfoApi.update({ ...data, teamId: teamId || undefined })
+      const { teamId: _teamId, ...payload } = data
+      await flowInfoApi.update(teamId, payload)
       set((state: any) => ({
         flowInfo: state.flowInfo?.id === data.id ? { ...state.flowInfo, ...data } : state.flowInfo,
         flowList: state.flowList.map((f: any) => (f.id === data.id ? { ...f, ...data } : f)),
@@ -258,8 +267,11 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
 
   deleteFlow: async (id: number, teamId?: string) => {
     const currentTeamId = teamId || get().teamId
+    if (!currentTeamId) {
+      throw new Error('团队ID不能为空')
+    }
     try {
-      await flowInfoApi.delete(id, currentTeamId || undefined)
+      await flowInfoApi.delete(currentTeamId, id)
       set((state: any) => ({
         flowList: state.flowList.filter((f: any) => f.id !== id),
         flowInfo: state.flowInfo?.id === id ? null : state.flowInfo,
@@ -272,10 +284,10 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
 
   releaseFlow: async () => {
     const { flowInfo, teamId } = get()
-    if (!flowInfo?.id) return
+    if (!flowInfo?.id || !teamId) return
 
     try {
-      await flowInfoApi.release(flowInfo.id, teamId || undefined)
+      await flowInfoApi.release(teamId, flowInfo.id)
       set((state: any) => ({
         flowInfo: state.flowInfo ? { ...state.flowInfo, status: 1 } : null,
       }))

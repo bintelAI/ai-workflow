@@ -27,3 +27,7 @@ dist-ssr
 *.sw?
 .trae/documents/AI工作流自定义组件规范优化.md
 .trae/documents/HTTP节点优化方案.md
+backupDel/*
+.backupDel/*
+.server/*
+server/*

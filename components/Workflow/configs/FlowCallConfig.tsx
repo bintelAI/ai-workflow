@@ -94,7 +94,7 @@ const FlowCallConfig: React.FC<FlowCallConfigProps> = ({
 
       setDetailLoading(true)
       try {
-        const res = await flowInfoApi.info(flowId, teamId)
+        const res = await flowInfoApi.info(teamId, flowId)
         const draft = res?.data?.draft
         const startNode = draft?.nodes?.find((node: any) => node?.type === 'start')
         const endNode = [...(draft?.nodes || [])].reverse().find((node: any) => node?.type === 'end')

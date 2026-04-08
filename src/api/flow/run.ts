@@ -1,14 +1,22 @@
 import request from '../request';
 import type { FlowRunRequest, FlowNodeResult, FlowNodeResultData, FlowLlmStreamData, FlowToolData, FlowData } from '../../types/flow';
-import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeToken } from '@ai-flow/utils/runtime';
+import { getRuntimeBaseURL, getRuntimeProjectId, getRuntimeTeamId, getRuntimeToken } from '@ai-flow/utils/runtime';
+
+const getFlowRunPath = (params?: FlowRunRequest) => {
+  const teamId = String(params?.teamId || getRuntimeTeamId() || '');
+  if (!teamId) {
+    throw new Error('缺少 teamId，无法调用工作流运行接口');
+  }
+  return `/app/flow/${teamId}/run`;
+};
 
 export const flowRunApi = {
   debug: (data: FlowRunRequest) => {
-    return request.post<any, { data: void }>('/app/flow/run/debug', data);
+    return request.post<any, { data: void }>(`${getFlowRunPath(data)}/debug`, data);
   },
 
   invoke: (data: FlowRunRequest) => {
-    return request.post<any, { data: any }>('/app/flow/run/invoke', data);
+    return request.post<any, { data: any }>(`${getFlowRunPath(data)}/invoke`, data);
   },
 };
 
@@ -23,13 +31,20 @@ export const createSSEConnection = (
 ): { close: () => void } => {
   const baseUrl = getRuntimeBaseURL();
   const token = getRuntimeToken();
-  const projectId = getRuntimeProjectId();
+  const projectId = params.projectId || getRuntimeProjectId();
+  const teamId = String(params.teamId || getRuntimeTeamId() || '');
+  if (!teamId) {
+    onError?.(new Error('缺少 teamId，无法建立工作流调试连接'));
+    return {
+      close: () => {},
+    };
+  }
 
   const controller = new AbortController();
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   const decoder = new TextDecoder();
 
-  fetch(`${baseUrl}${url}`, {
+  fetch(`${baseUrl}/app/flow/${teamId}/run/${url}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -51,6 +66,20 @@ export const createSSEConnection = (
         contentType,
         hasBody,
       });
+      if (!contentType.includes('text/event-stream')) {
+        return response.text().then(text => {
+          let errorMessage = `调试接口未返回 SSE 流，当前 Content-Type=${contentType || 'unknown'}`;
+          try {
+            const parsed = JSON.parse(text);
+            errorMessage = parsed?.message || errorMessage;
+          } catch {
+            if (text) {
+              errorMessage = `${errorMessage}，响应内容：${text.slice(0, 300)}`;
+            }
+          }
+          throw new Error(errorMessage);
+        });
+      }
       reader = response.body?.getReader() || null;
       if (!reader) {
         throw new Error('Response body is null');
@@ -129,7 +158,7 @@ export const runFlowWithSSE = (
   }
 ): { close: () => void } => {
   return createSSEConnection(
-    '/app/flow/run/debug',
+    'debug',
     params,
     (data: FlowNodeResult) => {
       const { msgType, data: msgData } = data;

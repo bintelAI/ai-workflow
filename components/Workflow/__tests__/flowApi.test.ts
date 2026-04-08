@@ -3,6 +3,13 @@ import { flowInfoApi } from '@/src/api/flow/info';
 import { flowRunApi } from '@/src/api/flow/run';
 import { flowConfigApi } from '@/src/api/flow/config';
 
+vi.mock('@ai-flow/utils/runtime', () => ({
+  getRuntimeTeamId: vi.fn(() => 'team-1'),
+  getRuntimeBaseURL: vi.fn(() => '/api'),
+  getRuntimeProjectId: vi.fn(() => 'project-1'),
+  getRuntimeToken: vi.fn(() => 'token'),
+}));
+
 vi.mock('@/src/api/request', () => ({
   default: {
     get: vi.fn(),
@@ -26,10 +33,10 @@ describe('Flow API', () => {
         }
       };
 
-      const result = await flowInfoApi.page({ page: 1, size: 20 });
+      (request.post as any).mockResolvedValue(mockResponse);
+      const result = await flowInfoApi.page('team-1', { page: 1, size: 20 });
       
-      // page 请求已被禁用，不会调用 request.post，而是直接返回空数据
-      // expect(request.post).toHaveBeenCalledWith('/app/flow/info/page', { page: 1, size: 20 });
+      expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/info/page', { page: 1, size: 20 });
       expect(result).toEqual(mockResponse);
     });
 
@@ -39,9 +46,9 @@ describe('Flow API', () => {
       };
       (request.get as any).mockResolvedValue(mockResponse);
 
-      const result = await flowInfoApi.info(1);
+      const result = await flowInfoApi.info('team-1', 1);
       
-      expect(request.get).toHaveBeenCalledWith('/app/flow/info/info', { params: { id: 1 } });
+      expect(request.get).toHaveBeenCalledWith('/app/flow/team-1/info/info', { params: { id: 1 } });
       expect(result).toEqual(mockResponse);
     });
 
@@ -50,9 +57,9 @@ describe('Flow API', () => {
       const mockResponse = { data: { id: 1, ...mockData } };
       (request.post as any).mockResolvedValue(mockResponse);
 
-      const result = await flowInfoApi.add(mockData);
+      const result = await flowInfoApi.add('team-1', mockData);
       
-      expect(request.post).toHaveBeenCalledWith('/app/flow/info/add', mockData);
+      expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/info/add', mockData);
       expect(result).toEqual(mockResponse);
     });
 
@@ -61,26 +68,26 @@ describe('Flow API', () => {
       const mockResponse = { data: mockData };
       (request.post as any).mockResolvedValue(mockResponse);
 
-      const result = await flowInfoApi.update(mockData);
+      const result = await flowInfoApi.update('team-1', mockData);
       
-      expect(request.post).toHaveBeenCalledWith('/app/flow/info/update', mockData);
+      expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/info/update', mockData);
       expect(result).toEqual(mockResponse);
     });
 
     it('should call delete API with correct id', async () => {
       (request.post as any).mockResolvedValue({});
 
-      await flowInfoApi.delete(1);
+      await flowInfoApi.delete('team-1', 1);
       
-      expect(request.post).toHaveBeenCalledWith('/app/flow/info/delete', { id: 1 });
+      expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/info/delete', { id: 1 });
     });
 
     it('should call release API with correct flowId', async () => {
       (request.post as any).mockResolvedValue({});
 
-      await flowInfoApi.release(1);
+      await flowInfoApi.release('team-1', 1);
       
-      expect(request.post).toHaveBeenCalledWith('/app/flow/info/release', { flowId: 1 });
+      expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/info/release', { flowId: 1 });
     });
   });
 
@@ -91,7 +98,7 @@ describe('Flow API', () => {
 
       await flowRunApi.debug(mockParams);
       
-      expect(request.post).toHaveBeenCalledWith('/app/flow/run/debug', mockParams);
+      expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/run/debug', mockParams);
     });
 
     it('should call invoke API with correct params', async () => {
@@ -100,7 +107,7 @@ describe('Flow API', () => {
 
       await flowRunApi.invoke(mockParams);
       
-      expect(request.post).toHaveBeenCalledWith('/app/flow/run/invoke', mockParams);
+      expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/run/invoke', mockParams);
     });
   });
 

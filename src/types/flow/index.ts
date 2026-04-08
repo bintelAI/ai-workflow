@@ -102,12 +102,13 @@ export interface FlowExecutionSummary {
 
 export interface FlowInfoEntity {
   id?: number;
+  teamId?: string;
   name?: string;
   label?: string;
   description?: string;
   status?: number;
   type?: number;
-  version?: number;
+  version?: string;
   cover?: string;
   draft?: FlowDraft;
   data?: FlowDraft;
@@ -115,6 +116,21 @@ export interface FlowInfoEntity {
   releaseTime?: Date;
   createTime?: Date;
   updateTime?: Date;
+  visibility?: 'private' | 'team_public';
+  bindScope?: 'unbound' | 'global' | 'project';
+  bindProjectIds?: string[] | null;
+  usageType?:
+    | 'ai_analysis'
+    | 'batch_row_update'
+    | 'batch_data_process'
+    | 'row_action'
+    | 'approval'
+    | 'automation'
+    | 'general';
+  isOwner?: boolean;
+  canManage?: boolean;
+  createdBy?: number;
+  updatedBy?: number;
 }
 
 export interface FlowDraft {
@@ -132,6 +148,7 @@ export interface FlowRunRequest {
   nodeId?: string;
   flowId?: number;
   teamId?: string | number | null;
+  projectId?: string;
   stream?: boolean;
 }
 
