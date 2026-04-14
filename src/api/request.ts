@@ -12,7 +12,6 @@ interface ApiResponse<T = any> {
 const config: AxiosRequestConfig = {
   // 从环境变量获取 Base URL，开发环境为 /api，生产环境为实际地址
   baseURL: getRuntimeBaseURL(),
-  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
