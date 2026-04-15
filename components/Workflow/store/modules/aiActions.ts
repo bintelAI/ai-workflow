@@ -1,4 +1,5 @@
 import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../../types'
+import { flowChatApi } from '@/src/api/flow/chat'
 
 const DEFAULT_DEV_INPUT = JSON.stringify(
   {
@@ -113,175 +114,48 @@ export const createAIActions = (set: any, get: any): AIActions => ({
     set({ isAIGenerating: true })
 
     try {
-      const apiKey = (process.env as any).OPENAI_API_KEY || ''
-      const baseUrl = (process.env as any).OPENAI_BASE_URL || 'https://api.openai.com/v1'
-      const model = (process.env as any).OPENAI_MODEL || 'gpt-4o-mini'
-
-      if (!apiKey || apiKey === 'PLACEHOLDER_API_KEY') {
-          await new Promise(resolve => setTimeout(resolve, 1000))
-  
-          const newNodes = [
+      const response = await flowChatApi.completions({
+        model: 'team-default',
+        messages: [
           {
-            id: '1',
-            type: WorkflowNodeType.START,
-            position: { x: 250, y: 50 },
-            data: {
-              label: '流程开始',
-              description: 'Webhook 触发',
-              config: {
-                devMode: true,
-                devInput: DEFAULT_DEV_INPUT,
+            role: 'system',
+            content: SYSTEM_PROMPT,
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        response_format: { type: 'json_object' },
+        user: 'ai-flow-designer',
+      })
+
+      if (response?.data?.choices?.[0]?.message?.content) {
+        let generatedContent = response.data.choices[0].message.content
+
+        // Handle potential markdown wrapping
+        if (generatedContent.includes('```')) {
+          generatedContent = generatedContent.replace(/```json\n?|```/g, '').trim()
+        }
+
+        const workflowConfig = JSON.parse(generatedContent)
+        if (workflowConfig.nodes && workflowConfig.edges) {
+          // Validate and repair nodes to prevent NaN coordinates
+          const validatedNodes = workflowConfig.nodes.map((node: any, index: number) => {
+            const x = Number(node.position?.x)
+            const y = Number(node.position?.y)
+
+            return {
+              ...node,
+              position: {
+                x: isNaN(x) ? 250 : x,
+                y: isNaN(y) ? 50 + index * 150 : y,
               },
-            },
-          },
-          {
-            id: '2',
-            type: WorkflowNodeType.CONDITION,
-            position: { x: 250, y: 200 },
-            data: {
-              label: '条件判断',
-              description: '判断是否需要审批',
-              config: {
-                expression: 'amount > 1000',
-                conditionGroups: [],
-              },
-            },
-          },
-          {
-            id: '3',
-            type: WorkflowNodeType.APPROVAL,
-            position: { x: 450, y: 350 },
-            data: {
-              label: '审批节点',
-              description: '经理审批',
-              config: {
-                approver: 'manager',
-                approvalType: 'single',
-                formTitle: '费用审批单',
-              },
-            },
-          },
-          {
-            id: '4',
-            type: WorkflowNodeType.NOTIFICATION,
-            position: { x: 50, y: 350 },
-            data: {
-              label: '通知节点',
-              description: '发送通知',
-              config: {
-                channel: 'feishu',
-                recipients: 'requester',
-              },
-            },
-          },
-          {
-            id: '5',
-            type: WorkflowNodeType.END,
-            position: { x: 250, y: 500 },
-            data: {
-              label: '流程结束',
-              description: '工作流结束',
-            },
-          },
-        ]
+            }
+          })
 
-        const newEdges = [
-          {
-            id: 'e1-2',
-            source: '1',
-            target: '2',
-            type: 'custom',
-            animated: true,
-            markerEnd: { type: 'arrowclosed' },
-          },
-          {
-            id: 'e2-3',
-            source: '2',
-            target: '3',
-            sourceHandle: 'true',
-            type: 'custom',
-            animated: true,
-            markerEnd: { type: 'arrowclosed' },
-          },
-          {
-            id: 'e2-4',
-            source: '2',
-            target: '4',
-            sourceHandle: 'false',
-            type: 'custom',
-            animated: true,
-            markerEnd: { type: 'arrowclosed' },
-          },
-          {
-            id: 'e3-5',
-            source: '3',
-            target: '5',
-            type: 'custom',
-            animated: true,
-            markerEnd: { type: 'arrowclosed' },
-          },
-          {
-            id: 'e4-5',
-            source: '4',
-            target: '5',
-            type: 'custom',
-            animated: true,
-            markerEnd: { type: 'arrowclosed' },
-          },
-        ]
-
-        set({ nodes: newNodes, edges: newEdges })
-      } else {
-        const response = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: [
-              {
-                role: 'system',
-                content: SYSTEM_PROMPT,
-              },
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: 0.7,
-            response_format: { type: 'json_object' },
-          }),
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          let generatedContent = data.choices[0].message.content
-
-          // Handle potential markdown wrapping
-          if (generatedContent.includes('```')) {
-            generatedContent = generatedContent.replace(/```json\n?|```/g, '').trim()
-          }
-
-          const workflowConfig = JSON.parse(generatedContent)
-          if (workflowConfig.nodes && workflowConfig.edges) {
-            // Validate and repair nodes to prevent NaN coordinates
-            const validatedNodes = workflowConfig.nodes.map((node: any, index: number) => {
-              const x = Number(node.position?.x)
-              const y = Number(node.position?.y)
-
-              return {
-                ...node,
-                position: {
-                  x: isNaN(x) ? 250 : x,
-                  y: isNaN(y) ? 50 + index * 150 : y,
-                },
-              }
-            })
-
-            set({ nodes: validatedNodes, edges: workflowConfig.edges })
-          }
+          set({ nodes: validatedNodes, edges: workflowConfig.edges })
         }
       }
     } catch (error) {
