@@ -1,5 +1,6 @@
 import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from '../../types'
-import { flowChatApi } from '@/src/api/flow/chat'
+import { flowChatApi } from '@/api/flowChat'
+import { getRuntimeTeamId } from '@ai-flow/utils/runtime'
 
 const DEFAULT_DEV_INPUT = JSON.stringify(
   {
@@ -114,7 +115,12 @@ export const createAIActions = (set: any, get: any): AIActions => ({
     set({ isAIGenerating: true })
 
     try {
-      const response = await flowChatApi.completions({
+      const teamId = getRuntimeTeamId()
+      if (!teamId) {
+        throw new Error('缺少团队上下文，无法生成工作流')
+      }
+
+      const response = await flowChatApi.completions(teamId, {
         model: 'team-default',
         messages: [
           {
