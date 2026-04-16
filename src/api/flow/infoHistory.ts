@@ -2,7 +2,7 @@ import request from '../request';
 
 export interface FlowInfoHistoryEntity {
   id?: number;
-  teamId?: number;
+  teamId?: string;
   flowId?: number;
   name?: string;
   label?: string;
@@ -35,33 +35,29 @@ export interface FlowInfoHistoryPageResponse {
 }
 
 export interface FlowCompareResult {
-  history1: FlowInfoHistoryEntity;
-  history2: FlowInfoHistoryEntity;
-  diff: {
-    nodes: any[];
-    edges: any[];
-  };
+  version1: FlowInfoHistoryEntity;
+  version2: FlowInfoHistoryEntity;
 }
 
 export const flowInfoHistoryApi = {
-  info: (teamId: number, id: number) => {
-    return request.get<any, { data: FlowInfoHistoryEntity }>(`/admin/flow/${teamId}/infoHistory/info`, { params: { id } });
+  info: (teamId: string, id: number) => {
+    return request.get<any, { data: FlowInfoHistoryEntity }>(`/app/flow/${teamId}/infoHistory/info`, { params: { id } });
   },
 
-  page: (teamId: number, params: FlowInfoHistoryPageParams) => {
-    return request.post<any, { data: FlowInfoHistoryPageResponse }>(`/admin/flow/${teamId}/infoHistory/page`, params);
+  page: (teamId: string, params: FlowInfoHistoryPageParams) => {
+    return request.post<any, { data: FlowInfoHistoryPageResponse }>(`/app/flow/${teamId}/infoHistory/page`, params);
   },
 
-  historyList: (teamId: number, flowId: number) => {
-    return request.get<any, { data: FlowInfoHistoryEntity[] }>(`/admin/flow/${teamId}/infoHistory/historyList`, { params: { flowId } });
+  historyList: (teamId: string, flowId: number) => {
+    return request.get<any, { data: FlowInfoHistoryEntity[] | { list: FlowInfoHistoryEntity[] } }>(`/app/flow/${teamId}/infoHistory/historyList`, { params: { flowId } });
   },
 
-  rollback: (teamId: number, flowId: number, historyId: number) => {
-    return request.post<any, { data: void }>(`/admin/flow/${teamId}/infoHistory/rollback`, { flowId, historyId });
+  rollback: (teamId: string, flowId: number, historyId: number) => {
+    return request.post<any, { data: void }>(`/app/flow/${teamId}/infoHistory/rollback`, { flowId, historyId });
   },
 
-  compare: (teamId: number, historyId1: number, historyId2: number) => {
-    return request.post<any, { data: FlowCompareResult }>(`/admin/flow/${teamId}/infoHistory/compare`, { historyId1, historyId2 });
+  compare: (teamId: string, historyId1: number, historyId2: number) => {
+    return request.post<any, { data: FlowCompareResult }>(`/app/flow/${teamId}/infoHistory/compare`, { historyId1, historyId2 });
   },
 };
 
