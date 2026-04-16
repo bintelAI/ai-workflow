@@ -177,7 +177,7 @@ const NodeAddMenu = () => {
   )
 }
 
-const WorkflowCanvasInner: React.FC = () => {
+const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({ readonly = false }) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
 
@@ -217,12 +217,16 @@ const WorkflowCanvasInner: React.FC = () => {
   }, [categories, activeCategoryId, applyAutoLayout, fitView])
 
   const onDragOver = useCallback((event: React.DragEvent) => {
+    if (readonly) return
     event.preventDefault()
     event.dataTransfer.dropEffect = 'move'
-  }, [])
+  }, [readonly])
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
+      if (readonly) {
+        return
+      }
       event.preventDefault()
 
       const type = event.dataTransfer.getData('application/reactflow') as WorkflowNodeType
@@ -243,7 +247,7 @@ const WorkflowCanvasInner: React.FC = () => {
       const newNode = createDefaultNodePayload(type, position)
       addNode(newNode)
     },
-    [project, addNode, allowedNodes]
+    [project, addNode, allowedNodes, readonly]
   )
 
   const onNodeClick = useCallback(
@@ -329,44 +333,51 @@ const WorkflowCanvasInner: React.FC = () => {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
+        nodesConnectable={!readonly}
+        elementsSelectable={!readonly}
+        panOnDrag
+        nodesDraggable
       >
         <Background color="#cbd5e1" gap={20} />
-        <Controls className="!bg-white !border-slate-200 !shadow-lg [&>button]:!border-slate-100 [&>button:hover]:!bg-slate-50 [&_svg]:!fill-slate-600" />
-        <MiniMap
-          nodeColor={node => {
-            switch (node.type) {
-              case WorkflowNodeType.START:
-                return '#10b981'
-              case WorkflowNodeType.END:
-                return '#f43f5e'
-              case WorkflowNodeType.LOOP:
-                return '#6366f1'
-              default:
-                return '#64748b'
-            }
-          }}
-          maskColor="rgb(241, 245, 249, 0.7)"
-          className="!bg-white !border !border-slate-200 !shadow-lg rounded-lg overflow-hidden"
-        />
-        <Panel
-          position="top-right"
-          className="flex items-center gap-2"
-        >
-          <div className="bg-white/80 backdrop-blur-sm p-2 rounded-lg border border-slate-200 shadow-sm text-xs text-slate-500">
-            {nodes.length} 个节点 • {edges.length} 条连线
-          </div>
-          <button
-            onClick={handleAutoLayout}
-            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-xs font-medium transition-colors shadow-sm"
-            title="一键整理工作流节点布局"
-          >
-            <LayoutGrid size={14} />
-            一键整理
-          </button>
-        </Panel>
+        {!readonly && (
+          <>
+            <Controls className="!bg-white !border-slate-200 !shadow-lg [&>button]:!border-slate-100 [&>button:hover]:!bg-slate-50 [&_svg]:!fill-slate-600" />
+            <MiniMap
+              nodeColor={node => {
+                switch (node.type) {
+                  case WorkflowNodeType.START:
+                    return '#10b981'
+                  case WorkflowNodeType.END:
+                    return '#f43f5e'
+                  case WorkflowNodeType.LOOP:
+                    return '#6366f1'
+                  default:
+                    return '#64748b'
+                }
+              }}
+              maskColor="rgb(241, 245, 249, 0.7)"
+              className="!bg-white !border !border-slate-200 !shadow-lg rounded-lg overflow-hidden"
+            />
+            <Panel
+              position="top-right"
+              className="flex items-center gap-2"
+            >
+              <div className="bg-white/80 backdrop-blur-sm p-2 rounded-lg border border-slate-200 shadow-sm text-xs text-slate-500">
+                {nodes.length} 个节点 • {edges.length} 条连线
+              </div>
+              <button
+                onClick={handleAutoLayout}
+                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-xs font-medium transition-colors shadow-sm"
+                title="一键整理工作流节点布局"
+              >
+                <LayoutGrid size={14} />
+                一键整理
+              </button>
+            </Panel>
+          </>
+        )}
 
-        {/* Render the unified menu */}
-        <NodeAddMenu />
+        {!readonly && <NodeAddMenu />}
       </ReactFlow>
     </div>
   )
@@ -376,6 +387,6 @@ const WorkflowCanvasInner: React.FC = () => {
  * 工作流画布组件
  * 提供工作流节点的可视化编辑和交互功能
  */
-export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = () => {
-  return <WorkflowCanvasInner />
+export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ readonly = false }) => {
+  return <WorkflowCanvasInner readonly={readonly} />
 }

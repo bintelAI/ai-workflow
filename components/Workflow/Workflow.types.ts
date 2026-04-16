@@ -76,5 +76,5 @@ export interface NodeConfigProps {
  * 工作流画布Props
  */
 export interface WorkflowCanvasProps {
-  // 可以根据实际需求添加Props
+  readonly?: boolean
 }

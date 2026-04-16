@@ -287,9 +287,17 @@ export const createFlowActions = (set: any, get: any): FlowStore => ({
     if (!flowInfo?.id || !teamId) return
 
     try {
-      await flowInfoApi.release(teamId, flowInfo.id)
+      const res = await flowInfoApi.release(teamId, flowInfo.id)
       set((state: any) => ({
-        flowInfo: state.flowInfo ? { ...state.flowInfo, status: 1 } : null,
+        flowInfo: state.flowInfo
+          ? {
+              ...state.flowInfo,
+              ...(res.data || {}),
+              status: 1,
+              version: res.data?.version || state.flowInfo.version,
+              releaseTime: res.data?.releaseTime || new Date().toISOString(),
+            }
+          : null,
       }))
     } catch (error) {
       console.error('Failed to release flow:', error)
