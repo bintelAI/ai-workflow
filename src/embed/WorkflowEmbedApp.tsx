@@ -3,6 +3,8 @@ import 'reactflow/dist/style.css'
 import { WorkflowApp } from '@ai-flow/components/Workflow/WorkflowApp'
 import { useWorkflowStore } from '@ai-flow/components/Workflow/store/useWorkflowStore'
 import { setAiFlowRuntime } from '@ai-flow/utils/runtime'
+import { importFromBackend } from '@ai-flow/components/Workflow/adapters/backendAdapter'
+import type { FlowDraft } from '@ai-flow/src/types/flow'
 import { Layers } from 'lucide-react'
 import { getPluginMode, type WorkflowPluginModeType } from '@ai-flow/components/Workflow/config/pluginModeRegistry'
 
@@ -14,6 +16,8 @@ export interface WorkflowEmbedProps {
   baseURL?: string
   type?: string
   mode?: 'default' | 'dev'
+  readonly?: boolean
+  previewDraft?: FlowDraft | null
 }
 
 const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
@@ -24,6 +28,8 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
   baseURL,
   type,
   mode = 'default',
+  readonly = false,
+  previewDraft,
 }) => {
   const { loadFlow, isFlowLoading } = useWorkflowStore()
   const [error, setError] = useState<string | null>(null)
@@ -31,6 +37,13 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
   const resolvedPluginType = useMemo(() => {
     return getPluginMode(type || undefined).type as WorkflowPluginModeType
   }, [type])
+
+  const previewGraph = useMemo(() => {
+    if (!previewDraft?.nodes?.length) {
+      return null
+    }
+    return importFromBackend(previewDraft)
+  }, [previewDraft])
 
   useEffect(() => {
     setAiFlowRuntime({
@@ -44,7 +57,21 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
     } as any)
   }, [workflowId, teamId, projectId, token, baseURL, type, mode])
 
+  const readonlyFromQuery = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    const searchParams = new URLSearchParams(window.location.search)
+    const value = searchParams.get('readonly')
+    return value === '1' || value === 'true'
+  }, [])
+
+  const isReadonly = readonly || readonlyFromQuery
+
   useEffect(() => {
+    if (previewGraph) {
+      setError(null)
+      return
+    }
+
     const flowId = workflowId === undefined || workflowId === null ? '' : String(workflowId)
     if (!flowId) {
       setError(null)
@@ -62,7 +89,7 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
       console.error('Failed to load flow:', err)
       setError('加载工作流失败，请检查ID是否正确')
     })
-  }, [workflowId, teamId, loadFlow])
+  }, [previewGraph, workflowId, teamId, loadFlow])
 
   if (error) {
     return (
@@ -89,7 +116,17 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
     )
   }
 
-  return <WorkflowApp teamId={teamId} pluginType={resolvedPluginType} embedded mode={mode} />
+  return (
+    <WorkflowApp
+      initialNodes={previewGraph?.nodes}
+      initialEdges={previewGraph?.edges}
+      teamId={teamId}
+      pluginType={resolvedPluginType}
+      embedded
+      mode={mode}
+      readonly={isReadonly}
+    />
+  )
 }
 
 export default WorkflowEmbedApp

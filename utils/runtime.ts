@@ -27,6 +27,11 @@ const getUrlParam = (key: keyof AiFlowRuntimeConfig): string => {
   return value ?? '';
 };
 
+const getUrlFlowId = (): string => {
+  const params = getUrlSearchParams();
+  return params.get('id') || params.get('workflowId') || params.get('flowId') || '';
+};
+
 const readStorageValue = (key: keyof AiFlowRuntimeConfig): string => {
   if (typeof window === 'undefined') {
     return '';
@@ -80,7 +85,7 @@ export const setAiFlowRuntime = (runtime: AiFlowRuntimeConfig) => {
 
 export const resolveAiFlowRuntime = (): Required<Pick<AiFlowRuntimeConfig, 'teamId' | 'projectId' | 'token' | 'baseURL' | 'type'>> & Pick<AiFlowRuntimeConfig, 'id'> => {
   const runtime = getAiFlowRuntime();
-  const urlId = getUrlParam('id');
+  const urlId = getUrlFlowId();
   const urlTeamId = getUrlParam('teamId');
   const urlProjectId = getUrlParam('projectId');
   const urlType = getUrlParam('type');
