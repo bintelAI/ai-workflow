@@ -381,7 +381,8 @@ export const DataDrawer: React.FC = () => {
       headers: { 'Content-Type': 'multipart/form-data' },
     })) as any
 
-    return res?.data || ''
+    const uploadData = res?.data || res
+    return uploadData?.url || uploadData || ''
   }
 
   const handleFileUpload = async (key: string, file: File, isList: boolean) => {
