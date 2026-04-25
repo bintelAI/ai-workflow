@@ -200,7 +200,7 @@ const App: React.FC<WorkflowAppProps> = ({
               </div>
               <div>
                 <h1 className="font-bold text-slate-800 text-lg leading-tight flex items-center gap-2">
-                  FlowMaster
+                  维表智联工作流
                   <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-bold">
                     AI Pro
                   </span>
