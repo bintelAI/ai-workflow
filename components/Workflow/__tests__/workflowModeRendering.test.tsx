@@ -32,33 +32,13 @@ vi.mock('../store/useWorkflowStore', () => ({
 
 vi.mock('@ai-flow/src/api/flow/infoHistory', () => ({
   flowInfoHistoryApi: {
-    historyList: vi.fn().mockResolvedValue({
-      code: 1000,
-      data: {
-        list: [
-          {
-            id: 101,
-            version: '1.0.0',
-            remark: '版本 1.0.0 发布',
-            operatorName: 'tester',
-            createTime: '2026-04-16T10:00:00.000Z',
-            releaseTime: '2026-04-16T10:00:00.000Z',
-          },
-        ],
-      },
-    }),
+    historyList: vi.fn().mockResolvedValue({ code: 1000, data: { list: [] } }),
     rollback: vi.fn().mockResolvedValue({ code: 1000 }),
-    compare: vi.fn().mockResolvedValue({
-      code: 1000,
-      data: {
-        version1: { version: '1.0.0', data: {} },
-        version2: { version: '2.0.0', data: {} },
-      },
-    }),
+    compare: vi.fn().mockResolvedValue({ code: 1000, data: {} }),
   },
 }))
 
-describe('WorkflowApp history drawer', () => {
+describe('WorkflowApp mode rendering', () => {
   let container: HTMLDivElement
   let root: ReturnType<typeof createRoot>
 
@@ -111,7 +91,10 @@ describe('WorkflowApp history drawer', () => {
       runSimulation: vi.fn(),
       toggleSettings: vi.fn(),
       toggleGlobalConfig: vi.fn(),
-      categories: [{ id: 'general', name: '通用流程' }],
+      categories: [
+        { id: 'ai_agent', name: 'AI Agent 编排' },
+        { id: 'business_approval', name: '行政审批流 (BPM)' },
+      ],
       activeCategoryId: 'general',
       nodes: [],
       edges: [],
@@ -125,35 +108,33 @@ describe('WorkflowApp history drawer', () => {
       isExecuting: false,
       isFlowSaving: false,
       flowInfo: {
-        id: 3,
+        id: 11,
         name: '测试流程',
-        version: '2.0.0',
-        status: 1,
-        releaseTime: '2026-04-16T12:00:00.000Z',
+        label: 'test_flow',
       },
-      teamId: 'T100',
+      teamId: 'team_1',
       setTeamId: vi.fn(),
     } as any)
   })
 
-  it('renders history button and opens history drawer', async () => {
+  it('renders AI mode with AI command center and AI-oriented title', async () => {
     await act(async () => {
-      root.render(<WorkflowApp embedded mode="dev" />)
+      root.render(<WorkflowApp embedded mode="dev" pluginType="ai" />)
     })
 
-    const historyButton = Array.from(container.querySelectorAll('button')).find(
-      button => button.textContent?.includes('历史')
-    )
+    expect(container.textContent).toContain('AI 工作流')
+    expect(container.textContent).toContain('AI 模式')
+    expect(container.querySelector('[data-testid="workflow-ai-command"]')).toBeTruthy()
+  })
 
-    expect(historyButton).toBeTruthy()
-
+  it('renders approval mode without AI command center and with approval title', async () => {
     await act(async () => {
-      historyButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-      await Promise.resolve()
+      root.render(<WorkflowApp embedded mode="dev" pluginType="approval" />)
     })
 
-    expect(document.body.textContent).toContain('工作流历史')
-    expect(document.body.textContent).toContain('当前版本')
-    expect(document.body.textContent).toContain('版本 1.0.0 发布')
+    expect(container.textContent).toContain('审批工作流')
+    expect(container.textContent).toContain('审批配置')
+    expect(container.textContent).toContain('查看审批数据')
+    expect(container.querySelector('[data-testid="workflow-ai-command"]')).toBeFalsy()
   })
 })

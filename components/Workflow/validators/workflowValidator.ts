@@ -430,7 +430,11 @@ export class WorkflowValidator {
   }
 
   private validateApprovalNode(node: WorkflowNode, config: any) {
-    if (!config.approver || config.approver.trim() === '') {
+    const participantRules = Array.isArray(config?.participantRules) ? config.participantRules : []
+    if (
+      participantRules.length === 0 &&
+      (!config.approver || String(config.approver).trim() === '')
+    ) {
       this.addError({
         type: 'error',
         category: 'node_config',
@@ -817,7 +821,10 @@ export class WorkflowValidator {
   }
 
   private validateCCNode(node: WorkflowNode, config: any) {
-    if (!config.recipients || config.recipients.trim() === '') {
+    const hasStructuredRecipients =
+      (Array.isArray(config?.recipientUsers) && config.recipientUsers.length > 0) ||
+      (Array.isArray(config?.recipientDepartments) && config.recipientDepartments.length > 0)
+    if (!hasStructuredRecipients && (!config.recipients || String(config.recipients).trim() === '')) {
       this.addError({
         type: 'error',
         category: 'node_config',

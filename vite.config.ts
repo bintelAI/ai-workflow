@@ -31,6 +31,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': path.resolve(__dirname, '.'),
         '@ai-flow': path.resolve(__dirname, '.'),
+        '@ai-flow-src': path.resolve(__dirname, 'src'),
       },
     },
   }

@@ -1,5 +1,6 @@
 import { NodeProps, Edge } from 'reactflow'
 import { WorkflowNodeType } from './types'
+import type { WorkflowPluginModeType } from './config/pluginModeRegistry'
 
 /**
  * 节点数据类型
@@ -38,6 +39,7 @@ export interface ConfigPanelProps {
 export interface SidebarProps {
   isCollapsed?: boolean
   onToggle?: () => void
+  pluginType?: WorkflowPluginModeType
 }
 
 /**

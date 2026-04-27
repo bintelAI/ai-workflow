@@ -14,6 +14,9 @@ import {
 } from 'lucide-react'
 import { useWorkflowStore } from '../store/useWorkflowStore'
 import { WorkflowNodeType } from '../types'
+import { getRuntimeProjectId, getRuntimeTeamId } from '@ai-flow/utils/runtime'
+import { orgApi, type WorkflowOrgDepartment, type WorkflowProjectMember } from '@ai-flow-src/api/org'
+import OrgTargetSelector from './common/OrgTargetSelector'
 
 interface ApprovalConfigProps {
   config: any
@@ -25,6 +28,10 @@ type TabKey = 'personnel' | 'approval' | 'buttons' | 'fields' | 'execution' | 'n
 export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfigChange }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('personnel')
   const [showMore, setShowMore] = useState(false)
+  const [selectorOpen, setSelectorOpen] = useState(false)
+  const [departments, setDepartments] = useState<WorkflowOrgDepartment[]>([])
+  const [members, setMembers] = useState<WorkflowProjectMember[]>([])
+  const [selectorLoading, setSelectorLoading] = useState(false)
 
   // 点击外部区域关闭下拉菜单
   React.useEffect(() => {
@@ -118,6 +125,60 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
 
   // 字段配置数据
   const fieldConfig = config?.fieldConfig || initialFieldConfig
+  const participantRules = Array.isArray(config?.participantRules) ? config.participantRules : []
+  const selectedUsers = participantRules.filter((item: any) => item?.sourceType === 'user')
+  const selectedDepartments = participantRules.filter((item: any) => item?.sourceType === 'department')
+
+  const loadOrgOptions = async () => {
+    const teamId = getRuntimeTeamId()
+    const projectId = getRuntimeProjectId()
+    if (!teamId || !projectId) {
+      setDepartments([])
+      setMembers([])
+      return
+    }
+    setSelectorLoading(true)
+    try {
+      const [nextDepartments, nextMembers] = await Promise.all([
+        orgApi.getTeamDepartments(teamId),
+        orgApi.getProjectMembers(teamId, projectId),
+      ])
+      setDepartments(nextDepartments)
+      setMembers(nextMembers)
+    } finally {
+      setSelectorLoading(false)
+    }
+  }
+
+  const openSelector = async () => {
+    await loadOrgOptions()
+    setSelectorOpen(true)
+  }
+
+  const syncParticipantRules = (value: {
+    users: Array<{ id: string; name: string; departmentId?: string }>
+    departments: Array<{ id: string; name: string }>
+  }) => {
+    const nextRules = [
+      ...value.users.map(user => ({
+        sourceType: 'user',
+        sourceValue: user.id,
+        sourceName: user.name,
+        sourceLabel: user.name,
+      })),
+      ...value.departments.map(department => ({
+        sourceType: 'department',
+        sourceValue: department.id,
+        sourceName: department.name,
+        sourceLabel: department.name,
+      })),
+    ]
+    onConfigChange('participantRules', nextRules)
+    onConfigChange(
+      'approver',
+      value.users.map(user => user.name).join(', ')
+    )
+  }
 
   const handleButtonChange = (buttonName: keyof typeof buttonConfig) => {
     onConfigChange('buttonConfig', {
@@ -222,11 +283,29 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
                   <input
                     type="text"
                     className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm"
-                    placeholder="e.g. U-8821, U-9932 or 'MANAGER'"
-                    value={config?.approver || ''}
-                    onChange={e => onConfigChange('approver', e.target.value)}
+                    placeholder="请选择项目成员或团队部门"
+                    value={config?.approver || selectedUsers.map((item: any) => item?.sourceName).join(', ')}
+                    readOnly
                   />
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-xs rounded-md border border-slate-300 bg-white hover:bg-slate-50"
+                    onClick={openSelector}
+                    disabled={selectorLoading}
+                  >
+                    {selectorLoading ? '加载中...' : '选择'}
+                  </button>
                 </div>
+                {(selectedUsers.length > 0 || selectedDepartments.length > 0) && (
+                  <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 space-y-2">
+                    {selectedUsers.length > 0 && (
+                      <div>项目成员：{selectedUsers.map((item: any) => item?.sourceName || item?.sourceValue).join('，')}</div>
+                    )}
+                    {selectedDepartments.length > 0 && (
+                      <div>团队部门：{selectedDepartments.map((item: any) => item?.sourceName || item?.sourceValue).join('，')}</div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -539,6 +618,25 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
           </div>
         )}
       </div>
+
+      <OrgTargetSelector
+        open={selectorOpen}
+        onClose={() => setSelectorOpen(false)}
+        title="选择审批参与者"
+        members={members}
+        departments={departments}
+        value={{
+          users: selectedUsers.map((item: any) => ({
+            id: String(item?.sourceValue),
+            name: item?.sourceName || item?.sourceLabel || String(item?.sourceValue),
+          })),
+          departments: selectedDepartments.map((item: any) => ({
+            id: String(item?.sourceValue),
+            name: item?.sourceName || item?.sourceLabel || String(item?.sourceValue),
+          })),
+        }}
+        onConfirm={syncParticipantRules}
+      />
     </div>
   )
 }

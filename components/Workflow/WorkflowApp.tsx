@@ -112,7 +112,13 @@ const App: React.FC<WorkflowAppProps> = ({
     }
   }, [pluginType, allowedNodeTypes, setActiveCategory, updateCategory])
 
+  const isApprovalMode = pluginType === 'approval'
+  const isAiMode = pluginType === 'ai'
   const activeCategoryName = categories.find(c => c.id === activeCategoryId)?.name || '未命名模式'
+  const appTitle = isApprovalMode ? '审批工作流' : isAiMode ? 'AI 工作流' : '维表智联工作流'
+  const appBadge = isApprovalMode ? 'Approval' : isAiMode ? 'AI 模式' : 'AI Pro'
+  const globalConfigLabel = isApprovalMode ? '审批配置' : '全局配置'
+  const monitorButtonLabel = isApprovalMode ? '查看审批数据' : '监控数据流'
 
   const handleVerify = () => {
     const result = validateWorkflow(nodes, edges)
@@ -200,9 +206,9 @@ const App: React.FC<WorkflowAppProps> = ({
               </div>
               <div>
                 <h1 className="font-bold text-slate-800 text-lg leading-tight flex items-center gap-2">
-                  维表智联工作流
+                  {appTitle}
                   <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-bold">
-                    AI Pro
+                    {appBadge}
                   </span>
                 </h1>
                 <p className="text-[10px] text-slate-400 font-medium">
@@ -216,7 +222,7 @@ const App: React.FC<WorkflowAppProps> = ({
                 onClick={() => toggleGlobalConfig(true)}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
               >
-                <Database size={16} /> 全局配置
+                <Database size={16} /> {globalConfigLabel}
               </button>
                 {mode !== 'dev' && (
                   <>
@@ -280,13 +286,13 @@ const App: React.FC<WorkflowAppProps> = ({
         )}
 
         <div className="flex-1 flex overflow-hidden relative">
-          {!readonly && <Sidebar />}
+          {!readonly && <Sidebar pluginType={pluginType} />}
 
           <main className="flex-1 relative flex flex-col">
             <div className="flex-1 relative">
               <WorkflowCanvas readonly={readonly} />
 
-              {!readonly && <AICommandCenter />}
+              {!readonly && !isApprovalMode && <AICommandCenter />}
 
               {!readonly && (
                 <div className="absolute bottom-4 left-4 z-10">
@@ -295,7 +301,7 @@ const App: React.FC<WorkflowAppProps> = ({
                     className="flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur border border-slate-200 text-slate-600 rounded-full shadow-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all duration-200 group"
                   >
                     <Eye size={16} className="text-slate-400 group-hover:text-indigo-500" />
-                    <span className="font-medium text-sm">监控数据流</span>
+                    <span className="font-medium text-sm">{monitorButtonLabel}</span>
                   </button>
                 </div>
               )}

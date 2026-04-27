@@ -48,7 +48,7 @@ const DraggableNode = ({
   )
 }
 
-export const Sidebar: React.FC<SidebarProps> = () => {
+export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
   const [width, setWidth] = useState(260)
   const [isResizing, setIsResizing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -186,6 +186,13 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     ),
   }))
 
+  const helperText =
+    pluginType === 'approval'
+      ? '拖拽审批节点到画布，编排审批、抄送、条件与通知流程'
+      : pluginType === 'ai'
+        ? '拖拽 AI 节点到画布，编排模型、数据与工具调用流程'
+        : '拖拽节点到画布'
+
 
   return (
     <aside
@@ -196,7 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
       <div className="p-5 border-b border-slate-200 bg-white">
         <h2 className="font-bold text-slate-800">节点库</h2>
         <div className="flex items-center justify-between mt-1">
-          <p className="text-xs text-slate-500">拖拽节点到画布</p>
+          <p className="text-xs text-slate-500">{helperText}</p>
           <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 truncate max-w-[100px]">
             {activeCategory?.name || 'General'}
           </span>
