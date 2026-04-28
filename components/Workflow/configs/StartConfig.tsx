@@ -2,6 +2,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Input, Select, Switch, Button, Divider, Modal, Tag, Radio, Checkbox, InputNumber } from 'antd';
 import { PlusOutlined, DeleteOutlined, BugOutlined, SettingOutlined } from '@ant-design/icons';
 import type { VariableType } from '../types';
+import ApprovalTableInputModal from './ApprovalTableInputModal';
+import { type ApprovalInputConfig, getApprovalInputFields } from './approvalInput';
 import './StartConfig.css';
 
 interface VariableConfig {
@@ -50,10 +52,14 @@ const createDefaultOptions = () => [
 interface StartConfigProps {
   config: {
     variables?: VariableConfig[];
+    approvalInputConfig?: ApprovalInputConfig;
     devMode?: boolean;
     devInput?: string;
   };
   onConfigChange: (key: string, value: any) => void;
+  pluginType?: string;
+  teamId?: string | null;
+  projectId?: string | null;
 }
 
 const VARIABLE_TYPES: { label: string; value: VariableType }[] = [
@@ -66,9 +72,18 @@ const VARIABLE_TYPES: { label: string; value: VariableType }[] = [
   { label: '文件列表', value: 'file_list' },
 ];
 
-const StartConfig: React.FC<StartConfigProps> = ({ config, onConfigChange }) => {
+const StartConfig: React.FC<StartConfigProps> = ({
+  config,
+  onConfigChange,
+  pluginType,
+  teamId,
+  projectId,
+}) => {
   const variables = config.variables || [];
+  const isApprovalMode = pluginType === 'approval';
+  const approvalInputFields = getApprovalInputFields(config.approvalInputConfig);
   const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
+  const [isApprovalInputModalOpen, setIsApprovalInputModalOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [activePanelKey, setActivePanelKey] = useState<'basic' | 'default' | 'options' | 'permission'>('basic');
 
@@ -104,8 +119,12 @@ const StartConfig: React.FC<StartConfigProps> = ({ config, onConfigChange }) => 
   }, []);
 
   const handleAddVariable = useCallback(() => {
+    if (isApprovalMode) {
+      setIsApprovalInputModalOpen(true);
+      return;
+    }
     openCreateModal();
-  }, [openCreateModal]);
+  }, [isApprovalMode, openCreateModal]);
 
   const handleRemoveVariable = useCallback(
     (index: number) => {
@@ -115,6 +134,15 @@ const StartConfig: React.FC<StartConfigProps> = ({ config, onConfigChange }) => 
     },
     [variables, onConfigChange]
   );
+
+  const closeApprovalInputModal = useCallback(() => {
+    setIsApprovalInputModalOpen(false);
+  }, []);
+
+  const saveApprovalInputConfig = useCallback((value: ApprovalInputConfig) => {
+    onConfigChange('approvalInputConfig', value);
+    closeApprovalInputModal();
+  }, [closeApprovalInputModal, onConfigChange]);
 
   const handleVariableChange = useCallback(
     (index: number, key: keyof VariableConfig, value: any) => {
@@ -264,18 +292,59 @@ const StartConfig: React.FC<StartConfigProps> = ({ config, onConfigChange }) => 
     <div className="start-config">
       <div className="config-section">
         <div className="start-config-header">
-          <label className="config-label">输入变量</label>
+          <label className="config-label">{isApprovalMode ? '审批表数据入参' : '输入变量'}</label>
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={handleAddVariable}
             className="add-btn"
           >
-            添加变量
+            {isApprovalMode ? '添加表数据' : '添加变量'}
           </Button>
         </div>
 
-        {variables.length > 0 && (
+        {isApprovalMode && config.approvalInputConfig ? (
+          <div className="variable-list">
+            <div className="variable-summary-card">
+              <div className="variable-summary-main">
+                <div className="variable-summary-title-row">
+                  <span className="variable-summary-title">
+                    {config.approvalInputConfig.sheetName || config.approvalInputConfig.sheetId || '未选择表'}
+                  </span>
+                  <Tag color="green">多维表</Tag>
+                </div>
+                <div className="variable-summary-name">
+                  当前项目：{config.approvalInputConfig.projectId || projectId || '-'}
+                </div>
+                <div className="variable-summary-tags">
+                  <Tag color="blue">{approvalInputFields.length} 个字段</Tag>
+                  {approvalInputFields.some(field => field.permission === 'editable') && <Tag color="green">可编辑</Tag>}
+                  {approvalInputFields.some(field => field.permission === 'readonly') && <Tag color="gold">只读</Tag>}
+                  {approvalInputFields.some(field => field.permission === 'hidden') && <Tag>隐藏</Tag>}
+                </div>
+              </div>
+              <div className="variable-summary-actions">
+                <Button
+                  type="text"
+                  icon={<SettingOutlined />}
+                  onClick={handleAddVariable}
+                >
+                  配置
+                </Button>
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => onConfigChange('approvalInputConfig', undefined)}
+                >
+                  删除
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {!isApprovalMode && variables.length > 0 && (
           <div className="variable-list">
             {variables.map((v, index) => (
               <div key={index} className="variable-summary-card">
@@ -313,8 +382,12 @@ const StartConfig: React.FC<StartConfigProps> = ({ config, onConfigChange }) => 
           </div>
         )}
 
-        {variables.length === 0 && (
-          <div className="empty-hint">点击上方按钮添加输入变量</div>
+        {((isApprovalMode && !config.approvalInputConfig) || (!isApprovalMode && variables.length === 0)) && (
+          <div className="empty-hint">
+            {isApprovalMode
+              ? '点击上方按钮选择当前项目下的表和要传递的字段'
+              : '点击上方按钮添加输入变量'}
+          </div>
         )}
       </div>
 
@@ -492,6 +565,15 @@ const StartConfig: React.FC<StartConfigProps> = ({ config, onConfigChange }) => 
           </div>
         ) : null}
       </Modal>
+
+      <ApprovalTableInputModal
+        open={isApprovalInputModalOpen}
+        value={config.approvalInputConfig}
+        teamId={teamId}
+        projectId={projectId}
+        onCancel={closeApprovalInputModal}
+        onSave={saveApprovalInputConfig}
+      />
     </div>
   );
 };

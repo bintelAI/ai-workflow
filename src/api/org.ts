@@ -19,6 +19,13 @@ export interface WorkflowProjectMember {
   departmentId?: string
 }
 
+export interface WorkflowProjectRole {
+  id: string
+  name: string
+  description?: string
+  isSystem?: boolean
+}
+
 const normalizeId = (value: unknown): string | undefined => {
   if (value === undefined || value === null || value === '') {
     return undefined
@@ -56,6 +63,17 @@ export const orgApi = {
       status: item.status,
       departmentId: normalizeId(item.departmentId),
     })) as WorkflowProjectMember[]
+  },
+
+  async getProjectRoles(teamId: string, projectId: string) {
+    const res = await request.get<any, { data: any[] }>(`/app/mul/${teamId}/${projectId}/role/list`)
+    const list = Array.isArray(res?.data) ? res.data : []
+    return list.map((item: any) => ({
+      id: String(item.roleId || item.id),
+      name: item.name || String(item.roleId || item.id),
+      description: item.description || '',
+      isSystem: Boolean(item.isSystem),
+    })) as WorkflowProjectRole[]
   },
 }
 

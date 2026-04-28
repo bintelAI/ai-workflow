@@ -1,6 +1,6 @@
 import { WorkflowNodeType, type WorkflowCategory, type LayoutDirection } from '../types'
 
-export type WorkflowPluginModeType = 'all' | 'ai' | 'approval'
+export type WorkflowPluginModeType = 'all' | 'ai' | 'approval' | 'automation'
 
 export interface WorkflowPluginMode {
   type: WorkflowPluginModeType
@@ -24,6 +24,24 @@ const APPROVAL_EXCLUDED_NODE_TYPES = [
 const APPROVAL_ALLOWED_NODE_TYPES = Object.values(WorkflowNodeType).filter(
   type => !APPROVAL_EXCLUDED_NODE_TYPES.includes(type as any)
 )
+
+const AUTOMATION_ALLOWED_NODE_TYPES = [
+  WorkflowNodeType.START,
+  WorkflowNodeType.END,
+  WorkflowNodeType.CONDITION,
+  WorkflowNodeType.PARALLEL,
+  WorkflowNodeType.LOOP,
+  WorkflowNodeType.DELAY,
+  WorkflowNodeType.NOTIFICATION,
+  WorkflowNodeType.FLOW_CALL,
+  WorkflowNodeType.VARIABLE,
+  WorkflowNodeType.API_CALL,
+  WorkflowNodeType.DATA_OP,
+  WorkflowNodeType.SQL,
+  WorkflowNodeType.SCRIPT,
+  WorkflowNodeType.CLOUD_PHONE,
+  WorkflowNodeType.STORAGE,
+]
 
 export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPluginMode> = {
   all: {
@@ -72,13 +90,23 @@ export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPlugin
     layoutDirection: 'vertical',
     isSystem: true,
   },
+  automation: {
+    type: 'automation',
+    categoryId: 'automation',
+    name: '自动化工作流',
+    description: '专注于流程调用、接口、数据处理、脚本与通知等自动化编排。',
+    allowedNodeTypes: AUTOMATION_ALLOWED_NODE_TYPES,
+    layoutDirection: 'vertical',
+    isSystem: true,
+  },
 }
 
 export const DEFAULT_PLUGIN_MODE: WorkflowPluginModeType = 'all'
 
 export const getPluginMode = (type?: string | null): WorkflowPluginMode => {
-  if (type === 'ai') return PLUGIN_MODE_REGISTRY.ai
+  if (type === 'ai' || type === 'ai_analysis') return PLUGIN_MODE_REGISTRY.ai
   if (type === 'approval') return PLUGIN_MODE_REGISTRY.approval
+  if (type === 'automation') return PLUGIN_MODE_REGISTRY.automation
   return PLUGIN_MODE_REGISTRY.all
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { exportToBackend } from './backendAdapter';
+import { exportToBackend, importFromBackend } from './backendAdapter';
 import { WorkflowNodeType, WorkflowStoreState } from '../types';
 import { Node, Edge } from 'reactflow';
 
@@ -42,6 +42,44 @@ describe('backendAdapter', () => {
       type: 'number',
       default: 5,
     });
+  });
+
+  it('should keep approval table input config when exporting and importing start node', () => {
+    const approvalInputConfig = {
+      sourceType: 'mul_table',
+      projectId: 'project_current',
+      sheetId: 'sheet_1',
+      sheetName: '费用表',
+      fields: [
+        {
+          fieldId: 'amount',
+          fieldName: '金额',
+          fieldType: 'number',
+          variableName: 'amount',
+          label: '金额',
+          required: true,
+          permission: 'readonly',
+          includeInPayload: true,
+        },
+      ],
+    };
+    const workflow: WorkflowStoreState = {
+      nodes: [
+        createNode('start-1', WorkflowNodeType.START, {
+          approvalInputConfig,
+        }),
+      ],
+      edges: [],
+      globalVariables: [],
+    } as any;
+
+    const exported = exportToBackend(workflow);
+    const startNode = exported.nodes.find(n => n.type === 'start');
+    expect(startNode?.data.options?.approvalInputConfig).toEqual(approvalInputConfig);
+
+    const imported = importFromBackend(exported);
+    const importedStart = imported.nodes?.find(node => node.type === WorkflowNodeType.START);
+    expect(importedStart?.data?.config?.approvalInputConfig).toEqual(approvalInputConfig);
   });
 
   it('should convert LLM node prompt variables to inputParams', () => {

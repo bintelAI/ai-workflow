@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { useWorkflowStore, DEFAULT_DEV_INPUT } from './store/useWorkflowStore'
+import { useWorkflowStore } from './store/useWorkflowStore'
+import { DEFAULT_DEV_INPUT } from './config/defaultDevInput'
 import { ValidationResult } from './ValidationReportModal'
 import ValidationReportModal from './ValidationReportModal'
 import { WorkflowNodeType } from './types'

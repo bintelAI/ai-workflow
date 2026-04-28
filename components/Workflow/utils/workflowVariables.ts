@@ -1,6 +1,6 @@
 import type { Edge, Node } from 'reactflow'
 import type { FlowField } from '@ai-flow/src/types/flow'
-import { DEFAULT_DEV_INPUT } from '../store/useWorkflowStore'
+import { DEFAULT_DEV_INPUT } from '../config/defaultDevInput'
 import { WorkflowNodeType, type VariableConfig, type WorkflowNode } from '../types'
 import { flattenObject } from '../configs/common'
 

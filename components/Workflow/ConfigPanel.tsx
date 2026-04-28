@@ -31,6 +31,7 @@ import { buildLoopBodyOutputCatalog, buildVariableCatalog } from './utils/workfl
 
 // Import common components from configs/common.tsx
 import { AIButton } from './configs/common'
+import type { WorkflowPluginModeType } from './config/pluginModeRegistry'
 
 const BACKEND_SUPPORTED_NODE_TYPES = new Set<WorkflowNodeType>([
   WorkflowNodeType.START,
@@ -47,7 +48,13 @@ const BACKEND_SUPPORTED_NODE_TYPES = new Set<WorkflowNodeType>([
   WorkflowNodeType.LOOP,
 ])
 
-const ConfigPanel: React.FC = () => {
+interface ConfigPanelRuntimeProps {
+  pluginType?: WorkflowPluginModeType
+  teamId?: string | null
+  projectId?: string | null
+}
+
+const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, projectId }) => {
   const {
     nodes,
     edges,
@@ -170,7 +177,15 @@ const ConfigPanel: React.FC = () => {
       case WorkflowNodeType.LOOP:
         return <LoopConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} loopBodyVariables={loopBodyOutputVariables} />
       case WorkflowNodeType.START:
-        return <StartConfig config={config} onConfigChange={handleConfigChange} />
+        return (
+          <StartConfig
+            config={config}
+            onConfigChange={handleConfigChange}
+            pluginType={pluginType}
+            teamId={teamId}
+            projectId={projectId}
+          />
+        )
       case WorkflowNodeType.END:
         return <EndConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.SCRIPT:

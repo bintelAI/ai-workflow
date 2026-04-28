@@ -1,4 +1,5 @@
 import { Node, Edge } from 'reactflow'
+import type { FlowInfoEntity } from '../../src/types/flow'
 
 export enum WorkflowNodeType {
   START = 'start',
@@ -246,6 +247,23 @@ export interface WorkflowVariableRef {
   label?: string
 }
 
+export interface WorkflowExecutionLog {
+  id: string
+  nodeId: string
+  nodeType: string
+  nodeLabel: string
+  status: 'pending' | 'running' | 'success' | 'error' | 'info'
+  timestamp: number
+  duration: number
+  input?: any
+  output?: any
+  error?: string
+  content?: string
+  toolCalls?: Array<{ name: string; type: 'start' | 'end'; timestamp: number }>
+  isThinking?: boolean
+  sessionId?: string
+}
+
 export interface WorkflowStoreState {
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]
@@ -278,13 +296,13 @@ export interface WorkflowStoreState {
   globalVariables: VariableConfig[]
 
   // --- NEW: Flow State ---
-  flowInfo: import('../../src/types/flow').FlowInfoEntity | null
-  flowList: import('../../src/types/flow').FlowInfoEntity[]
+  flowInfo: FlowInfoEntity | null
+  flowList: FlowInfoEntity[]
   isFlowLoading: boolean
   isFlowSaving: boolean
   isExecuting: boolean
   executionResult: any
-  executionLogs: import('./store/modules/executionActions').ExecutionLog[]
+  executionLogs: WorkflowExecutionLog[]
   currentRequestId: string | null
   teamId: string | null
 
@@ -359,11 +377,11 @@ export interface WorkflowStoreState {
   loadFlow: (flowId: number, teamId?: string) => Promise<void>
   saveFlow: () => Promise<void>
   loadFlowList: (params?: { page?: number; size?: number; teamId?: string }) => Promise<void>
-  createFlow: (data: Partial<import('../../src/types/flow').FlowInfoEntity> & { teamId?: string }) => Promise<import('../../src/types/flow').FlowInfoEntity>
-  updateFlow: (data: Partial<import('../../src/types/flow').FlowInfoEntity> & { teamId?: string }) => Promise<void>
+  createFlow: (data: Partial<FlowInfoEntity> & { teamId?: string }) => Promise<FlowInfoEntity>
+  updateFlow: (data: Partial<FlowInfoEntity> & { teamId?: string }) => Promise<void>
   deleteFlow: (id: number, teamId?: string) => Promise<void>
   releaseFlow: () => Promise<void>
-  setFlowInfo: (info: import('../../src/types/flow').FlowInfoEntity | null) => void
+  setFlowInfo: (info: FlowInfoEntity | null) => void
   setExecuting: (isExecuting: boolean) => void
   setExecutionResult: (result: any) => void
   setTeamId: (teamId: string | null) => void
@@ -372,7 +390,7 @@ export interface WorkflowStoreState {
   runFlow: (params?: { params?: Record<string, any>; nodeId?: string }) => Promise<void>
   stopExecution: () => void
   clearExecutionLogs: () => void
-  getExecutionLog: (nodeId: string) => import('./store/modules/executionActions').ExecutionLog | undefined
+  getExecutionLog: (nodeId: string) => WorkflowExecutionLog | undefined
 
   // --- NEW: Layout Actions ---
   applyAutoLayout: (direction: LayoutDirection) => void

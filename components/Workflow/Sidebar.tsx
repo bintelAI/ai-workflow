@@ -189,6 +189,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
   const helperText =
     pluginType === 'approval'
       ? '拖拽审批节点到画布，编排审批、抄送、条件与通知流程'
+      : pluginType === 'automation'
+        ? '拖拽自动化节点到画布，编排接口、数据、脚本与通知流程'
       : pluginType === 'ai'
         ? '拖拽 AI 节点到画布，编排模型、数据与工具调用流程'
         : '拖拽节点到画布'

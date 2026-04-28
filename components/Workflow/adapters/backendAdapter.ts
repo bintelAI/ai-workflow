@@ -9,7 +9,7 @@ import {
   REVERSE_NODE_TYPE_MAP,
   ConditionOperator 
 } from '@ai-flow/src/types/flow';
-import { WorkflowStoreState, WorkflowNodeType, VariableConfig } from '../types';
+import type { WorkflowStoreState, VariableConfig, WorkflowNodeType } from '../types';
 import { extractVariableTemplates, normalizeLegacyTemplate } from '../utils/workflowVariables';
 
 const NODE_CONFIG_MAP: Record<string, { color: string; icon: string; group: string; cardWidth: string }> = {
@@ -56,7 +56,7 @@ const ensureLoopEdges = (nodes: Node[], edges: Edge[]): Edge[] => {
   )
 
   nodes
-    .filter(node => node.type === WorkflowNodeType.LOOP)
+    .filter(node => node.type === 'loop')
     .forEach(loopNode => {
       const bodyNodeIds = Array.isArray((loopNode.data as any)?.config?.bodyNodeIds)
         ? (loopNode.data as any).config.bodyNodeIds
@@ -119,15 +119,15 @@ const normalizeBackendEdgeHandles = (
   let sourceHandle = edge.sourceHandle || null;
   let targetHandle = edge.targetHandle || null;
 
-  const isLoopInternalEdge = sourceNode?.type === WorkflowNodeType.LOOP && targetNode?.parentNode === sourceNode.id
-  const isLoopOutgoingEdge = sourceNode?.type === WorkflowNodeType.LOOP && targetNode?.parentNode !== sourceNode.id
-  const isLoopIncomingEdge = targetNode?.type === WorkflowNodeType.LOOP
+  const isLoopInternalEdge = sourceNode?.type === 'loop' && targetNode?.parentNode === sourceNode.id
+  const isLoopOutgoingEdge = sourceNode?.type === 'loop' && targetNode?.parentNode !== sourceNode.id
+  const isLoopIncomingEdge = targetNode?.type === 'loop'
 
-  if (sourceNode?.type === WorkflowNodeType.QUESTION_CLASSIFIER && sourceHandle === 'source-else') {
+  if (sourceNode?.type === 'question_classifier' && sourceHandle === 'source-else') {
     sourceHandle = null;
   }
 
-  if (sourceNode?.type === WorkflowNodeType.PARALLEL && sourceHandle?.startsWith('branch-')) {
+  if (sourceNode?.type === 'parallel' && sourceHandle?.startsWith('branch-')) {
     sourceHandle = 'source';
   }
 
@@ -177,31 +177,31 @@ const convertNodeData = (node: Node, allNodes: Node[], backendType: string): Flo
   const config = node.data?.config || {};
   
   switch (node.type) {
-    case WorkflowNodeType.START:
+    case 'start':
       return convertStartNodeData(config);
-    case WorkflowNodeType.END:
+    case 'end':
       return convertEndNodeData(config, allNodes);
-    case WorkflowNodeType.LLM:
+    case 'llm':
       return convertLLMNodeData(config, allNodes);
-    case WorkflowNodeType.SCRIPT:
+    case 'script':
       return convertCodeNodeData(config, allNodes);
-    case WorkflowNodeType.CONDITION:
+    case 'condition':
       return convertJudgeNodeData(config, allNodes);
-    case WorkflowNodeType.QUESTION_CLASSIFIER:
+    case 'question_classifier':
       return convertClassifyNodeData(config, allNodes);
-    case WorkflowNodeType.KNOWLEDGE_RETRIEVAL:
+    case 'knowledge_retrieval':
       return convertKnowNodeData(config, allNodes);
-    case WorkflowNodeType.VARIABLE:
+    case 'variable':
       return convertVariableNodeData(config, allNodes);
-    case WorkflowNodeType.SMART_PARSE:
+    case 'smart_parse':
       return convertParseNodeData(config, allNodes);
-    case WorkflowNodeType.JSON_PARSE:
+    case 'json_parse':
       return convertJsonNodeData(config, allNodes);
-    case WorkflowNodeType.FLOW_CALL:
+    case 'flow_call':
       return convertFlowNodeData(config);
-    case WorkflowNodeType.API_CALL:
+    case 'api_call':
       return convertApiCallNodeData(config, allNodes);
-    case WorkflowNodeType.LOOP:
+    case 'loop':
       return convertLoopNodeData(config, node, allNodes);
     default:
       return {
@@ -230,6 +230,7 @@ const convertStartNodeData = (config: any): FlowData => {
     options: {
       devMode: config?.devMode,
       devInput: config?.devInput,
+      approvalInputConfig: config?.approvalInputConfig,
     },
   };
 };
@@ -815,7 +816,7 @@ const extractVariableRefs = (text: string, allNodes: Node[]): FlowField[] => {
     }
 
     if (ref.kind === 'payload') {
-      const startNode = allNodes.find(n => n.type === WorkflowNodeType.START);
+      const startNode = allNodes.find(n => n.type === 'start');
       if (startNode && ref.name) {
         params.push({
           nodeId: startNode.id,
@@ -876,23 +877,23 @@ const convertEdgeFromBackend = (edge: FlowEdge, nodes: Node[]): Edge => {
   let sourceHandle = edge.sourceHandle || undefined
   let targetHandle = edge.targetHandle || undefined
 
-  if (sourceNode?.type === WorkflowNodeType.LOOP && sourceHandle === 'source') {
+  if (sourceNode?.type === 'loop' && sourceHandle === 'source') {
     sourceHandle = targetNode?.parentNode === sourceNode.id ? 'loop-start' : 'loop-output'
   }
 
-  if (targetNode?.type === WorkflowNodeType.LOOP && targetHandle === 'target') {
+  if (targetNode?.type === 'loop' && targetHandle === 'target') {
     targetHandle = 'loop-input'
   }
 
-  if (sourceNode?.type === WorkflowNodeType.LOOP && targetNode?.parentNode === sourceNode.id && !sourceHandle) {
+  if (sourceNode?.type === 'loop' && targetNode?.parentNode === sourceNode.id && !sourceHandle) {
     sourceHandle = 'loop-start'
   }
 
-  if (sourceNode?.type === WorkflowNodeType.LOOP && targetNode?.parentNode !== sourceNode.id && !sourceHandle) {
+  if (sourceNode?.type === 'loop' && targetNode?.parentNode !== sourceNode.id && !sourceHandle) {
     sourceHandle = 'loop-output'
   }
 
-  if (targetNode?.type === WorkflowNodeType.LOOP && !targetHandle) {
+  if (targetNode?.type === 'loop' && !targetHandle) {
     targetHandle = 'loop-input'
   }
 
@@ -955,6 +956,7 @@ const convertStartDataToConfig = (data: FlowData): Record<string, any> => {
     variables,
     devMode: data.options?.devMode,
     devInput: data.options?.devInput,
+    approvalInputConfig: data.options?.approvalInputConfig,
   };
 };
 

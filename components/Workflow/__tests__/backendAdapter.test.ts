@@ -1,7 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { exportToBackend, importFromBackend } from '../adapters/backendAdapter';
 import type { FlowDraft } from '@/src/types/flow';
 import type { WorkflowNodeType } from '../types';
+
+vi.mock('@/api/flowChat', () => ({
+  flowChatApi: {
+    completions: vi.fn(),
+  },
+}))
 
 describe('backendAdapter', () => {
   describe('exportToBackend', () => {
@@ -32,6 +38,49 @@ describe('backendAdapter', () => {
       expect(result.nodes[0].data?.inputParams).toBeDefined();
       expect(result.nodes[0].data?.inputParams).toHaveLength(1);
       expect(result.nodes[0].data?.inputParams?.[0]?.field).toBe('input');
+    });
+
+    it('should keep approval table input config on start node', () => {
+      const approvalInputConfig = {
+        sourceType: 'mul_table',
+        projectId: 'project_current',
+        sheetId: 'sheet_1',
+        sheetName: '费用表',
+        fields: [
+          {
+            fieldId: 'amount',
+            fieldName: '金额',
+            fieldType: 'number',
+            variableName: 'amount',
+            label: '金额',
+            required: true,
+            permission: 'readonly',
+            includeInPayload: true,
+          },
+        ],
+      };
+      const workflow = {
+        nodes: [
+          {
+            id: 'node_1',
+            type: 'start' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: '开始',
+              config: {
+                approvalInputConfig,
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const exported = exportToBackend(workflow as any);
+      expect(exported.nodes[0].data?.options?.approvalInputConfig).toEqual(approvalInputConfig);
+
+      const imported = importFromBackend(exported);
+      expect(imported.nodes?.[0]?.data?.config?.approvalInputConfig).toEqual(approvalInputConfig);
     });
 
     it('should convert LLM node correctly', () => {

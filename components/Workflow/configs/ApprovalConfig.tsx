@@ -29,6 +29,8 @@ import {
   summarizeApprovalParticipants,
   type ApprovalParticipantRule,
 } from './approvalParticipants'
+import { getApprovalInputFields, type ApprovalFieldPermission } from './approvalInput'
+import ApprovalFieldPermissionList, { type ApprovalFieldOption } from './ApprovalFieldPermissionList'
 
 interface ApprovalConfigProps {
   config: any
@@ -75,10 +77,11 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
   // 从store获取全局数据
   const workflowStore = useWorkflowStore()
   const startNode = workflowStore.nodes.find(node => node.type === WorkflowNodeType.START)
+  const startConfig = (startNode?.data.config || {}) as Record<string, any>
 
-  // 提取全局数据的字段结构
-  const extractFields = (obj: any, prefix: string = ''): Array<{ key: string; label: string }> => {
-    const fields: Array<{ key: string; label: string }> = []
+  // 提取兼容模拟数据的字段结构。Approval 模式优先使用开始节点的审批表数据入参。
+  const extractFields = (obj: any, prefix: string = ''): ApprovalFieldOption[] => {
+    const fields: ApprovalFieldOption[] = []
 
     if (typeof obj !== 'object' || obj === null) {
       return fields
@@ -88,7 +91,7 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
       const fieldKey = prefix ? `${prefix}_${key}` : key
       const fieldLabel = prefix ? `${prefix} ${key}` : key
 
-      fields.push({ key: fieldKey, label: fieldLabel })
+      fields.push({ key: fieldKey, label: fieldLabel, source: 'devInput' })
 
       // 递归提取嵌套对象的字段
       if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
@@ -99,30 +102,29 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
     return fields
   }
 
-  // 获取全局数据并提取字段
-  let globalFields: Array<{ key: string; label: string }> = []
+  const approvalInputFields = getApprovalInputFields(startConfig.approvalInputConfig)
+  let globalFields: ApprovalFieldOption[] = approvalInputFields.map(field => ({
+    key: field.variableName || field.fieldId,
+    label: field.label || field.fieldName || field.fieldId,
+    permission: field.permission,
+    required: field.required,
+    source: 'approvalInput',
+  }))
+  const usingApprovalInputFields = globalFields.length > 0
+
   try {
-    if (startNode?.data.config?.devInput) {
-      const globalData = JSON.parse(startNode.data.config.devInput)
+    if (globalFields.length === 0 && startConfig.devInput) {
+      const globalData = JSON.parse(startConfig.devInput)
       globalFields = extractFields(globalData)
     }
   } catch (e) {
     console.error('Failed to parse global data:', e)
   }
 
-  // 如果没有提取到字段，使用默认字段
-  if (globalFields.length === 0) {
-    globalFields = [
-      { key: 'order_id', label: '订单ID' }, { key: 'amount', label: '金额' },
-      { key: 'currency', label: '货币' }, { key: 'requester', label: '申请人' },
-      { key: 'requester_name', label: '申请人姓名' }, { key: 'requester_department', label: '申请部门' },
-    ]
-  }
-
-  // 初始化字段配置，使用全局字段
-  const initialFieldConfig: Record<string, 'editable' | 'readonly' | 'hidden'> = {}
+  // 初始化字段配置，使用开始节点入参字段的默认权限。
+  const initialFieldConfig: Record<string, ApprovalFieldPermission> = {}
   globalFields.forEach(field => {
-    initialFieldConfig[field.key] = 'editable'
+    initialFieldConfig[field.key] = field.permission || 'editable'
   })
 
   // 字段配置数据
@@ -593,53 +595,15 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
                 <LayoutGrid size={12} className="text-blue-500" />
                 参与者可以看见或操作哪些字段
               </label>
-              <p className="text-xs text-slate-500 mt-1">
-                字段来源于全局数据，可配置每个字段的访问权限（可编辑、只读或隐藏）
-              </p>
+              <p className="text-xs text-slate-500 mt-1">字段来源于开始节点的审批表数据入参。</p>
             </div>
 
-            <div className="space-y-4">
-              {globalFields.map(field => (
-                <div key={field.key} className="flex items-center justify-between">
-                  <label className="text-sm text-slate-700">{field.label}</label>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-1 text-xs text-slate-600">
-                      <input
-                        type="radio"
-                        name={`field-${field.key}`}
-                        value="editable"
-                        checked={fieldConfig[field.key] === 'editable'}
-                        onChange={() => handleFieldChange(field.key, 'editable')}
-                        className="w-3 h-3 text-blue-600 focus:ring-blue-500 border-slate-300"
-                      />
-                      可编辑
-                    </label>
-                    <label className="flex items-center gap-1 text-xs text-slate-600">
-                      <input
-                        type="radio"
-                        name={`field-${field.key}`}
-                        value="readonly"
-                        checked={fieldConfig[field.key] === 'readonly'}
-                        onChange={() => handleFieldChange(field.key, 'readonly')}
-                        className="w-3 h-3 text-blue-600 focus:ring-blue-500 border-slate-300"
-                      />
-                      只读
-                    </label>
-                    <label className="flex items-center gap-1 text-xs text-slate-600">
-                      <input
-                        type="radio"
-                        name={`field-${field.key}`}
-                        value="hidden"
-                        checked={fieldConfig[field.key] === 'hidden'}
-                        onChange={() => handleFieldChange(field.key, 'hidden')}
-                        className="w-3 h-3 text-blue-600 focus:ring-blue-500 border-slate-300"
-                      />
-                      隐藏
-                    </label>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ApprovalFieldPermissionList
+              fields={globalFields}
+              fieldConfig={fieldConfig}
+              usingApprovalInputFields={usingApprovalInputFields}
+              onFieldChange={handleFieldChange}
+            />
           </div>
         )}
 

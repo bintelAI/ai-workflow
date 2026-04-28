@@ -8,7 +8,7 @@ import ValidationReportModal, { ValidationResult } from './ValidationReportModal
 import { validateWorkflow } from './validators/workflowValidator'
 import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from './types'
 import { message } from '@ai-flow/components/common/AntdStaticFunction'
-import { getRuntimeTeamId } from '@ai-flow/utils/runtime'
+import { getRuntimeProjectId, getRuntimeTeamId } from '@ai-flow/utils/runtime'
 import { getPluginMode, type WorkflowPluginModeType } from './config/pluginModeRegistry'
 import WorkflowHistoryDrawer from './WorkflowHistoryDrawer'
 
@@ -114,11 +114,14 @@ const App: React.FC<WorkflowAppProps> = ({
 
   const isApprovalMode = pluginType === 'approval'
   const isAiMode = pluginType === 'ai'
+  const isAutomationMode = pluginType === 'automation'
   const activeCategoryName = categories.find(c => c.id === activeCategoryId)?.name || '未命名模式'
-  const appTitle = isApprovalMode ? '审批工作流' : isAiMode ? 'AI 工作流' : '维表智联工作流'
-  const appBadge = isApprovalMode ? 'Approval' : isAiMode ? 'AI 模式' : 'AI Pro'
+  const appTitle = isApprovalMode ? '审批工作流' : isAutomationMode ? '自动化工作流' : isAiMode ? 'AI 工作流' : '维表智联工作流'
+  const appBadge = isApprovalMode ? 'Approval' : isAutomationMode ? 'Automation' : isAiMode ? 'AI 模式' : 'AI Pro'
   const globalConfigLabel = isApprovalMode ? '审批配置' : '全局配置'
   const monitorButtonLabel = isApprovalMode ? '查看审批数据' : '监控数据流'
+  const runtimeTeamIdForConfig = storeTeamId || propTeamId || getRuntimeTeamId()
+  const runtimeProjectIdForConfig = getRuntimeProjectId()
 
   const handleVerify = () => {
     const result = validateWorkflow(nodes, edges)
@@ -292,7 +295,7 @@ const App: React.FC<WorkflowAppProps> = ({
             <div className="flex-1 relative">
               <WorkflowCanvas readonly={readonly} />
 
-              {!readonly && !isApprovalMode && <AICommandCenter />}
+              {!readonly && isAiMode && <AICommandCenter />}
 
               {!readonly && (
                 <div className="absolute bottom-4 left-4 z-10">
@@ -308,7 +311,13 @@ const App: React.FC<WorkflowAppProps> = ({
             </div>
           </main>
 
-          {!readonly && <ConfigPanel />}
+          {!readonly && (
+            <ConfigPanel
+              pluginType={pluginType}
+              teamId={runtimeTeamIdForConfig}
+              projectId={runtimeProjectIdForConfig}
+            />
+          )}
           {!readonly && <DataDrawer />}
           {!readonly && <SettingsModal />}
           {!readonly && <GlobalConfigModal />}

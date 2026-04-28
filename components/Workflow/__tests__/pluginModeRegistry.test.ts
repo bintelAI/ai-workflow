@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { PLUGIN_MODE_REGISTRY } from '../config/pluginModeRegistry'
+import { getPluginMode, PLUGIN_MODE_REGISTRY } from '../config/pluginModeRegistry'
 import { WorkflowNodeType } from '../types'
 
 describe('PLUGIN_MODE_REGISTRY', () => {
@@ -46,6 +46,22 @@ describe('PLUGIN_MODE_REGISTRY', () => {
       expect.arrayContaining([
         WorkflowNodeType.APPROVAL,
         WorkflowNodeType.CC,
+      ])
+    )
+  })
+
+  it('maps project workflow usage types to stable editor modes', () => {
+    expect(getPluginMode('ai_analysis').type).toBe('ai')
+    expect(getPluginMode('approval').type).toBe('approval')
+    expect(getPluginMode('automation').type).toBe('automation')
+  })
+
+  it('keeps approval nodes out of automation mode', () => {
+    expect(PLUGIN_MODE_REGISTRY.automation.allowedNodeTypes).not.toEqual(
+      expect.arrayContaining([
+        WorkflowNodeType.APPROVAL,
+        WorkflowNodeType.CC,
+        WorkflowNodeType.LLM,
       ])
     )
   })

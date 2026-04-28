@@ -137,4 +137,14 @@ describe('WorkflowApp mode rendering', () => {
     expect(container.textContent).toContain('查看审批数据')
     expect(container.querySelector('[data-testid="workflow-ai-command"]')).toBeFalsy()
   })
+
+  it('renders automation mode with automation title and without AI command center', async () => {
+    await act(async () => {
+      root.render(<WorkflowApp embedded mode="dev" pluginType="automation" />)
+    })
+
+    expect(container.textContent).toContain('自动化工作流')
+    expect(container.textContent).toContain('Automation')
+    expect(container.querySelector('[data-testid="workflow-ai-command"]')).toBeFalsy()
+  })
 })
