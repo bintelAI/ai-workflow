@@ -12,6 +12,19 @@ export interface WorkflowPluginMode {
   isSystem: true
 }
 
+const APPROVAL_EXCLUDED_NODE_TYPES = [
+  WorkflowNodeType.LLM,
+  WorkflowNodeType.QUESTION_CLASSIFIER,
+  WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
+  WorkflowNodeType.DOCUMENT_EXTRACTOR,
+  WorkflowNodeType.JSON_PARSE,
+  WorkflowNodeType.SMART_PARSE,
+] as const
+
+const APPROVAL_ALLOWED_NODE_TYPES = Object.values(WorkflowNodeType).filter(
+  type => !APPROVAL_EXCLUDED_NODE_TYPES.includes(type as any)
+)
+
 export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPluginMode> = {
   all: {
     type: 'all',
@@ -54,22 +67,8 @@ export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPlugin
     type: 'approval',
     categoryId: 'business_approval',
     name: '行政审批流 (BPM)',
-    description: '专注于审批、抄送、通知、条件与并行控制。',
-    allowedNodeTypes: [
-      WorkflowNodeType.START,
-      WorkflowNodeType.END,
-      WorkflowNodeType.APPROVAL,
-      WorkflowNodeType.CC,
-      WorkflowNodeType.CONDITION,
-      WorkflowNodeType.PARALLEL,
-      WorkflowNodeType.DELAY,
-      WorkflowNodeType.NOTIFICATION,
-      WorkflowNodeType.DATA_OP,
-      WorkflowNodeType.API_CALL,
-      WorkflowNodeType.SCRIPT,
-      WorkflowNodeType.FLOW_CALL,
-      WorkflowNodeType.VARIABLE,
-    ],
+    description: '包含审批、抄送、条件、通知、数据处理与外部集成节点。',
+    allowedNodeTypes: APPROVAL_ALLOWED_NODE_TYPES,
     layoutDirection: 'vertical',
     isSystem: true,
   },

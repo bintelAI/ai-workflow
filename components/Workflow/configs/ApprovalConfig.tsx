@@ -15,8 +15,20 @@ import {
 import { useWorkflowStore } from '../store/useWorkflowStore'
 import { WorkflowNodeType } from '../types'
 import { getRuntimeProjectId, getRuntimeTeamId } from '@ai-flow/utils/runtime'
-import { orgApi, type WorkflowOrgDepartment, type WorkflowProjectMember } from '@ai-flow-src/api/org'
+import {
+  orgApi,
+  type WorkflowOrgDepartment,
+  type WorkflowProjectMember,
+  type WorkflowProjectRole,
+} from '@ai-flow-src/api/org'
 import OrgTargetSelector from './common/OrgTargetSelector'
+import {
+  buildDynamicParticipantRules,
+  buildOrgParticipantRules,
+  buildProjectRoleParticipantRules,
+  summarizeApprovalParticipants,
+  type ApprovalParticipantRule,
+} from './approvalParticipants'
 
 interface ApprovalConfigProps {
   config: any
@@ -31,6 +43,7 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
   const [selectorOpen, setSelectorOpen] = useState(false)
   const [departments, setDepartments] = useState<WorkflowOrgDepartment[]>([])
   const [members, setMembers] = useState<WorkflowProjectMember[]>([])
+  const [roles, setRoles] = useState<WorkflowProjectRole[]>([])
   const [selectorLoading, setSelectorLoading] = useState(false)
 
   // 点击外部区域关闭下拉菜单
@@ -55,16 +68,8 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
 
   // 按钮配置数据
   const buttonConfig = config?.buttonConfig || {
-    save: true,
-    submit: true,
-    approve: true,
-    reject: true,
-    return: true,
-    jump: true,
-    addSign: true,
-    print: true,
-    transfer: true,
-    copy: false,
+    save: true, submit: true, approve: true, reject: true, return: true,
+    jump: true, addSign: true, print: true, transfer: true, copy: false,
   }
 
   // 从store获取全局数据
@@ -108,12 +113,9 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
   // 如果没有提取到字段，使用默认字段
   if (globalFields.length === 0) {
     globalFields = [
-      { key: 'order_id', label: '订单ID' },
-      { key: 'amount', label: '金额' },
-      { key: 'currency', label: '货币' },
-      { key: 'requester', label: '申请人' },
-      { key: 'requester_name', label: '申请人姓名' },
-      { key: 'requester_department', label: '申请部门' },
+      { key: 'order_id', label: '订单ID' }, { key: 'amount', label: '金额' },
+      { key: 'currency', label: '货币' }, { key: 'requester', label: '申请人' },
+      { key: 'requester_name', label: '申请人姓名' }, { key: 'requester_department', label: '申请部门' },
     ]
   }
 
@@ -125,9 +127,19 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
 
   // 字段配置数据
   const fieldConfig = config?.fieldConfig || initialFieldConfig
-  const participantRules = Array.isArray(config?.participantRules) ? config.participantRules : []
+  const participantRules: ApprovalParticipantRule[] = Array.isArray(config?.participantRules)
+    ? config.participantRules
+    : []
   const selectedUsers = participantRules.filter((item: any) => item?.sourceType === 'user')
   const selectedDepartments = participantRules.filter((item: any) => item?.sourceType === 'department')
+  const selectedProjectRoles = participantRules.filter((item: any) => item?.sourceType === 'project_role')
+  const hasDeptLeaderRule = participantRules.some((item: any) => item?.sourceType === 'dept_leader')
+  const hasDirectManagerRule = participantRules.some((item: any) => item?.sourceType === 'direct_manager')
+
+  const updateParticipantRules = (nextRules: ApprovalParticipantRule[]) => {
+    onConfigChange('participantRules', nextRules)
+    onConfigChange('approver', summarizeApprovalParticipants(nextRules))
+  }
 
   const loadOrgOptions = async () => {
     const teamId = getRuntimeTeamId()
@@ -135,16 +147,19 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
     if (!teamId || !projectId) {
       setDepartments([])
       setMembers([])
+      setRoles([])
       return
     }
     setSelectorLoading(true)
     try {
-      const [nextDepartments, nextMembers] = await Promise.all([
+      const [nextDepartments, nextMembers, nextRoles] = await Promise.all([
         orgApi.getTeamDepartments(teamId),
         orgApi.getProjectMembers(teamId, projectId),
+        orgApi.getProjectRoles(teamId, projectId),
       ])
       setDepartments(nextDepartments)
       setMembers(nextMembers)
+      setRoles(nextRoles)
     } finally {
       setSelectorLoading(false)
     }
@@ -159,25 +174,16 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
     users: Array<{ id: string; name: string; departmentId?: string }>
     departments: Array<{ id: string; name: string }>
   }) => {
-    const nextRules = [
-      ...value.users.map(user => ({
-        sourceType: 'user',
-        sourceValue: user.id,
-        sourceName: user.name,
-        sourceLabel: user.name,
-      })),
-      ...value.departments.map(department => ({
-        sourceType: 'department',
-        sourceValue: department.id,
-        sourceName: department.name,
-        sourceLabel: department.name,
-      })),
-    ]
-    onConfigChange('participantRules', nextRules)
-    onConfigChange(
-      'approver',
-      value.users.map(user => user.name).join(', ')
-    )
+    updateParticipantRules(buildOrgParticipantRules(participantRules, value))
+  }
+
+  const handleProjectRoleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedRoleIds = Array.from(event.target.selectedOptions).map(option => option.value)
+    updateParticipantRules(buildProjectRoleParticipantRules(participantRules, roles, selectedRoleIds))
+  }
+
+  const toggleDynamicRule = (sourceType: 'dept_leader' | 'direct_manager', checked: boolean) => {
+    updateParticipantRules(buildDynamicParticipantRules(participantRules, sourceType, checked))
   }
 
   const handleButtonChange = (buttonName: keyof typeof buttonConfig) => {
@@ -306,6 +312,57 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
                     )}
                   </div>
                 )}
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">
+                    项目角色
+                  </label>
+                  <select
+                    multiple
+                    data-testid="approval-project-role-select"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white min-h-[72px]"
+                    value={selectedProjectRoles.map((item: any) => String(item?.sourceValue))}
+                    onChange={handleProjectRoleChange}
+                    onFocus={() => {
+                      if (roles.length === 0) {
+                        void loadOrgOptions()
+                      }
+                    }}
+                  >
+                    {roles.map(role => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-slate-400">
+                    项目角色会在运行时解析为当前项目内的角色成员。
+                  </p>
+                </div>
+                <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+                  <label className="flex items-center gap-2 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      data-testid="approval-dept-leader-checkbox"
+                      checked={hasDeptLeaderRule}
+                      onChange={event => toggleDynamicRule('dept_leader', event.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300"
+                    />
+                    部门负责人
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      data-testid="approval-direct-manager-checkbox"
+                      checked={hasDirectManagerRule}
+                      onChange={event => toggleDynamicRule('direct_manager', event.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300"
+                    />
+                    直属上级
+                  </label>
+                  <p className="text-xs text-amber-600">
+                    直属上级按发起人所属部门负责人解析；若负责人为本人，则向上级部门查找负责人。
+                  </p>
+                </div>
               </div>
             </div>
           </div>
