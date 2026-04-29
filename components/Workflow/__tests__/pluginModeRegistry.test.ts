@@ -9,6 +9,7 @@ describe('PLUGIN_MODE_REGISTRY', () => {
       expect.arrayContaining([
         WorkflowNodeType.START,
         WorkflowNodeType.APPROVAL,
+        WorkflowNodeType.APPROVAL_AI_REVIEW,
         WorkflowNodeType.CC,
         WorkflowNodeType.CONDITION,
         WorkflowNodeType.PARALLEL,

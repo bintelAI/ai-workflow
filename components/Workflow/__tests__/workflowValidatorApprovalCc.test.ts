@@ -74,4 +74,38 @@ describe('WorkflowValidator approval / cc structured selections', () => {
       result.errors.some(error => error.message.includes('抄送节点未配置接收人'))
     ).toBe(false)
   })
+
+  it('reports decision variable missing when AI auto approval is enabled', () => {
+    const validator = new WorkflowValidator(
+      [
+        createNode('start_1', WorkflowNodeType.START, { devMode: true }),
+        createNode('approval_1', WorkflowNodeType.APPROVAL, {
+          participantRules: [
+            {
+              sourceType: 'user',
+              sourceValue: 'user_1',
+              sourceName: '张三',
+            },
+          ],
+          approvalType: 'single',
+          autoApproval: {
+            enabled: true,
+          },
+        }),
+      ] as any,
+      [
+        {
+          id: 'e1',
+          source: 'start_1',
+          target: 'approval_1',
+        },
+      ] as any
+    )
+
+    const result = validator.validate()
+
+    expect(
+      result.errors.some(error => error.message.includes('启用 AI 自动审批时必须配置决策值来源'))
+    ).toBe(true)
+  })
 })

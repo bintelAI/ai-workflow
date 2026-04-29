@@ -111,6 +111,39 @@ describe('backendAdapter', () => {
     ]);
   });
 
+  it('should export approval AI review node as approval_ai_review with structured decision outputs', () => {
+    const nodes = [
+      createNode('start-1', WorkflowNodeType.START),
+      createNode('ai-review-1', WorkflowNodeType.APPROVAL_AI_REVIEW, {
+        model: 'gpt-4',
+        systemPrompt: '你是审批评估助手。',
+        userPrompt: '评估 {{nodes.start-1.amount}}',
+        approveRules: '金额低于 500 自动通过',
+        rejectRules: '票据缺失自动驳回',
+        manualRules: '不确定时人工审批',
+      }),
+    ];
+    const workflow: WorkflowStoreState = { nodes, edges: [], globalVariables: [] } as any;
+
+    const result = exportToBackend(workflow);
+    const reviewNode = result.nodes.find(n => n.type === 'approval_ai_review');
+
+    expect(reviewNode).toBeDefined();
+    expect(reviewNode?.data.outputParams).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'approvalDecision', type: 'string' }),
+        expect.objectContaining({ field: 'reason', type: 'string' }),
+      ])
+    );
+    expect(reviewNode?.data.options?.messages?.[0]?.content).toContain('审批评估助手');
+    expect(reviewNode?.data.options?.messages?.[1]?.content).toContain('只允许返回合法 JSON');
+    expect(reviewNode?.data.inputParams).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ nodeId: 'start-1', name: 'amount' }),
+      ])
+    );
+  });
+
   it('should convert Script node and wrap code', () => {
     const nodes = [
       createNode('script-1', WorkflowNodeType.SCRIPT, {

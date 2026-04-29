@@ -14,6 +14,7 @@ import ConditionConfig from './configs/ConditionConfig'
 import { DelayConfig } from './configs/DelayConfig'
 import { NotificationConfig } from './configs/NotificationConfig'
 import { ApprovalConfig } from './configs/ApprovalConfig'
+import ApprovalAIReviewConfig from './configs/ApprovalAIReviewConfig'
 import DataOpConfig from './configs/DataOpConfig'
 import { CCConfig } from './configs/CCConfig'
 import { SQLConfig } from './configs/SQLConfig'
@@ -36,6 +37,7 @@ import type { WorkflowPluginModeType } from './config/pluginModeRegistry'
 const BACKEND_SUPPORTED_NODE_TYPES = new Set<WorkflowNodeType>([
   WorkflowNodeType.START,
   WorkflowNodeType.END,
+  WorkflowNodeType.APPROVAL_AI_REVIEW,
   WorkflowNodeType.LLM,
   WorkflowNodeType.SCRIPT,
   WorkflowNodeType.CONDITION,
@@ -201,6 +203,15 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
             variables={availableVariables}
           />
         )
+      case WorkflowNodeType.APPROVAL_AI_REVIEW:
+        return (
+          <ApprovalAIReviewConfig
+            config={config}
+            onConfigChange={handleConfigChange}
+            onConfigPatch={handleConfigPatch}
+            variables={availableVariables}
+          />
+        )
       case WorkflowNodeType.API_CALL:
         return <APICallConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.CONDITION:
@@ -210,7 +221,7 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
       case WorkflowNodeType.NOTIFICATION:
         return <NotificationConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.APPROVAL:
-        return <ApprovalConfig config={config} onConfigChange={handleConfigChange} />
+        return <ApprovalConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.DATA_OP:
         return <DataOpConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.CC:

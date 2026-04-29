@@ -3,6 +3,57 @@ import { describe, expect, it } from 'vitest'
 import { buildVariableCatalog } from '../utils/workflowVariables'
 
 describe('workflowVariables', () => {
+  it('exposes approval AI review outputs as upstream node variables', () => {
+    const groups = buildVariableCatalog({
+      nodes: [
+        {
+          id: 'start_1',
+          type: 'start',
+          position: { x: 0, y: 0 },
+          data: { label: '开始', config: { devInput: '{"amount":1000}' } },
+        },
+        {
+          id: 'ai_review_1',
+          type: 'approval_ai_review',
+          position: { x: 120, y: 0 },
+          data: { label: 'AI 审批评估', config: {} },
+        },
+        {
+          id: 'approval_1',
+          type: 'approval',
+          position: { x: 240, y: 0 },
+          data: { label: '主管审批', config: {} },
+        },
+      ],
+      edges: [
+        { id: 'e1', source: 'start_1', target: 'ai_review_1' },
+        { id: 'e2', source: 'ai_review_1', target: 'approval_1' },
+      ],
+      currentNodeId: 'approval_1',
+    } as any)
+
+    const reviewVariables = groups.find(group => group.id === 'ai_review_1')?.variables || []
+
+    expect(reviewVariables).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'node',
+          path: 'nodes.ai_review_1.approvalDecision',
+          template: '{{nodes.ai_review_1.approvalDecision}}',
+          name: 'approvalDecision',
+          type: 'string',
+        }),
+        expect.objectContaining({
+          scope: 'node',
+          path: 'nodes.ai_review_1.reason',
+          template: '{{nodes.ai_review_1.reason}}',
+          name: 'reason',
+          type: 'string',
+        }),
+      ])
+    )
+  })
+
   it('exposes approval table input fields as payload variables', () => {
     const groups = buildVariableCatalog({
       nodes: [

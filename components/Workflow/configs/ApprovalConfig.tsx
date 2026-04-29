@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { VariableTextArea } from './common'
 import {
+  Activity,
   CheckSquare,
   Users,
   Clock,
@@ -9,11 +10,11 @@ import {
   User,
   LayoutGrid,
   PlayCircle,
-  Activity,
   Save,
 } from 'lucide-react'
 import { useWorkflowStore } from '../store/useWorkflowStore'
 import { WorkflowNodeType } from '../types'
+import type { WorkflowVariableGroup } from '../utils/workflowVariables'
 import { getRuntimeProjectId, getRuntimeTeamId } from '@ai-flow/utils/runtime'
 import {
   orgApi,
@@ -31,15 +32,17 @@ import {
 } from './approvalParticipants'
 import { getApprovalInputFields, type ApprovalFieldPermission } from './approvalInput'
 import ApprovalFieldPermissionList, { type ApprovalFieldOption } from './ApprovalFieldPermissionList'
+import ApprovalAutoApprovalConfig from './ApprovalAutoApprovalConfig'
 
 interface ApprovalConfigProps {
   config: any
   onConfigChange: (key: string, value: any) => void
+  variables?: WorkflowVariableGroup[]
 }
 
 type TabKey = 'personnel' | 'approval' | 'buttons' | 'fields' | 'execution' | 'node'
 
-export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfigChange }) => {
+export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfigChange, variables = [] }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('personnel')
   const [showMore, setShowMore] = useState(false)
   const [selectorOpen, setSelectorOpen] = useState(false)
@@ -129,6 +132,7 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
 
   // 字段配置数据
   const fieldConfig = config?.fieldConfig || initialFieldConfig
+  const autoApproval = config?.autoApproval || {}
   const participantRules: ApprovalParticipantRule[] = Array.isArray(config?.participantRules)
     ? config.participantRules
     : []
@@ -199,6 +203,15 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
     onConfigChange('fieldConfig', {
       ...fieldConfig,
       [fieldName]: value,
+    })
+  }
+
+  const updateAutoApproval = (patch: Record<string, any>) => {
+    onConfigChange('autoApproval', {
+      enabled: false,
+      fallback: 'manual',
+      ...autoApproval,
+      ...patch,
     })
   }
 
@@ -520,6 +533,12 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
                 </div>
               </div>
             </div>
+
+            <ApprovalAutoApprovalConfig
+              autoApproval={autoApproval}
+              onChange={updateAutoApproval}
+              variables={variables}
+            />
           </div>
         )}
 

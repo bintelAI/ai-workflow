@@ -5,6 +5,7 @@ export enum WorkflowNodeType {
   START = 'start',
   END = 'end',
   APPROVAL = 'approval',
+  APPROVAL_AI_REVIEW = 'approval_ai_review',
   CC = 'cc',
   CONDITION = 'condition',
   API_CALL = 'api_call',

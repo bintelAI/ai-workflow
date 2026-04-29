@@ -128,6 +128,60 @@ describe('backendAdapter', () => {
       expect(result.nodes[0].data?.options?.model?.params?.temperature).toBe(0.7);
     });
 
+    it('should export approval AI review node with fixed decision outputs', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'start_1',
+            type: 'start' as WorkflowNodeType,
+            position: { x: 0, y: 0 },
+            data: {
+              label: '开始',
+              config: {},
+            },
+          },
+          {
+            id: 'ai_review_1',
+            type: 'approval_ai_review' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: 'AI 审批评估',
+              config: {
+                model: 'gpt-4',
+                temperature: 0.1,
+                systemPrompt: '你是审批评估助手。',
+                userPrompt: '评估金额 {{nodes.start_1.amount}}',
+                approveRules: '金额低于 500 自动通过',
+                rejectRules: '票据缺失自动驳回',
+                manualRules: '不确定时人工审批',
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const result = exportToBackend(workflow as any);
+      const reviewNode = result.nodes.find(node => node.id === 'ai_review_1');
+
+      expect(reviewNode?.type).toBe('approval_ai_review');
+      expect(reviewNode?.data?.inputParams).toEqual([
+        expect.objectContaining({
+          nodeId: 'start_1',
+          nodeType: 'start',
+          name: 'amount',
+        }),
+      ]);
+      expect(reviewNode?.data?.outputParams).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'approvalDecision', type: 'string' }),
+          expect.objectContaining({ field: 'reason', type: 'string' }),
+        ])
+      );
+      expect(reviewNode?.data?.options?.messages?.[1]?.content).toContain('只允许返回合法 JSON');
+      expect(reviewNode?.data?.options?.messages?.[1]?.content).toContain('approvalDecision 只能是');
+    });
+
     it('should convert condition node correctly', () => {
       const workflow = {
         nodes: [

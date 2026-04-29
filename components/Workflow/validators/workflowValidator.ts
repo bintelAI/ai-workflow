@@ -455,6 +455,20 @@ export class WorkflowValidator {
         suggestion: '选择审批类型：单人审批、任意一人审批、全员审批',
       })
     }
+
+    if (
+      config.autoApproval?.enabled &&
+      !String(config.autoApproval?.decisionVariable || '').trim()
+    ) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '启用 AI 自动审批时必须配置决策值来源',
+        suggestion: '选择 AI 审批评估节点输出的 approvalDecision 作为决策值来源',
+      })
+    }
   }
 
   private validateNotificationNode(node: WorkflowNode, config: any) {

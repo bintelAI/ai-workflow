@@ -5,6 +5,7 @@ import { BaseNode, getNodeIcon, getNodeTypeLabel, getNodeColor } from './BaseNod
 import StartNode from './StartNode'
 import EndNode from './EndNode'
 import ApprovalNode from './ApprovalNode'
+import ApprovalAIReviewNode from './ApprovalAIReviewNode'
 import CCNode from './CCNode'
 import ConditionNode from './ConditionNode'
 import APICallNode from './APICallNode'
@@ -38,6 +39,7 @@ export {
   StartNode,
   EndNode,
   ApprovalNode,
+  ApprovalAIReviewNode,
   CCNode,
   ConditionNode,
   APICallNode,
