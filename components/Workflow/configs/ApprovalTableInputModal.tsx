@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Empty, Input, Modal, Radio, Select, Spin, Switch, Table } from 'antd';
+import { Alert, Empty, Input, Modal, Radio, Select, Spin, Switch, Table, Typography } from 'antd';
 import { mulApi, type WorkflowMulColumn, type WorkflowMulSheet } from '@ai-flow-src/api/mul';
 import {
   APPROVAL_FIELD_PERMISSION_OPTIONS,
@@ -222,15 +222,7 @@ const ApprovalTableInputModal: React.FC<ApprovalTableInputModalProps> = ({
                 const fieldId = getColumnKey(record);
                 const field = draftValue?.fields.find(item => item.fieldId === fieldId);
                 return field ? (
-                  <Input
-                    size="small"
-                    value={field.variableName}
-                    onChange={event =>
-                      updateField(fieldId, {
-                        variableName: event.target.value,
-                      })
-                    }
-                  />
+                  <Typography.Text code>{field.variableName}</Typography.Text>
                 ) : (
                   <span className="text-slate-400">选择后配置</span>
                 );

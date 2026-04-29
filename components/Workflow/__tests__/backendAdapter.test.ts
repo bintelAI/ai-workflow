@@ -78,6 +78,22 @@ describe('backendAdapter', () => {
 
       const exported = exportToBackend(workflow as any);
       expect(exported.nodes[0].data?.options?.approvalInputConfig).toEqual(approvalInputConfig);
+      expect(exported.nodes[0].data?.inputParams).toEqual([
+        expect.objectContaining({
+          field: 'sheetId',
+          name: 'sheetId',
+          label: '审批表 Sheet ID',
+          type: 'string',
+          required: true,
+        }),
+        expect.objectContaining({
+          field: 'amount',
+          name: 'amount',
+          label: '金额',
+          type: 'number',
+          required: true,
+        }),
+      ]);
 
       const imported = importFromBackend(exported);
       expect(imported.nodes?.[0]?.data?.config?.approvalInputConfig).toEqual(approvalInputConfig);
@@ -141,6 +157,53 @@ describe('backendAdapter', () => {
       expect(result.nodes).toHaveLength(1);
       expect(result.nodes[0].type).toBe('judge');
       expect(result.nodes[0].data?.options?.IF).toBeDefined();
+    });
+
+    it('should export condition config saved by ConditionConfig IF list', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'condition_1',
+            type: 'condition' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: '条件判断',
+              config: {
+                IF: [
+                  {
+                    field: 'amount',
+                    nodeId: 'start_1',
+                    nodeType: 'start',
+                    name: 'amount',
+                    template: '{{nodes.start_1.amount}}',
+                    refPath: '{{nodes.start_1.amount}}',
+                    condition: 'greaterThan',
+                    value: '100',
+                  },
+                ],
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const exported = exportToBackend(workflow as any);
+      const judgeNode = exported.nodes.find(node => node.id === 'condition_1');
+
+      expect(judgeNode?.type).toBe('judge');
+      expect(judgeNode?.data?.options?.IF).toEqual([
+        expect.objectContaining({
+          field: 'amount',
+          nodeId: 'start_1',
+          nodeType: 'start',
+          name: 'amount',
+          template: '{{nodes.start_1.amount}}',
+          refPath: '{{nodes.start_1.amount}}',
+          condition: 'greaterThan',
+          value: '100',
+        }),
+      ]);
     });
 
     it('should convert loop node with aggregation metadata correctly', () => {
@@ -210,6 +273,144 @@ describe('backendAdapter', () => {
           itemLabel: '评分',
         })
       );
+    });
+
+    it('should export question classifier config saved by QuestionClassifierConfig', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'classifier_1',
+            type: 'question_classifier' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: '问题分类',
+              config: {
+                inputParams: [
+                  {
+                    field: 'content',
+                    name: 'amount',
+                    nodeId: 'start_1',
+                    nodeType: 'start',
+                    template: '{{nodes.start_1.amount}}',
+                  },
+                ],
+                types: ['通过', '拒绝'],
+                descriptions: ['金额合规', '金额异常'],
+                model: 'gpt-4',
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const exported = exportToBackend(workflow as any);
+      const classifierNode = exported.nodes.find(node => node.id === 'classifier_1');
+
+      expect(classifierNode?.type).toBe('classify');
+      expect(classifierNode?.data?.inputParams?.[0]).toEqual(
+        expect.objectContaining({
+          field: 'content',
+          nodeId: 'start_1',
+          name: 'amount',
+        })
+      );
+      expect(classifierNode?.data?.options?.types).toEqual(['通过', '拒绝']);
+      expect(classifierNode?.data?.options?.descriptions).toEqual(['金额合规', '金额异常']);
+    });
+
+    it('should export knowledge retrieval config saved by KnowledgeRetrievalConfig', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'know_1',
+            type: 'knowledge_retrieval' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: '知识库检索',
+              config: {
+                inputParams: [
+                  {
+                    field: 'text',
+                    name: 'question',
+                    nodeId: 'start_1',
+                    nodeType: 'start',
+                    template: '{{nodes.start_1.question}}',
+                  },
+                ],
+                knowIds: [11, 22],
+                size: 20,
+                minScore: 0.75,
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const exported = exportToBackend(workflow as any);
+      const knowNode = exported.nodes.find(node => node.id === 'know_1');
+
+      expect(knowNode?.type).toBe('know');
+      expect(knowNode?.data?.inputParams?.[0]).toEqual(
+        expect.objectContaining({
+          field: 'text',
+          nodeId: 'start_1',
+          name: 'question',
+        })
+      );
+      expect(knowNode?.data?.options).toEqual(
+        expect.objectContaining({
+          knowIds: [11, 22],
+          size: 20,
+          minScore: 0.75,
+        })
+      );
+    });
+
+    it('should export script input and output params saved by ScriptConfig', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'script_1',
+            type: 'script' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: '脚本',
+              config: {
+                code: 'return { total: params.amount }',
+                language: 'javascript',
+                inputParams: [
+                  {
+                    field: 'amount',
+                    name: 'amount',
+                    nodeId: 'start_1',
+                    nodeType: 'start',
+                    template: '{{nodes.start_1.amount}}',
+                  },
+                ],
+                outputParams: [{ field: 'total', name: 'total', type: 'number' }],
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const exported = exportToBackend(workflow as any);
+      const scriptNode = exported.nodes.find(node => node.id === 'script_1');
+
+      expect(scriptNode?.type).toBe('code');
+      expect(scriptNode?.data?.inputParams?.[0]).toEqual(
+        expect.objectContaining({
+          field: 'amount',
+          nodeId: 'start_1',
+          name: 'amount',
+        })
+      );
+      expect(scriptNode?.data?.outputParams).toEqual([
+        expect.objectContaining({ field: 'total', name: 'total', type: 'number' }),
+      ]);
     });
 
     it('should convert edges correctly', () => {
@@ -346,6 +547,163 @@ describe('backendAdapter', () => {
         })
       )
     })
+
+    it('should import judge IF into condition config used by ConditionConfig', () => {
+      const draft: FlowDraft = {
+        nodes: [
+          {
+            id: 'condition_1',
+            type: 'judge',
+            label: '条件判断',
+            position: { x: 100, y: 100 },
+            data: {
+              inputParams: [],
+              outputParams: [{ field: 'result', type: 'boolean' }],
+              options: {
+                IF: [
+                  {
+                    field: 'amount',
+                    nodeId: 'start_1',
+                    nodeType: 'start',
+                    name: 'amount',
+                    template: '{{nodes.start_1.amount}}',
+                    refPath: '{{nodes.start_1.amount}}',
+                    condition: 'greaterThan',
+                    value: '100',
+                  },
+                ],
+                ELSE: [],
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const imported = importFromBackend(draft);
+      const conditionNode = imported.nodes?.find(node => node.id === 'condition_1');
+
+      expect(conditionNode?.type).toBe('condition');
+      expect(conditionNode?.data?.config?.IF).toEqual([
+        expect.objectContaining({
+          field: 'amount',
+          nodeId: 'start_1',
+          nodeType: 'start',
+          name: 'amount',
+          template: '{{nodes.start_1.amount}}',
+          refPath: '{{nodes.start_1.amount}}',
+          condition: 'greaterThan',
+          value: '100',
+        }),
+      ]);
+      expect(conditionNode?.data?.config?.conditionGroups?.[0]?.conditions?.[0]).toEqual(
+        expect.objectContaining({
+          variable: '{{nodes.start_1.amount}}',
+          operator: 'greater_than',
+          value: '100',
+        })
+      );
+    });
+
+    it('should import classifier config into fields used by QuestionClassifierConfig', () => {
+      const draft: FlowDraft = {
+        nodes: [
+          {
+            id: 'classifier_1',
+            type: 'classify',
+            label: '问题分类',
+            position: { x: 100, y: 100 },
+            data: {
+              inputParams: [{ field: 'content', nodeId: 'start_1', nodeType: 'start', name: 'amount' }],
+              outputParams: [{ field: 'index', type: 'number' }],
+              options: {
+                model: { params: { model: 'gpt-4' } },
+                types: ['通过', '拒绝'],
+                descriptions: ['金额合规', '金额异常'],
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const imported = importFromBackend(draft);
+      const classifierNode = imported.nodes?.find(node => node.id === 'classifier_1');
+
+      expect(classifierNode?.type).toBe('question_classifier');
+      expect(classifierNode?.data?.config?.types).toEqual(['通过', '拒绝']);
+      expect(classifierNode?.data?.config?.descriptions).toEqual(['金额合规', '金额异常']);
+      expect(classifierNode?.data?.config?.inputParams?.[0]).toEqual(
+        expect.objectContaining({ field: 'content', nodeId: 'start_1', name: 'amount' })
+      );
+    });
+
+    it('should import knowledge config into fields used by KnowledgeRetrievalConfig', () => {
+      const draft: FlowDraft = {
+        nodes: [
+          {
+            id: 'know_1',
+            type: 'know',
+            label: '知识库检索',
+            position: { x: 100, y: 100 },
+            data: {
+              inputParams: [{ field: 'text', nodeId: 'start_1', nodeType: 'start', name: 'question' }],
+              outputParams: [{ field: 'documents', type: 'array' }],
+              options: {
+                knowIds: [11, 22],
+                size: 20,
+                minScore: 0.75,
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const imported = importFromBackend(draft);
+      const knowNode = imported.nodes?.find(node => node.id === 'know_1');
+
+      expect(knowNode?.type).toBe('knowledge_retrieval');
+      expect(knowNode?.data?.config?.knowIds).toEqual([11, 22]);
+      expect(knowNode?.data?.config?.size).toBe(20);
+      expect(knowNode?.data?.config?.minScore).toBe(0.75);
+      expect(knowNode?.data?.config?.inputParams?.[0]).toEqual(
+        expect.objectContaining({ field: 'text', nodeId: 'start_1', name: 'question' })
+      );
+    });
+
+    it('should import script params into fields used by ScriptConfig', () => {
+      const draft: FlowDraft = {
+        nodes: [
+          {
+            id: 'script_1',
+            type: 'code',
+            label: '脚本',
+            position: { x: 100, y: 100 },
+            data: {
+              inputParams: [{ field: 'amount', nodeId: 'start_1', nodeType: 'start', name: 'amount' }],
+              outputParams: [{ field: 'total', name: 'total', type: 'number' }],
+              options: {
+                code: 'return { total: params.amount }',
+                type: 'javascript',
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const imported = importFromBackend(draft);
+      const scriptNode = imported.nodes?.find(node => node.id === 'script_1');
+
+      expect(scriptNode?.type).toBe('script');
+      expect(scriptNode?.data?.config?.inputParams?.[0]).toEqual(
+        expect.objectContaining({ field: 'amount', nodeId: 'start_1', name: 'amount' })
+      );
+      expect(scriptNode?.data?.config?.outputParams).toEqual([
+        expect.objectContaining({ field: 'total', name: 'total', type: 'number' }),
+      ]);
+    });
   });
 
   describe('template compatibility', () => {

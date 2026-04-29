@@ -11,12 +11,18 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
   const activeCategory = categories.find(c => c.id === activeCategoryId)
   const layoutDirection: LayoutDirection = activeCategory?.layoutDirection || 'vertical'
   const isHorizontal = layoutDirection === 'horizontal'
+  const trueLabel = '是 / 真'
+  const falseLabel = '否 / 假'
+  const labelClass =
+    'text-[10px] font-bold px-2 py-0.5 rounded border shadow-sm whitespace-nowrap leading-4'
+  const trueLabelClass = `${labelClass} text-emerald-700 bg-emerald-50 border-emerald-200`
+  const falseLabelClass = `${labelClass} text-rose-700 bg-rose-50 border-rose-200`
 
   const customHandles = isHorizontal ? (
     <>
-      <div className="absolute -right-6 top-1/4 -translate-y-1/2 flex items-center pointer-events-none">
-        <span className="text-[10px] font-bold text-emerald-600 mr-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-          是
+      <div className="absolute -right-20 top-1/4 -translate-y-1/2 flex items-center pointer-events-none">
+        <span className={trueLabelClass}>
+          {trueLabel}
         </span>
       </div>
       <Handle
@@ -28,9 +34,9 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
         style={{ top: '25%' }}
       />
 
-      <div className="absolute -right-6 top-3/4 -translate-y-1/2 flex items-center pointer-events-none">
-        <span className="text-[10px] font-bold text-rose-600 mr-1 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
-          否
+      <div className="absolute -right-20 top-3/4 -translate-y-1/2 flex items-center pointer-events-none">
+        <span className={falseLabelClass}>
+          {falseLabel}
         </span>
       </div>
       <Handle
@@ -44,11 +50,6 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
     </>
   ) : (
     <>
-      <div className="absolute -bottom-6 left-1/4 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-        <span className="text-[10px] font-bold text-emerald-600 mb-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
-          是
-        </span>
-      </div>
       <Handle
         id="source-if"
         type="source"
@@ -58,11 +59,6 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
         style={{ left: '25%' }}
       />
 
-      <div className="absolute -bottom-6 left-3/4 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-        <span className="text-[10px] font-bold text-rose-600 mb-1 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
-          否
-        </span>
-      </div>
       <Handle
         id="source-else"
         type="source"
@@ -71,6 +67,14 @@ const ConditionNode = (props: NodeProps<NodeData>) => {
         className="!bg-rose-400 hover:!bg-rose-600 !w-3 !h-3 !-bottom-1.5 z-10"
         style={{ left: '75%' }}
       />
+      <div className="absolute -bottom-8 left-0 right-0 grid grid-cols-2 px-4 pointer-events-none">
+        <div className="flex justify-start">
+          <span className={trueLabelClass}>{trueLabel}</span>
+        </div>
+        <div className="flex justify-end">
+          <span className={falseLabelClass}>{falseLabel}</span>
+        </div>
+      </div>
     </>
   )
 

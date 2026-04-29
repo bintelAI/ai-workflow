@@ -64,13 +64,23 @@ const VariableSelector: React.FC<VariableSelectorProps> = ({
   }, [customValue]);
 
   const filteredVariables = useMemo(() => {
+    const normalizedKeyword = keyword.toLowerCase();
     if (!keyword) return variables;
     return variables
       .map(group => ({
         ...group,
-        params: group.params.filter(
-          p => p.field?.includes(keyword) || p.label?.includes(keyword)
-        ),
+        params: group.params.filter(p => {
+          const meta = group.variables?.find(item => item.name === (p.name || p.field));
+          return [
+            p.field,
+            p.name,
+            p.label,
+            meta?.name,
+            meta?.label,
+            meta?.path,
+            meta?.template,
+          ].some(value => String(value || '').toLowerCase().includes(normalizedKeyword));
+        }),
       }))
       .filter(group => group.params.length > 0);
   }, [variables, keyword]);
@@ -92,7 +102,7 @@ const VariableSelector: React.FC<VariableSelectorProps> = ({
 
   const displayText = useMemo(() => {
     if (customValue) return customValue;
-    if (selectedMeta) return `${selectedMeta.nodeLabel || selectedMeta.label} / ${selectedMeta.name}`;
+    if (selectedMeta) return `${selectedMeta.nodeLabel || selectedMeta.label} / ${selectedMeta.label}`;
     if (!nodeId && !value) return '';
     const group = variables.find(g => g.id === nodeId)
       || variables.find(g => g.variables?.some(item => item.path === value || item.template === value));
@@ -166,6 +176,9 @@ const VariableSelector: React.FC<VariableSelectorProps> = ({
               {group.params.map((param, paramIndex) => {
                 const meta = group.variables?.find(item => item.name === (param.name || param.field));
                 const itemKey = `${group.id || 'group'}_${param.field || param.name || 'field'}_${paramIndex}_${meta?.template || meta?.path || ''}`
+                const variableName = param.name || param.field || meta?.name || ''
+                const displayName = meta?.label || param.label || variableName
+                const subText = meta?.path || meta?.template || variableName
                 const isActive = Boolean(
                   (nodeId && nodeId === group.id && field === param.field) ||
                   (value && meta && (meta.template === value || meta.path === value))
@@ -177,9 +190,11 @@ const VariableSelector: React.FC<VariableSelectorProps> = ({
                     onClick={() => handleSelect(param, group)}
                   >
                     <span className="variable-icon">📋</span>
-                    <span className="variable-name">{param.field}</span>
+                    <span className="variable-main">
+                      <span className="variable-name">{displayName}</span>
+                      {subText && <span className="variable-path">{subText}</span>}
+                    </span>
                     <span className="variable-type">{param.type || 'any'}</span>
-                    {meta?.template && <span className="variable-type">{meta.template}</span>}
                   </div>
                 )
               })}

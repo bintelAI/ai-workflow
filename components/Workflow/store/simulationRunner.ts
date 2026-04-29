@@ -221,6 +221,40 @@ export const runSimulationLogic = async (
     }
   }
 
+  const conditionItemsToGroups = (items: any[] = []) => {
+    if (!Array.isArray(items) || items.length === 0) return []
+    const operatorMap: Record<string, string> = {
+      include: 'contains',
+      exclude: 'not_contains',
+      equal: '==',
+      notEqual: '!=',
+      greaterThan: '>',
+      lessThan: '<',
+      greaterThanOrEqual: '>=',
+      lessThanOrEqual: '<=',
+      isNull: 'empty',
+      isNotNull: 'not_empty',
+      startWith: 'starts_with',
+      endWith: 'ends_with',
+    }
+
+    return [
+      {
+        logicalOperator: 'AND',
+        conditions: items.map(item => ({
+          variable: item?.template || item?.refPath || (item?.nodeId && item?.name ? `{{nodes.${item.nodeId}.${item.name}}}` : item?.field),
+          field: item?.field,
+          nodeId: item?.nodeId,
+          nodeType: item?.nodeType,
+          name: item?.name,
+          operator: operatorMap[item?.condition] || '==',
+          value: item?.value || '',
+          logic: item?.operator || 'AND',
+        })),
+      },
+    ]
+  }
+
   // Queue system
   const queue: { nodeId: string; incomingData: any }[] = []
 
@@ -766,8 +800,11 @@ export const runSimulationLogic = async (
       }
     } else if (node.type === WorkflowNodeType.CONDITION) {
       // 条件节点处理
+      const conditionGroups = (Array.isArray(config.conditionGroups) && config.conditionGroups.length > 0)
+        ? config.conditionGroups
+        : conditionItemsToGroups(config.IF)
       const conditionResult = evaluateConditions(
-        config.conditionGroups,
+        conditionGroups,
         config.expression,
         incomingData
       )
@@ -778,7 +815,7 @@ export const runSimulationLogic = async (
       // 增强条件节点的输入输出监控
       logInput = {
         expression: config.expression || 'builder',
-        condition_groups: config.conditionGroups || [],
+        condition_groups: conditionGroups,
         data: incomingData.payload,
         context_data: incomingData.nodes || {},
         workflow_context: {

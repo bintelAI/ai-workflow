@@ -8,6 +8,22 @@ import './ConditionConfig.css';
 interface ConditionConfigProps {
   config: {
     IF?: ConditionItem[];
+    conditionGroups?: Array<{
+      conditions?: Array<{
+        variable?: string;
+        template?: string;
+        refPath?: string;
+        field?: string;
+        nodeId?: string;
+        nodeType?: string;
+        name?: string;
+        operator?: string;
+        value?: string;
+        logic?: 'AND' | 'OR';
+      }>;
+      logic?: 'AND' | 'OR';
+      logicalOperator?: 'AND' | 'OR';
+    }>;
     ELSE?: FlowField[];
   };
   onConfigChange: (key: string, value: any) => void;
@@ -34,12 +50,115 @@ const CONDITIONS: { label: string; value: ConditionOperator }[] = [
   { label: '不为空', value: 'isNotNull' },
 ];
 
+const CONFIG_OPERATOR_TO_CONDITION: Record<string, ConditionOperator> = {
+  equals: 'equal',
+  '==': 'equal',
+  not_equals: 'notEqual',
+  '!=': 'notEqual',
+  contains: 'include',
+  not_contains: 'exclude',
+  starts_with: 'startWith',
+  ends_with: 'endWith',
+  greater_than: 'greaterThan',
+  '>': 'greaterThan',
+  greater_than_or_equal: 'greaterThanOrEqual',
+  '>=': 'greaterThanOrEqual',
+  less_than: 'lessThan',
+  '<': 'lessThan',
+  less_than_or_equal: 'lessThanOrEqual',
+  '<=': 'lessThanOrEqual',
+  is_empty: 'isNull',
+  empty: 'isNull',
+  is_not_empty: 'isNotNull',
+  not_empty: 'isNotNull',
+};
+
+const CONDITION_TO_CONFIG_OPERATOR: Record<ConditionOperator, string> = {
+  include: 'contains',
+  exclude: 'not_contains',
+  equal: 'equals',
+  notEqual: 'not_equals',
+  greaterThan: 'greater_than',
+  lessThan: 'less_than',
+  isNull: 'is_empty',
+  isNotNull: 'is_not_empty',
+  startWith: 'starts_with',
+  endWith: 'ends_with',
+  greaterThanOrEqual: 'greater_than_or_equal',
+  lessThanOrEqual: 'less_than_or_equal',
+};
+
+const conditionGroupsToIfList = (conditionGroups: ConditionConfigProps['config']['conditionGroups']): ConditionItem[] => {
+  if (!Array.isArray(conditionGroups) || conditionGroups.length === 0) return [];
+
+  const items: ConditionItem[] = [];
+  conditionGroups.forEach(group => {
+    const groupLogic = group?.logicalOperator || group?.logic || 'AND';
+    const conditions = Array.isArray(group?.conditions) ? group.conditions : [];
+    conditions.forEach(cond => {
+      const variable = cond.template || cond.refPath || cond.variable || '';
+      items.push({
+        field: cond.field || cond.name || variable.split('.').pop()?.replace(/[{}]/g, '') || variable,
+        nodeId: cond.nodeId,
+        nodeType: cond.nodeType,
+        name: cond.name || cond.field,
+        condition: CONFIG_OPERATOR_TO_CONDITION[cond.operator || ''] || 'equal',
+        value: cond.value || '',
+        template: cond.template || variable,
+        refPath: cond.refPath || variable,
+        operator: cond.logic || groupLogic,
+      });
+    });
+  });
+
+  if (items.length > 0) {
+    items[items.length - 1].operator = undefined;
+  }
+  return items;
+};
+
+const ifListToConditionGroups = (ifList: ConditionItem[]) => {
+  if (ifList.length === 0) return [];
+
+  return [
+    {
+      conditions: ifList.map(item => {
+        const variable = item.template || item.refPath || (item.nodeId && item.name ? `{{nodes.${item.nodeId}.${item.name}}}` : item.field);
+        return {
+          variable,
+          template: item.template || variable,
+          refPath: item.refPath || variable,
+          field: item.field,
+          nodeId: item.nodeId,
+          nodeType: item.nodeType,
+          name: item.name,
+          operator: CONDITION_TO_CONFIG_OPERATOR[item.condition] || 'equals',
+          value: item.value || '',
+          logic: item.operator || 'AND',
+        };
+      }),
+      logic: 'AND',
+      logicalOperator: 'AND',
+    },
+  ];
+};
+
 const ConditionConfig: React.FC<ConditionConfigProps> = ({
   config,
   onConfigChange,
   variables = [],
 }) => {
-  const ifList: ConditionItem[] = config.IF || [];
+  const ifList: ConditionItem[] = useMemo(() => {
+    const groupItems = conditionGroupsToIfList(config.conditionGroups);
+    return groupItems.length > 0 ? groupItems : (config.IF || []);
+  }, [config.IF, config.conditionGroups]);
+
+  const updateConditions = useCallback(
+    (nextList: ConditionItem[]) => {
+      onConfigChange('conditionGroups', ifListToConditionGroups(nextList));
+    },
+    [onConfigChange]
+  );
 
   const handleAdd = useCallback(() => {
     const newItem: ConditionItem = {
@@ -48,8 +167,8 @@ const ConditionConfig: React.FC<ConditionConfigProps> = ({
       value: '',
       operator: ifList.length > 0 ? 'OR' : undefined,
     };
-    onConfigChange('IF', [...ifList, newItem]);
-  }, [ifList, onConfigChange]);
+    updateConditions([...ifList, newItem]);
+  }, [ifList, updateConditions]);
 
   const handleRemove = useCallback(
     (index: number) => {
@@ -58,9 +177,9 @@ const ConditionConfig: React.FC<ConditionConfigProps> = ({
       if (newList.length > 0 && newList[newList.length - 1]) {
         newList[newList.length - 1].operator = undefined;
       }
-      onConfigChange('IF', newList);
+      updateConditions(newList);
     },
-    [ifList, onConfigChange]
+    [ifList, updateConditions]
   );
 
   const handleChange = useCallback(
@@ -72,13 +191,13 @@ const ConditionConfig: React.FC<ConditionConfigProps> = ({
         newList[index].value = '';
       }
       
-      onConfigChange('IF', newList);
+      updateConditions(newList);
     },
-    [ifList, onConfigChange]
+    [ifList, updateConditions]
   );
 
   const handleVariableChange = useCallback(
-    (index: number, data: { field: string; nodeId: string; nodeType: string; name?: string; template?: string }) => {
+    (index: number, data: { field: string; nodeId: string; nodeType: string; name?: string; template?: string; refPath?: string }) => {
       const newList = [...ifList];
       newList[index] = {
         ...newList[index],
@@ -86,10 +205,12 @@ const ConditionConfig: React.FC<ConditionConfigProps> = ({
         nodeId: data.nodeId,
         nodeType: data.nodeType,
         name: data.name,
+        template: data.template,
+        refPath: data.refPath,
       };
-      onConfigChange('IF', newList);
+      updateConditions(newList);
     },
-    [ifList, onConfigChange]
+    [ifList, updateConditions]
   );
 
   const needsValue = (condition: ConditionOperator): boolean => {
@@ -115,6 +236,7 @@ const ConditionConfig: React.FC<ConditionConfigProps> = ({
             <div className="condition-row">
               <div className="condition-variable">
                 <VariableSelector
+                  value={item.template || item.refPath}
                   field={item.field}
                   nodeId={item.nodeId}
                   nodeType={item.nodeType}

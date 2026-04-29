@@ -199,6 +199,8 @@ export interface ConditionItem {
   nodeId?: string;
   nodeType?: string;
   name?: string;
+  template?: string;
+  refPath?: string;
   condition: ConditionOperator;
   value: string;
   operator?: 'AND' | 'OR';

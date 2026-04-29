@@ -2,7 +2,6 @@ import type { Edge, Node } from 'reactflow'
 import type { FlowField } from '@ai-flow/src/types/flow'
 import { DEFAULT_DEV_INPUT } from '../config/defaultDevInput'
 import { WorkflowNodeType, type VariableConfig, type WorkflowNode } from '../types'
-import { flattenObject } from '../configs/common'
 
 export type VariableSourceScope = 'payload' | 'global' | 'system' | 'loop' | 'node'
 
@@ -109,6 +108,13 @@ const LOOP_VARIABLES: WorkflowVariableMeta[] = [
     description: '循环当前索引',
   },
 ]
+
+const formatFieldLabel = (label: string, name: string) => {
+  const displayLabel = String(label || name)
+  const displayName = String(name || '').trim()
+  if (!displayName || displayLabel === displayName) return displayLabel
+  return `${displayLabel} (${displayName})`
+}
 
 export const buildVariableTemplate = (meta: Pick<WorkflowVariableMeta, 'template' | 'scope' | 'path' | 'nodeId' | 'nodeType' | 'name'>): string => {
   if (meta.template) return meta.template
@@ -336,8 +342,10 @@ export const buildVariableCatalog = ({
     pushGroup(startNode.id, '开始节点变量', 'payload', getStartVariables(startNode), String(startNode.type || 'start'))
   }
 
-  if (Array.isArray(globalVariables) && globalVariables.length > 0) {
-    pushGroup('global', '全局变量', 'global', globalVariables.flatMap(toGlobalVariableMeta))
+  const approvalSheetVariables = getApprovalSheetGlobalVariables(startNode)
+  const mergedGlobalVariables = [...(Array.isArray(globalVariables) ? globalVariables.flatMap(toGlobalVariableMeta) : []), ...approvalSheetVariables]
+  if (mergedGlobalVariables.length > 0) {
+    pushGroup('global', '全局变量', 'global', mergedGlobalVariables)
   }
 
   const targetNodes = getTargetNodes(nodes as WorkflowNode[], edges, currentNodeId, scope)
@@ -455,6 +463,11 @@ const getStartVariables = (startNode: Node): WorkflowVariableMeta[] => {
   const config: any = startNode.data?.config || {}
   const variables: WorkflowVariableMeta[] = []
 
+  const approvalFields = getApprovalInputVariables(startNode)
+  if (approvalFields.length > 0) {
+    return approvalFields
+  }
+
   const variableConfigs: VariableConfig[] = config.variables || []
   variableConfigs.forEach(item => {
     variables.push({
@@ -476,7 +489,7 @@ const getStartVariables = (startNode: Node): WorkflowVariableMeta[] => {
 
   try {
     const parsed = JSON.parse(config.devInput || DEFAULT_DEV_INPUT)
-    return flattenObject(parsed).map((item: any) => ({
+    return flattenValue(parsed).map((item: any) => ({
       key: `payload:${item.path}`,
       scope: 'payload',
       path: item.path,
@@ -493,6 +506,89 @@ const getStartVariables = (startNode: Node): WorkflowVariableMeta[] => {
   } catch {
     return []
   }
+}
+
+const getApprovalInputVariables = (startNode: Node): WorkflowVariableMeta[] => {
+  const config: any = startNode.data?.config || {}
+  const fields = Array.isArray(config.approvalInputConfig?.fields)
+    ? config.approvalInputConfig.fields
+    : []
+
+  return fields
+    .filter((field: any) => field?.includeInPayload !== false)
+    .map((field: any) => {
+      const name = String(field.variableName || field.fieldId || '').trim()
+      if (!name) return null
+      const fieldLabel = String(field.label || field.fieldName || name)
+      const label = formatFieldLabel(fieldLabel, name)
+      return {
+        key: `payload:${name}`,
+        scope: 'payload' as const,
+        path: `payload.${name}`,
+        template: `{{payload.${name}}}`,
+        name,
+        label,
+        type: normalizeMulFieldType(field.fieldType),
+        description: fieldLabel,
+        nodeId: startNode.id,
+        nodeType: String(startNode.type || 'start'),
+        nodeLabel: String(startNode.data?.label || 'Start'),
+      } satisfies WorkflowVariableMeta
+    })
+    .filter(Boolean) as WorkflowVariableMeta[]
+}
+
+const getApprovalSheetGlobalVariables = (startNode?: Node): WorkflowVariableMeta[] => {
+  const config: any = startNode?.data?.config || {}
+  const approvalInputConfig = config.approvalInputConfig
+  const sheetId = String(approvalInputConfig?.sheetId || '').trim()
+  if (!sheetId) return []
+  return [
+    {
+      key: 'global:sheetId',
+      scope: 'global',
+      path: 'payload.sheetId',
+      template: '{{payload.sheetId}}',
+      name: 'sheetId',
+      label: '审批表 Sheet ID',
+      type: 'string',
+      description: approvalInputConfig?.sheetName ? `审批表：${approvalInputConfig.sheetName}` : '审批表 Sheet ID',
+      value: sheetId,
+    },
+  ]
+}
+
+const flattenValue = (obj: any, parentKey = '', res: any[] = []) => {
+  if (!obj || typeof obj !== 'object') {
+    return res
+  }
+
+  Object.keys(obj).forEach(key => {
+    const value = obj[key]
+    const propPath = parentKey ? `${parentKey}.${key}` : key
+    const displayPath = `payload.${propPath}`
+    let type: string = typeof value
+    if (value === null) type = 'null'
+    else if (Array.isArray(value)) type = 'array'
+
+    res.push({
+      label: key,
+      path: displayPath,
+      type,
+      value,
+    })
+
+    if (type === 'object' && value !== null) {
+      flattenValue(value, propPath, res)
+    } else if (type === 'array' && value.length > 0) {
+      const firstItem = value[0]
+      if (typeof firstItem === 'object' && firstItem !== null) {
+        flattenValue(firstItem, `${propPath}.0`, res)
+      }
+    }
+  })
+
+  return res
 }
 
 const toGlobalVariableMeta = (variable: VariableConfig): WorkflowVariableMeta[] => {
@@ -532,17 +628,17 @@ const toFlowField = (meta: WorkflowVariableMeta): FlowField => ({
   field: meta.name,
   name: meta.name,
   label: meta.label,
-  type: meta.type || 'any',
+  type: normalizeVariableType(meta.type),
   nodeId: meta.nodeId,
   nodeType: meta.nodeType,
   value: meta.template,
 })
 
-const detectValueType = (value: any): string => {
+const detectValueType = (value: any): FlowField['type'] => {
   if (Array.isArray(value)) return 'array'
-  if (value === null) return 'null'
+  if (value === null) return 'any'
   if (typeof value === 'object') return 'object'
-  return typeof value
+  return normalizeVariableType(typeof value)
 }
 
 const normalizeVariableType = (type?: string): FlowField['type'] => {
@@ -555,7 +651,49 @@ const normalizeVariableType = (type?: string): FlowField['type'] => {
       return 'boolean'
     case 'file_list':
       return 'file'
+    case 'string':
+    case 'number':
+    case 'boolean':
+    case 'array':
+    case 'object':
+    case 'image':
+    case 'file':
+    case 'select':
+    case 'text':
+    case 'json':
+    case 'stream':
+    case 'any':
+      return type
     default:
-      return type || 'any'
+      return 'any'
+  }
+}
+
+const normalizeMulFieldType = (type?: string): FlowField['type'] => {
+  switch (type) {
+    case 'number':
+    case 'rating':
+      return 'number'
+    case 'checkbox':
+    case 'switch':
+      return 'boolean'
+    case 'date':
+      return 'string'
+    case 'multiSelect':
+    case 'file':
+    case 'image':
+    case 'relation':
+      return 'array'
+    case 'select':
+    case 'text':
+    case 'paragraph':
+    case 'phone':
+    case 'email':
+    case 'url':
+    case 'location':
+    case 'autoNumber':
+      return 'string'
+    default:
+      return normalizeVariableType(type)
   }
 }
