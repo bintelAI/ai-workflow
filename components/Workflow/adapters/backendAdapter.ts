@@ -894,7 +894,9 @@ const convertParseNodeData = (config: any, allNodes: Node[]): FlowData => {
 };
 
 const convertJsonNodeData = (config: any, allNodes: Node[]): FlowData => {
-  const { inputVariable, inputParams, schema, outputField, outputParams } = config || {};
+  const { inputVariable, inputParams, mode, schema, outputField, outputParams } = config || {};
+  const normalizedMode = mode === 'stringify' ? 'stringify' : 'parse';
+  const outputType = normalizedMode === 'stringify' ? 'string' : 'json';
 
   const inputParamsData: FlowField[] = Array.isArray(inputParams) && inputParams.length > 0
     ? inputParams.map((item: any, index: number) => ({
@@ -927,14 +929,15 @@ const convertJsonNodeData = (config: any, allNodes: Node[]): FlowData => {
     ? outputParams.map((item: any) => ({
         name: item?.field || item?.name || 'json',
         field: item?.field || item?.name || 'json',
-        type: item?.type || 'json',
+        type: outputType,
       }))
-    : [{ name: outputField || 'json', field: outputField || 'json', type: 'json' }];
+    : [{ name: outputField || 'json', field: outputField || 'json', type: outputType }];
 
   return {
     inputParams: inputParamsData,
     outputParams: normalizedOutputParams,
     options: {
+      mode: normalizedMode,
       schema: schema || {},
     },
   };
@@ -1443,6 +1446,8 @@ const convertParseDataToConfig = (data: FlowData): Record<string, any> => {
 
 const convertJsonDataToConfig = (data: FlowData): Record<string, any> => {
   const options = data.options || {};
+  const mode = options.mode === 'stringify' ? 'stringify' : 'parse';
+  const outputType = mode === 'stringify' ? 'string' : 'json';
   const inputParam = (data.inputParams || [])[0];
   const inputVariable = inputParam?.nodeId
     ? `{{nodes.${inputParam.nodeId}.${inputParam.name}}}`
@@ -1451,7 +1456,10 @@ const convertJsonDataToConfig = (data: FlowData): Record<string, any> => {
   return {
     inputVariable,
     inputParams: data.inputParams || [{ field: 'text', type: 'string' }],
-    outputParams: data.outputParams || [{ field: 'json', type: 'json' }],
+    outputParams: Array.isArray(data.outputParams) && data.outputParams.length > 0
+      ? data.outputParams.map(item => ({ ...item, type: outputType }))
+      : [{ field: 'json', type: outputType }],
+    mode,
     schema: options.schema || {},
     outputField: (data.outputParams || [])[0]?.field || 'json',
   };

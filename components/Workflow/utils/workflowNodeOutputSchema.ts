@@ -87,7 +87,7 @@ export const getNodeOutputSchema = (node: Node): OutputSchemaItem[] => {
     case WorkflowNodeType.DOCUMENT_EXTRACTOR:
       return [{ field: 'text', type: 'string', description: '提取文本' }]
     case WorkflowNodeType.JSON_PARSE:
-      return [{ field: 'json', type: 'json', description: 'JSON 结果' }]
+      return [{ field: 'json', type: config.mode === 'stringify' ? 'string' : 'json', description: 'JSON 结果' }]
     case WorkflowNodeType.QUESTION_CLASSIFIER:
       return [{ field: 'result', type: 'string', description: '分类结果' }]
     case WorkflowNodeType.SMART_PARSE:

@@ -220,6 +220,43 @@ describe('backendAdapter', () => {
       expect(result.nodes[0].data?.options?.IF).toBeDefined();
     });
 
+    it('should export JSON parse node stringify mode', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'json_1',
+            type: 'json_parse' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: 'JSON解析',
+              config: {
+                mode: 'stringify',
+                inputParams: [
+                  {
+                    field: 'text',
+                    name: 'payload',
+                    type: 'json',
+                    nodeId: 'start_1',
+                    nodeType: 'start',
+                  },
+                ],
+                outputParams: [{ field: 'json', type: 'string' }],
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const exported = exportToBackend(workflow as any);
+
+      expect(exported.nodes[0].type).toBe('json');
+      expect(exported.nodes[0].data?.options?.mode).toBe('stringify');
+      expect(exported.nodes[0].data?.outputParams?.[0]).toEqual(
+        expect.objectContaining({ field: 'json', type: 'string' })
+      );
+    });
+
     it('should export condition config saved by ConditionConfig IF list', () => {
       const workflow = {
         nodes: [

@@ -18,6 +18,19 @@
   margin-bottom: 8px;
 }
 
+.config-help {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.json-parse-switch-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
 .output-info {
   background: #f9fafb;
   border-radius: 6px;

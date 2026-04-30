@@ -343,7 +343,7 @@ export const NODE_REGISTRY: Record<WorkflowNodeType, WorkflowNodeRegistryItem> =
     bgClass: 'bg-green-50 border-green-100',
     group: 'automation',
     sort: 28,
-    createDefaultConfig: () => ({ inputParams: [{ field: 'text', type: 'string' }], outputParams: [{ field: 'json', type: 'object' }], inputVariable: '', schema: {}, outputField: 'json' }),
+    createDefaultConfig: () => ({ mode: 'parse', inputParams: [{ field: 'text', type: 'string' }], outputParams: [{ field: 'json', type: 'object' }], inputVariable: '', schema: {}, outputField: 'json' }),
   },
   [WorkflowNodeType.SMART_PARSE]: {
     type: WorkflowNodeType.SMART_PARSE,

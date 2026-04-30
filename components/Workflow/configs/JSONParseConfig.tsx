@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react'
-import { Divider, Alert } from 'antd'
+import { Divider, Alert, Switch } from 'antd'
 import { CodeOutlined } from '@ant-design/icons'
 import { InputParams } from './common/index'
 import type { FlowField } from '@ai-flow/src/types/flow'
@@ -8,8 +8,10 @@ import './JSONParseConfig.css'
 interface JSONParseConfigProps {
   config: {
     inputParams?: FlowField[]
+    mode?: 'parse' | 'stringify'
   }
   onConfigChange: (key: string, value: any) => void
+  onConfigPatch?: (patch: Record<string, any>) => void
   variables?: Array<{
     id: string
     type?: string
@@ -21,8 +23,11 @@ interface JSONParseConfigProps {
 const JSONParseConfig: React.FC<JSONParseConfigProps> = ({
   config,
   onConfigChange,
+  onConfigPatch,
   variables = [],
 }) => {
+  const isStringifyMode = config.mode === 'stringify'
+
   const handleInputParamsChange = useCallback(
     (params: FlowField[]) => {
       onConfigChange('inputParams', params)
@@ -30,16 +35,43 @@ const JSONParseConfig: React.FC<JSONParseConfigProps> = ({
     [onConfigChange]
   )
 
+  const handleModeChange = useCallback(
+    (checked: boolean) => {
+      const patch = {
+        mode: checked ? 'stringify' : 'parse',
+        outputParams: [{ field: 'json', type: checked ? 'string' : 'object' }],
+      }
+      if (onConfigPatch) {
+        onConfigPatch(patch)
+        return
+      }
+      onConfigChange('mode', patch.mode)
+    },
+    [onConfigChange, onConfigPatch]
+  )
+
   return (
     <div className="json-parse-config">
       <Alert
         type="info"
         icon={<CodeOutlined />}
-        message="JSON解析节点"
-        description="将文本内容中的JSON字符串转换为对象，支持嵌套解析。"
+        message="JSON转换节点"
+        description={isStringifyMode ? '将 JSON 对象转换为 JSON 字符串。' : '将文本内容中的 JSON 字符串转换为对象，支持嵌套解析。'}
         showIcon
         className="json-parse-alert"
       />
+
+      <Divider />
+
+      <div className="config-section">
+        <div className="json-parse-switch-row">
+          <div>
+            <label className="config-label">对象转字符串</label>
+            <div className="config-help">开启后，节点会把输入的 JSON 对象转换为 JSON 字符串。</div>
+          </div>
+          <Switch checked={isStringifyMode} onChange={handleModeChange} />
+        </div>
+      </div>
 
       <Divider />
 
@@ -60,7 +92,7 @@ const JSONParseConfig: React.FC<JSONParseConfigProps> = ({
         <div className="output-info">
           <div className="output-item">
             <span className="output-name">json</span>
-            <span className="output-type">object</span>
+            <span className="output-type">{isStringifyMode ? 'string' : 'object'}</span>
             <span className="output-desc">输出内容</span>
           </div>
         </div>

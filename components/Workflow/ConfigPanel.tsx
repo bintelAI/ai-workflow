@@ -253,7 +253,7 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
       case WorkflowNodeType.QUESTION_CLASSIFIER:
         return <QuestionClassifierConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.JSON_PARSE:
-        return <JSONParseConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
+        return <JSONParseConfig config={config} onConfigChange={handleConfigChange} onConfigPatch={handleConfigPatch} variables={availableVariables} />
       case WorkflowNodeType.SMART_PARSE:
         return <SmartParseConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.FLOW_CALL:

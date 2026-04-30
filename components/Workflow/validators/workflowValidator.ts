@@ -908,7 +908,7 @@ export class WorkflowValidator {
         nodeId: node.id,
         nodeLabel: node.data.label,
         message: 'JSON 解析节点未配置输入变量',
-        suggestion: '选择需要解析的 JSON 字符串变量',
+        suggestion: config.mode === 'stringify' ? '选择需要转换为 JSON 字符串的对象变量' : '选择需要解析的 JSON 字符串变量',
       })
     }
   }
