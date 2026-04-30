@@ -295,6 +295,9 @@ export const NODE_TYPE_MAP: Record<string, string> = {
   flow_call: 'flow',
   api_call: 'api',
   loop: 'loop',
+  mul_query: 'mul_query',
+  mul_update_row: 'mul_update_row',
+  mul_delete_row: 'mul_delete_row',
 };
 
 export const REVERSE_NODE_TYPE_MAP: Record<string, string> = {
@@ -312,4 +315,7 @@ export const REVERSE_NODE_TYPE_MAP: Record<string, string> = {
   api: 'api_call',
   parse: 'smart_parse',
   loop: 'loop',
+  mul_query: 'mul_query',
+  mul_update_row: 'mul_update_row',
+  mul_delete_row: 'mul_delete_row',
 };
