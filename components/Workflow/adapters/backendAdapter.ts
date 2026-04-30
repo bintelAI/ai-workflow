@@ -205,6 +205,10 @@ const convertNodeData = (node: Node, allNodes: Node[], backendType: string): Flo
       return convertApiCallNodeData(config, allNodes);
     case 'loop':
       return convertLoopNodeData(config, node, allNodes);
+    case 'mul_query':
+    case 'mul_update_row':
+    case 'mul_delete_row':
+      return convertMulTableOperationNodeData(config, allNodes, node.type);
     default:
       return {
         inputParams: [],
@@ -268,6 +272,16 @@ const getApprovalInputParams = (config: any): FlowField[] => {
       type: 'string',
       required: true,
       label: '审批表 Sheet ID',
+    });
+  }
+
+  if (sheetId && !inputParams.some(item => item.name === 'rowId' || item.field === 'rowId')) {
+    inputParams.unshift({
+      field: 'rowId',
+      name: 'rowId',
+      type: 'string',
+      required: true,
+      label: '审批行 Row ID',
     });
   }
 
@@ -1004,6 +1018,47 @@ const convertLoopNodeData = (config: any, node: Node, allNodes: Node[]): FlowDat
   };
 };
 
+const MUL_TABLE_QUERY_OUTPUTS: FlowField[] = [
+  { type: 'array', field: 'data.rows', name: 'data.rows' },
+  { type: 'object', field: 'data.firstRow', name: 'data.firstRow' },
+  { type: 'number', field: 'data.total', name: 'data.total' },
+  { type: 'number', field: 'data.pageVisibleCount', name: 'data.pageVisibleCount' },
+];
+
+const MUL_TABLE_UPDATE_OUTPUTS: FlowField[] = [
+  { type: 'object', field: 'data.row', name: 'data.row' },
+  { type: 'string', field: 'data.rowId', name: 'data.rowId' },
+  { type: 'boolean', field: 'data.updated', name: 'data.updated' },
+];
+
+const MUL_TABLE_DELETE_OUTPUTS: FlowField[] = [
+  { type: 'string', field: 'data.rowId', name: 'data.rowId' },
+  { type: 'boolean', field: 'data.deleted', name: 'data.deleted' },
+];
+
+const convertMulTableOperationNodeData = (config: any, allNodes: Node[], nodeType?: string): FlowData => {
+  const rowIdTemplate = normalizeLegacyTemplate(config?.rowIdTemplate || '', allNodes);
+  const inputParams = extractVariableRefs(rowIdTemplate, allNodes);
+  const outputParams =
+    nodeType === 'mul_query'
+      ? MUL_TABLE_QUERY_OUTPUTS
+      : nodeType === 'mul_update_row'
+        ? MUL_TABLE_UPDATE_OUTPUTS
+        : MUL_TABLE_DELETE_OUTPUTS;
+
+  return {
+    inputParams: inputParams.map((item, index) => ({
+      ...item,
+      field: item.field || item.name || `var_${index + 1}`,
+    })),
+    outputParams,
+    options: {
+      ...config,
+      rowIdTemplate,
+    },
+  };
+};
+
 const extractVariableRefs = (text: string, allNodes: Node[]): FlowField[] => {
   if (!text || typeof text !== 'string') return [];
 
@@ -1147,6 +1202,10 @@ const convertDataToConfig = (data: FlowData | undefined, nodeType: string): Reco
       return convertFlowDataToConfig(data);
     case 'loop':
       return convertLoopDataToConfig(data);
+    case 'mul_query':
+    case 'mul_update_row':
+    case 'mul_delete_row':
+      return data.options || {};
     default:
       return data.options || {};
   }

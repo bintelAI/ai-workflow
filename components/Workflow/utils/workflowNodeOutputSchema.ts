@@ -57,6 +57,24 @@ export const getNodeOutputSchema = (node: Node): OutputSchemaItem[] => {
     case WorkflowNodeType.SCRIPT:
     case WorkflowNodeType.DATA_OP:
       return [{ field: 'result', type: 'any', description: '执行结果' }]
+    case WorkflowNodeType.MUL_QUERY:
+      return [
+        { field: 'data.rows', type: 'array', description: '查询结果列表' },
+        { field: 'data.firstRow', type: 'object', description: '第一条查询结果' },
+        { field: 'data.total', type: 'number', description: '匹配行数' },
+        { field: 'data.pageVisibleCount', type: 'number', description: '本次返回行数' },
+      ]
+    case WorkflowNodeType.MUL_UPDATE_ROW:
+      return [
+        { field: 'data.row', type: 'object', description: '修改后的行数据' },
+        { field: 'data.rowId', type: 'string', description: '修改行 ID' },
+        { field: 'data.updated', type: 'boolean', description: '是否修改成功' },
+      ]
+    case WorkflowNodeType.MUL_DELETE_ROW:
+      return [
+        { field: 'data.rowId', type: 'string', description: '删除行 ID' },
+        { field: 'data.deleted', type: 'boolean', description: '是否删除成功' },
+      ]
     case WorkflowNodeType.CONDITION:
       return [{ field: 'result', type: 'boolean', description: '条件结果' }]
     case WorkflowNodeType.LOOP:

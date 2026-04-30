@@ -17,6 +17,9 @@ describe('PLUGIN_MODE_REGISTRY', () => {
         WorkflowNodeType.DELAY,
         WorkflowNodeType.NOTIFICATION,
         WorkflowNodeType.DATA_OP,
+        WorkflowNodeType.MUL_QUERY,
+        WorkflowNodeType.MUL_UPDATE_ROW,
+        WorkflowNodeType.MUL_DELETE_ROW,
         WorkflowNodeType.API_CALL,
         WorkflowNodeType.SQL,
         WorkflowNodeType.SCRIPT,
@@ -39,6 +42,21 @@ describe('PLUGIN_MODE_REGISTRY', () => {
         WorkflowNodeType.JSON_PARSE,
         WorkflowNodeType.SMART_PARSE,
       ])
+    )
+  })
+
+  it('allows project table operation nodes in AI and approval modes', () => {
+    const projectTableNodes = [
+      WorkflowNodeType.MUL_QUERY,
+      WorkflowNodeType.MUL_UPDATE_ROW,
+      WorkflowNodeType.MUL_DELETE_ROW,
+    ]
+
+    expect(PLUGIN_MODE_REGISTRY.ai.allowedNodeTypes).toEqual(
+      expect.arrayContaining(projectTableNodes)
+    )
+    expect(PLUGIN_MODE_REGISTRY.approval.allowedNodeTypes).toEqual(
+      expect.arrayContaining(projectTableNodes)
     )
   })
 

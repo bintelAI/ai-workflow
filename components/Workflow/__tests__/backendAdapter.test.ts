@@ -80,6 +80,13 @@ describe('backendAdapter', () => {
       expect(exported.nodes[0].data?.options?.approvalInputConfig).toEqual(approvalInputConfig);
       expect(exported.nodes[0].data?.inputParams).toEqual([
         expect.objectContaining({
+          field: 'rowId',
+          name: 'rowId',
+          label: '审批行 Row ID',
+          type: 'string',
+          required: true,
+        }),
+        expect.objectContaining({
           field: 'sheetId',
           name: 'sheetId',
           label: '审批表 Sheet ID',
@@ -467,6 +474,79 @@ describe('backendAdapter', () => {
       ]);
     });
 
+    it('should export project table operation nodes with stable backend types and outputs', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'query_1',
+            type: 'mul_query' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: '查询项目表',
+              config: {
+                targetProjectId: 'project_b',
+                sheetId: 'sheet_order',
+                filtersJson: '[{"columnId":"status","operator":"eq","value":"open"}]',
+                returnFields: 'name,amount',
+                returnMode: 'list',
+                maxRows: 20,
+              },
+            },
+          },
+          {
+            id: 'update_1',
+            type: 'mul_update_row' as WorkflowNodeType,
+            position: { x: 300, y: 100 },
+            data: {
+              label: '修改项目表行',
+              config: {
+                targetProjectId: 'project_b',
+                sheetId: 'sheet_order',
+                rowIdTemplate: '{{nodes.query_1.data.firstRow.rowId}}',
+                fieldMappingsJson: '{"status":"done"}',
+              },
+            },
+          },
+          {
+            id: 'delete_1',
+            type: 'mul_delete_row' as WorkflowNodeType,
+            position: { x: 500, y: 100 },
+            data: {
+              label: '删除项目表行',
+              config: {
+                targetProjectId: 'project_b',
+                sheetId: 'sheet_order',
+                rowIdTemplate: '{{nodes.query_1.data.firstRow.rowId}}',
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const exported = exportToBackend(workflow as any);
+      const queryNode = exported.nodes.find(node => node.id === 'query_1');
+      const updateNode = exported.nodes.find(node => node.id === 'update_1');
+      const deleteNode = exported.nodes.find(node => node.id === 'delete_1');
+
+      expect(queryNode?.type).toBe('mul_query');
+      expect(updateNode?.type).toBe('mul_update_row');
+      expect(deleteNode?.type).toBe('mul_delete_row');
+      expect(queryNode?.data?.outputParams).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: 'data.rows', type: 'array' }),
+          expect.objectContaining({ field: 'data.firstRow', type: 'object' }),
+          expect.objectContaining({ field: 'data.total', type: 'number' }),
+        ])
+      );
+      expect(updateNode?.data?.inputParams).toEqual([
+        expect.objectContaining({ nodeId: 'query_1', name: 'data.firstRow.rowId' }),
+      ]);
+      expect(deleteNode?.data?.inputParams).toEqual([
+        expect.objectContaining({ nodeId: 'query_1', name: 'data.firstRow.rowId' }),
+      ]);
+    });
+
     it('should convert edges correctly', () => {
       const workflow = {
         nodes: [],
@@ -757,6 +837,42 @@ describe('backendAdapter', () => {
       expect(scriptNode?.data?.config?.outputParams).toEqual([
         expect.objectContaining({ field: 'total', name: 'total', type: 'number' }),
       ]);
+    });
+
+    it('should import project table operation node options without losing config', () => {
+      const draft: FlowDraft = {
+        nodes: [
+          {
+            id: 'query_1',
+            type: 'mul_query',
+            label: '查询项目表',
+            position: { x: 100, y: 100 },
+            data: {
+              outputParams: [{ field: 'data.rows', type: 'array' }],
+              options: {
+                targetProjectId: 'project_b',
+                sheetId: 'sheet_order',
+                maxRows: 20,
+                returnMode: 'list',
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const imported = importFromBackend(draft);
+      const queryNode = imported.nodes?.find(node => node.id === 'query_1');
+
+      expect(queryNode?.type).toBe('mul_query');
+      expect(queryNode?.data?.config).toEqual(
+        expect.objectContaining({
+          targetProjectId: 'project_b',
+          sheetId: 'sheet_order',
+          maxRows: 20,
+          returnMode: 'list',
+        })
+      );
     });
   });
 

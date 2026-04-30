@@ -12,6 +12,12 @@ import { getRuntimeProjectId, getRuntimeTeamId } from '@ai-flow/utils/runtime'
 import { getPluginMode, type WorkflowPluginModeType } from './config/pluginModeRegistry'
 import WorkflowHistoryDrawer from './WorkflowHistoryDrawer'
 
+const PROJECT_TABLE_NODE_TYPES = [
+  WorkflowNodeType.MUL_QUERY,
+  WorkflowNodeType.MUL_UPDATE_ROW,
+  WorkflowNodeType.MUL_DELETE_ROW,
+]
+
 interface WorkflowAppProps {
   initialNodes?: WorkflowNode[]
   initialEdges?: WorkflowEdge[]
@@ -107,9 +113,14 @@ const App: React.FC<WorkflowAppProps> = ({
   useEffect(() => {
     const mode = getPluginMode(pluginType)
     setActiveCategory(mode.categoryId)
-    if (allowedNodeTypes && allowedNodeTypes.length > 0) {
-      updateCategory(mode.categoryId, { allowedNodeTypes })
-    }
+    const nextAllowedNodeTypes = allowedNodeTypes && allowedNodeTypes.length > 0
+      ? Array.from(new Set([...allowedNodeTypes, ...PROJECT_TABLE_NODE_TYPES]))
+      : [...mode.allowedNodeTypes]
+    updateCategory(mode.categoryId, {
+      allowedNodeTypes: nextAllowedNodeTypes,
+      isSystem: true,
+      layoutDirection: mode.layoutDirection,
+    })
   }, [pluginType, allowedNodeTypes, setActiveCategory, updateCategory])
 
   const isApprovalMode = pluginType === 'approval'

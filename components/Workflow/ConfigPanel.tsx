@@ -16,6 +16,7 @@ import { NotificationConfig } from './configs/NotificationConfig'
 import { ApprovalConfig } from './configs/ApprovalConfig'
 import ApprovalAIReviewConfig from './configs/ApprovalAIReviewConfig'
 import DataOpConfig from './configs/DataOpConfig'
+import MulTableOperationConfig from './configs/MulTableOperationConfig'
 import { CCConfig } from './configs/CCConfig'
 import { SQLConfig } from './configs/SQLConfig'
 import KnowledgeRetrievalConfig from './configs/KnowledgeRetrievalConfig'
@@ -48,6 +49,9 @@ const BACKEND_SUPPORTED_NODE_TYPES = new Set<WorkflowNodeType>([
   WorkflowNodeType.SMART_PARSE,
   WorkflowNodeType.FLOW_CALL,
   WorkflowNodeType.LOOP,
+  WorkflowNodeType.MUL_QUERY,
+  WorkflowNodeType.MUL_UPDATE_ROW,
+  WorkflowNodeType.MUL_DELETE_ROW,
 ])
 
 interface ConfigPanelRuntimeProps {
@@ -224,6 +228,16 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
         return <ApprovalConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.DATA_OP:
         return <DataOpConfig config={config} onConfigChange={handleConfigChange} />
+      case WorkflowNodeType.MUL_QUERY:
+      case WorkflowNodeType.MUL_UPDATE_ROW:
+      case WorkflowNodeType.MUL_DELETE_ROW:
+        return (
+          <MulTableOperationConfig
+            nodeType={selectedNode.type as WorkflowNodeType}
+            config={config}
+            onConfigChange={handleConfigChange}
+          />
+        )
       case WorkflowNodeType.CC:
         return <CCConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.SQL:

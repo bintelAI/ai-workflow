@@ -134,6 +134,15 @@ export class WorkflowValidator {
         case WorkflowNodeType.DATA_OP:
           this.validateDataOpNode(node, config)
           break
+        case WorkflowNodeType.MUL_QUERY:
+          this.validateMulQueryNode(node, config)
+          break
+        case WorkflowNodeType.MUL_UPDATE_ROW:
+          this.validateMulUpdateRowNode(node, config)
+          break
+        case WorkflowNodeType.MUL_DELETE_ROW:
+          this.validateMulDeleteRowNode(node, config)
+          break
         case WorkflowNodeType.CC:
           this.validateCCNode(node, config)
           break
@@ -710,6 +719,126 @@ export class WorkflowValidator {
         nodeLabel: node.data.label,
         message: '数据操作节点未配置处理逻辑',
         suggestion: '填写数据处理代码或选择操作类型',
+      })
+    }
+  }
+
+  private validateMulTableTarget(node: WorkflowNode, config: any, label: string) {
+    if (!this.hasNonEmptyString(config.targetProjectId)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: `${label}节点未配置目标项目`,
+        suggestion: '填写目标项目 ID；跨项目操作必须在同一团队内并通过后端权限校验',
+      })
+    }
+
+    if (!this.hasNonEmptyString(config.sheetId)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: `${label}节点未配置目标表`,
+        suggestion: '填写目标多维表 Sheet ID',
+      })
+    }
+  }
+
+  private validateMulQueryNode(node: WorkflowNode, config: any) {
+    this.validateMulTableTarget(node, config, '查询项目表')
+
+    const maxRows = Number(config.maxRows)
+    if (!Number.isFinite(maxRows) || maxRows < 1 || maxRows > 1000) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '查询项目表节点返回行数必须在 1-1000 之间',
+        suggestion: '将最多返回行数设置为 1 到 1000 之间的整数',
+      })
+    }
+
+    if (this.hasNonEmptyString(config.filtersJson)) {
+      try {
+        JSON.parse(config.filtersJson)
+      } catch {
+        this.addError({
+          type: 'error',
+          category: 'node_config',
+          nodeId: node.id,
+          nodeLabel: node.data.label,
+          message: '查询项目表节点过滤条件不是合法 JSON',
+          suggestion: '填写 JSON 数组，例如 [{"columnId":"status","operator":"eq","value":"open"}]',
+        })
+      }
+    }
+  }
+
+  private validateMulUpdateRowNode(node: WorkflowNode, config: any) {
+    this.validateMulTableTarget(node, config, '修改项目表行')
+
+    if (!this.hasNonEmptyString(config.rowIdTemplate)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '修改项目表行节点未配置行 ID',
+        suggestion: '填写行 ID 或选择上游查询节点的 firstRow.rowId 变量',
+      })
+    }
+
+    if (!this.hasNonEmptyString(config.fieldMappingsJson)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '修改项目表行节点未配置要修改的字段',
+        suggestion: '填写修改字段 JSON，例如 {"status":"done"}',
+      })
+      return
+    }
+
+    try {
+      const mappings = JSON.parse(config.fieldMappingsJson)
+      if (!mappings || typeof mappings !== 'object' || Array.isArray(mappings) || Object.keys(mappings).length === 0) {
+        this.addError({
+          type: 'error',
+          category: 'node_config',
+          nodeId: node.id,
+          nodeLabel: node.data.label,
+          message: '修改项目表行节点未配置要修改的字段',
+          suggestion: '修改字段 JSON 必须是非空对象',
+        })
+      }
+    } catch {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '修改项目表行节点修改字段不是合法 JSON',
+        suggestion: '填写 JSON 对象，例如 {"status":"done"}',
+      })
+    }
+  }
+
+  private validateMulDeleteRowNode(node: WorkflowNode, config: any) {
+    this.validateMulTableTarget(node, config, '删除项目表行')
+
+    if (!this.hasNonEmptyString(config.rowIdTemplate)) {
+      this.addError({
+        type: 'error',
+        category: 'node_config',
+        nodeId: node.id,
+        nodeLabel: node.data.label,
+        message: '删除项目表行节点未配置行 ID',
+        suggestion: '填写行 ID 或选择上游查询节点的 firstRow.rowId 变量',
       })
     }
   }

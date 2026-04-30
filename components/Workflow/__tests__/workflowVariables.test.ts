@@ -130,5 +130,72 @@ describe('workflowVariables', () => {
         value: 'sheet_1',
       })
     )
+    expect(globalVariables).toContainEqual(
+      expect.objectContaining({
+        scope: 'global',
+        path: 'payload.rowId',
+        template: '{{payload.rowId}}',
+        name: 'rowId',
+        label: '审批行 Row ID',
+      })
+    )
+  })
+
+  it('exposes project table query outputs as nested data variables', () => {
+    const groups = buildVariableCatalog({
+      nodes: [
+        {
+          id: 'start_1',
+          type: 'start',
+          position: { x: 0, y: 0 },
+          data: { label: '开始', config: { devInput: '{}' } },
+        },
+        {
+          id: 'query_1',
+          type: 'mul_query',
+          position: { x: 120, y: 0 },
+          data: { label: '查询项目表', config: {} },
+        },
+        {
+          id: 'llm_1',
+          type: 'llm',
+          position: { x: 240, y: 0 },
+          data: { label: 'AI 分析', config: {} },
+        },
+      ],
+      edges: [
+        { id: 'e1', source: 'start_1', target: 'query_1' },
+        { id: 'e2', source: 'query_1', target: 'llm_1' },
+      ],
+      currentNodeId: 'llm_1',
+    } as any)
+
+    const queryVariables = groups.find(group => group.id === 'query_1')?.variables || []
+
+    expect(queryVariables).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          scope: 'node',
+          path: 'nodes.query_1.data.rows',
+          template: '{{nodes.query_1.data.rows}}',
+          name: 'data.rows',
+          type: 'array',
+        }),
+        expect.objectContaining({
+          scope: 'node',
+          path: 'nodes.query_1.data.firstRow',
+          template: '{{nodes.query_1.data.firstRow}}',
+          name: 'data.firstRow',
+          type: 'object',
+        }),
+        expect.objectContaining({
+          scope: 'node',
+          path: 'nodes.query_1.data.total',
+          template: '{{nodes.query_1.data.total}}',
+          name: 'data.total',
+          type: 'number',
+        }),
+      ])
+    )
   })
 })

@@ -474,6 +474,16 @@ const getApprovalSheetGlobalVariables = (startNode?: Node): WorkflowVariableMeta
       description: approvalInputConfig?.sheetName ? `审批表：${approvalInputConfig.sheetName}` : '审批表 Sheet ID',
       value: sheetId,
     },
+    {
+      key: 'global:rowId',
+      scope: 'global',
+      path: 'payload.rowId',
+      template: '{{payload.rowId}}',
+      name: 'rowId',
+      label: '审批行 Row ID',
+      type: 'string',
+      description: '当前审批数据行 ID，可用于修改或删除审批来源行',
+    },
   ]
 }
 
