@@ -781,17 +781,6 @@ export class WorkflowValidator {
   private validateMulUpdateRowNode(node: WorkflowNode, config: any) {
     this.validateMulTableTarget(node, config, '修改项目表行')
 
-    if (!this.hasNonEmptyString(config.rowIdTemplate)) {
-      this.addError({
-        type: 'error',
-        category: 'node_config',
-        nodeId: node.id,
-        nodeLabel: node.data.label,
-        message: '修改项目表行节点未配置行 ID',
-        suggestion: '填写行 ID 或选择上游查询节点的 firstRow.rowId 变量',
-      })
-    }
-
     if (!this.hasNonEmptyString(config.fieldMappingsJson)) {
       this.addError({
         type: 'error',

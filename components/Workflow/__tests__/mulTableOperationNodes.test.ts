@@ -82,9 +82,13 @@ describe('mul table operation workflow nodes', () => {
 
     expect(result.errors).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ message: '修改项目表行节点未配置行 ID' }),
         expect.objectContaining({ message: '修改项目表行节点未配置要修改的字段' }),
         expect.objectContaining({ message: '删除项目表行节点未配置行 ID' }),
+      ])
+    )
+    expect(result.errors).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: '修改项目表行节点未配置行 ID' }),
       ])
     )
   })

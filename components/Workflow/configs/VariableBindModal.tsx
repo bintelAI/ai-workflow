@@ -11,12 +11,16 @@ import {
   Database,
 } from 'lucide-react'
 import { useWorkflowStore } from '../store/useWorkflowStore'
-import { buildVariableCatalog, type WorkflowVariableMeta } from '../utils/workflowVariables'
+import {
+  buildVariableCatalog,
+  normalizeLegacyTemplate,
+  type WorkflowVariableMeta,
+} from '../utils/workflowVariables'
 
 interface VariableBindModalProps {
   isOpen: boolean
   onClose: () => void
-  onSelect: (variable: string) => void
+  onSelect: (variable: string, meta?: WorkflowVariableMeta) => void
   currentValue?: string
   /**
    * Optional filter for nodes.
@@ -50,6 +54,11 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
     [nodes, edges, selectedNodeId, globalVariables, scope]
   )
 
+  const normalizedCurrentValue = useMemo(
+    () => normalizeLegacyTemplate(currentValue || '', nodes),
+    [currentValue, nodes]
+  )
+
   if (!isOpen) return null
 
   const filteredVars = allVars
@@ -78,6 +87,15 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
     {} as Record<string, WorkflowVariableMeta[]>
   )
 
+  const isSelectedVariable = (variable: WorkflowVariableMeta) => {
+    if (!normalizedCurrentValue) return false
+    return (
+      normalizedCurrentValue === variable.template ||
+      normalizedCurrentValue === variable.path ||
+      normalizedCurrentValue.includes(variable.template)
+    )
+  }
+
   // Helper for icons
   const getIcon = (type: string) => {
     switch (type) {
@@ -104,7 +122,10 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl shadow-2xl w-[600px] max-h-[80vh] flex flex-col border border-slate-200 overflow-hidden">
+      <div
+        className="bg-white rounded-xl shadow-2xl max-h-[80vh] flex flex-col border border-slate-200 overflow-hidden"
+        style={{ width: 600 }}
+      >
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div>
@@ -167,33 +188,61 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
                 </span>
               </div>
               <div className="divide-y divide-slate-50">
-                {(vars as any[]).map((v: any, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      onSelect(v.template)
-                      onClose()
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-indigo-50 transition-colors group text-left"
-                  >
-                    <div className="p-1.5 bg-slate-100 rounded group-hover:bg-white transition-colors">
-                      {getIcon(v.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-slate-700 truncate">
-                          {v.label}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-mono">
-                          {v.type}
-                        </span>
+                {(vars as any[]).map((v: any, i) => {
+                  const selected = isSelectedVariable(v)
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        onSelect(v.template, v)
+                        onClose()
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors group text-left ${
+                        selected
+                          ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200'
+                          : 'hover:bg-indigo-50'
+                      }`}
+                    >
+                      <div
+                        className={`p-1.5 rounded transition-colors ${
+                          selected ? 'bg-white text-indigo-600' : 'bg-slate-100 group-hover:bg-white'
+                        }`}
+                      >
+                        {getIcon(v.type)}
                       </div>
-                      <div className="text-xs text-slate-400 font-mono mt-0.5 truncate group-hover:text-indigo-500">
-                        {v.path}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-sm font-medium truncate ${
+                              selected ? 'text-indigo-700' : 'text-slate-700'
+                            }`}
+                          >
+                            {v.label}
+                          </span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                              selected ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {v.type}
+                          </span>
+                          {selected && (
+                            <span className="ml-auto text-[10px] font-medium text-indigo-600">
+                              已选择
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className={`text-xs font-mono mt-0.5 truncate ${
+                            selected ? 'text-indigo-500' : 'text-slate-400 group-hover:text-indigo-500'
+                          }`}
+                        >
+                          {v.path}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           ))}
@@ -209,4 +258,3 @@ export const VariableBindModal: React.FC<VariableBindModalProps> = ({
     </div>
   )
 }
-

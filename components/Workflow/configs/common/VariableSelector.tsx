@@ -1,8 +1,10 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Popover, Input, Button, Empty, Tooltip } from 'antd';
-import { SearchOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Input, Button, Tooltip } from 'antd';
+import { CloseOutlined, EditOutlined } from '@ant-design/icons';
 import type { FlowField } from '@ai-flow/src/types/flow';
 import type { WorkflowVariableMeta } from '../../utils/workflowVariables';
+import { resolveVariableSelection } from '../../utils/variableSelection';
+import { VariableBindModal } from '../VariableBindModal';
 import './VariableSelector.css';
 
 interface VariableGroup {
@@ -51,39 +53,15 @@ const VariableSelector: React.FC<VariableSelectorProps> = ({
   showPicker = true,
   inputable = false,
   disabled = false,
-  showSearch = true,
+  showSearch: _showSearch = true,
 }) => {
   const [open, setOpen] = useState(false);
-  const [keyword, setKeyword] = useState('');
   const [inputValue, setInputValue] = useState(customValue);
   const [showInputDialog, setShowInputDialog] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setInputValue(customValue);
   }, [customValue]);
-
-  const filteredVariables = useMemo(() => {
-    const normalizedKeyword = keyword.toLowerCase();
-    if (!keyword) return variables;
-    return variables
-      .map(group => ({
-        ...group,
-        params: group.params.filter(p => {
-          const meta = group.variables?.find(item => item.name === (p.name || p.field));
-          return [
-            p.field,
-            p.name,
-            p.label,
-            meta?.name,
-            meta?.label,
-            meta?.path,
-            meta?.template,
-          ].some(value => String(value || '').toLowerCase().includes(normalizedKeyword));
-        }),
-      }))
-      .filter(group => group.params.length > 0);
-  }, [variables, keyword]);
 
   const selectedMeta = useMemo(() => {
     const directGroup = variables.find(g => g.id === nodeId)
@@ -112,20 +90,9 @@ const VariableSelector: React.FC<VariableSelectorProps> = ({
     return '';
   }, [customValue, nodeId, field, value, variables, selectedMeta]);
 
-  const handleSelect = (param: FlowField, group: VariableGroup) => {
-    const meta = group.variables?.find(item => item.name === (param.name || param.field));
-    onChange?.({
-      field: param.field || '',
-      nodeId: group.id,
-      nodeType: group.type || '',
-      value: '',
-      name: param.name || param.field,
-      template: meta?.template,
-      refPath: meta?.path,
-      label: meta?.label,
-    });
+  const handleSelect = (selectedValue: string, meta?: WorkflowVariableMeta) => {
+    onChange?.(resolveVariableSelection(selectedValue, variables, meta));
     setOpen(false);
-    setKeyword('');
   };
 
   const handleClear = (e: React.MouseEvent) => {
@@ -147,104 +114,60 @@ const VariableSelector: React.FC<VariableSelectorProps> = ({
 
   if (!showPicker) {
     return (
-      <div className="variable-selector-trigger" onClick={() => setOpen(true)}>
+      <div className="variable-selector-trigger" onClick={() => !disabled && setOpen(true)}>
         <span className="text">{displayText || placeholder}</span>
+        <VariableBindModal
+          isOpen={open}
+          onClose={() => setOpen(false)}
+          onSelect={handleSelect}
+          currentValue={value}
+        />
       </div>
     );
   }
 
-  const content = (
-    <div className="variable-selector-content">
-      {showSearch && (
-        <div className="variable-selector-search">
-          <Input
-            prefix={<SearchOutlined />}
-            placeholder="搜索变量"
-            value={keyword}
-            onChange={e => setKeyword(e.target.value)}
-            allowClear
-          />
-        </div>
-      )}
-      <div className="variable-selector-list">
-        {filteredVariables.length === 0 ? (
-          <Empty description="未找到匹配项" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-        ) : (
-          filteredVariables.map((group, groupIndex) => (
-            <div key={`${group.id || 'group'}_${groupIndex}_${group.label || ''}`} className="variable-group">
-              <div className="variable-group-label">{group.label}</div>
-              {group.params.map((param, paramIndex) => {
-                const meta = group.variables?.find(item => item.name === (param.name || param.field));
-                const itemKey = `${group.id || 'group'}_${param.field || param.name || 'field'}_${paramIndex}_${meta?.template || meta?.path || ''}`
-                const variableName = param.name || param.field || meta?.name || ''
-                const displayName = meta?.label || param.label || variableName
-                const subText = meta?.path || meta?.template || variableName
-                const isActive = Boolean(
-                  (nodeId && nodeId === group.id && field === param.field) ||
-                  (value && meta && (meta.template === value || meta.path === value))
-                )
-                return (
-                  <div
-                    key={itemKey}
-                    className={`variable-item ${isActive ? 'active' : ''}`}
-                    onClick={() => handleSelect(param, group)}
-                  >
-                    <span className="variable-icon">📋</span>
-                    <span className="variable-main">
-                      <span className="variable-name">{displayName}</span>
-                      {subText && <span className="variable-path">{subText}</span>}
-                    </span>
-                    <span className="variable-type">{param.type || 'any'}</span>
-                  </div>
-                )
-              })}
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <>
-      <Popover
-        open={open}
-        onOpenChange={setOpen}
-        content={content}
-        trigger="click"
-        placement="bottomLeft"
-        overlayClassName="variable-selector-popover"
-        arrow={false}
+      <div
+        className={`variable-selector-trigger ${disabled ? 'disabled' : ''}`}
+        onClick={() => {
+          if (!disabled) setOpen(true);
+        }}
       >
-        <div className={`variable-selector-trigger ${disabled ? 'disabled' : ''}`}>
-          {inputable && (
-            <Tooltip title="自定义输入">
-              <Button
-                type="text"
-                size="small"
-                icon={<EditOutlined />}
-                className="input-btn"
-                onClick={e => {
-                  e.stopPropagation();
-                  setShowInputDialog(true);
-                }}
-              />
-            </Tooltip>
-          )}
-          <span className={`text ${!displayText ? 'placeholder' : ''}`}>
-            {displayText || placeholder}
-          </span>
-          {displayText && (
+        {inputable && (
+          <Tooltip title="自定义输入">
             <Button
               type="text"
               size="small"
-              icon={<CloseOutlined />}
-              className="clear-btn"
-              onClick={handleClear}
+              icon={<EditOutlined />}
+              className="input-btn"
+              onClick={e => {
+                e.stopPropagation();
+                if (!disabled) setShowInputDialog(true);
+              }}
             />
-          )}
-        </div>
-      </Popover>
+          </Tooltip>
+        )}
+        <span className={`text ${!displayText ? 'placeholder' : ''}`}>
+          {displayText || placeholder}
+        </span>
+        {displayText && !disabled && (
+          <Button
+            type="text"
+            size="small"
+            icon={<CloseOutlined />}
+            className="clear-btn"
+            onClick={handleClear}
+          />
+        )}
+      </div>
+
+      <VariableBindModal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        onSelect={handleSelect}
+        currentValue={value}
+      />
 
       {showInputDialog && (
         <div className="variable-input-dialog">

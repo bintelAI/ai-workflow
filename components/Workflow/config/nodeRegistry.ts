@@ -256,7 +256,7 @@ export const NODE_REGISTRY: Record<WorkflowNodeType, WorkflowNodeRegistryItem> =
   [WorkflowNodeType.MUL_UPDATE_ROW]: {
     type: WorkflowNodeType.MUL_UPDATE_ROW,
     label: '修改项目表行',
-    shortLabel: '改行',
+    shortLabel: '新增/改行',
     description: '按行 ID 修改多维表数据',
     icon: Edit3,
     color: 'text-teal-600',

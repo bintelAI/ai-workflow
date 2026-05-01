@@ -2,7 +2,7 @@ import React from 'react'
 import { AlertCircle, Database, FileText, ListFilter, Rows3, Trash2 } from 'lucide-react'
 
 import { WorkflowNodeType } from '../types'
-import { VariableInput } from './common/index'
+import { VariableInput, VariableTextArea } from './common/index'
 
 interface MulTableOperationConfigProps {
   nodeType: WorkflowNodeType
@@ -57,21 +57,21 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
           <Database size={12} className="text-sky-600" />
           目标项目 ID
         </label>
-        <input
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
+        <VariableInput
           value={config.targetProjectId || ''}
-          onChange={event => onConfigChange('targetProjectId', event.target.value)}
-          placeholder="project_xxx，支持跨项目但必须在同一团队内"
+          onChange={value => onConfigChange('targetProjectId', value)}
+          placeholder="   project_xxx，支持跨项目但必须在同一团队内"
+          scope="all"
         />
       </div>
 
       <div className="space-y-3">
         <label className="block text-xs font-medium text-slate-500 uppercase">目标表 Sheet ID</label>
-        <input
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
+        <VariableInput
           value={config.sheetId || ''}
-          onChange={event => onConfigChange('sheetId', event.target.value)}
-          placeholder="sheet_xxx"
+          onChange={value => onConfigChange('sheetId', value)}
+          placeholder="   sheet_xxx"
+          scope="all"
         />
       </div>
 
@@ -82,11 +82,13 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
               <ListFilter size={12} className="text-sky-600" />
               过滤条件 JSON
             </label>
-            <textarea
-              className="min-h-[92px] w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-sky-500"
+            <VariableTextArea
               value={config.filtersJson || '[]'}
-              onChange={event => onConfigChange('filtersJson', event.target.value)}
+              onChange={value => onConfigChange('filtersJson', value)}
               placeholder='[{"columnId":"status","operator":"eq","value":"open"}]'
+              rows={4}
+              scope="all"
+              plainTextMode
             />
           </div>
 
@@ -117,11 +119,11 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
 
           <div className="space-y-2">
             <label className="block text-xs font-medium text-slate-500 uppercase">返回字段</label>
-            <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sky-500"
+            <VariableInput
               value={config.returnFields || ''}
-              onChange={event => onConfigChange('returnFields', event.target.value)}
+              onChange={value => onConfigChange('returnFields', value)}
               placeholder="留空返回可见字段；多个字段用英文逗号分隔"
+              scope="all"
             />
           </div>
         </>
@@ -133,7 +135,8 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
           <VariableInput
             value={config.rowIdTemplate || ''}
             onChange={value => onConfigChange('rowIdTemplate', value)}
-            placeholder="{{nodes.query_1.data.firstRow.rowId}}"
+            placeholder="   空为新增行数据"
+            scope="all"
           />
         </div>
       )}
@@ -141,11 +144,13 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
       {isUpdate && (
         <div className="space-y-2">
           <label className="block text-xs font-medium text-slate-500 uppercase">修改字段 JSON</label>
-          <textarea
-            className="min-h-[110px] w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-sky-500"
+          <VariableTextArea
             value={config.fieldMappingsJson || '{}'}
-            onChange={event => onConfigChange('fieldMappingsJson', event.target.value)}
+            onChange={value => onConfigChange('fieldMappingsJson', value)}
             placeholder='{"status":"done","amount":"{{payload.amount}}"}'
+            rows={5}
+            scope="all"
+            plainTextMode
           />
         </div>
       )}

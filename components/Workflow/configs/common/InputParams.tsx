@@ -2,7 +2,9 @@ import React, { useCallback } from 'react';
 import { Input, Button, Empty } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { FlowField } from '@ai-flow/src/types/flow';
+import type { WorkflowVariableMeta } from '../../utils/workflowVariables';
 import VariableSelector from './VariableSelector';
+import type { VariableSelectionPayload } from '../../utils/variableSelection';
 import './InputParams.css';
 
 interface InputParamsProps {
@@ -18,6 +20,7 @@ interface InputParamsProps {
     type?: string;
     label?: string;
     params: FlowField[];
+    variables?: WorkflowVariableMeta[];
   }>;
   showVariableSelector?: boolean;
 }
@@ -57,7 +60,7 @@ const InputParams: React.FC<InputParamsProps> = ({
   );
 
   const handleVariableChange = useCallback(
-    (index: number, data: { field: string; nodeId: string; nodeType: string; value: string; name?: string; template?: string; refPath?: string; label?: string }) => {
+    (index: number, data: VariableSelectionPayload) => {
       const newValue = [...value];
       newValue[index] = {
         ...newValue[index],
