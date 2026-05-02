@@ -157,44 +157,125 @@ describe('Approval / CC org selector integration', () => {
       await Promise.resolve()
     })
 
-    const projectRoleSelect = container.querySelector(
-      '[data-testid="approval-project-role-select"]'
-    ) as HTMLSelectElement
+    const lastSelectorProps = selectorSpy.mock.calls.at(-1)?.[0]
+    expect(lastSelectorProps.roles).toEqual([
+      {
+        id: 'role_1',
+        name: '财务审批人',
+      },
+    ])
+    expect(lastSelectorProps.allowDepartmentLeader).toBe(true)
+    expect(lastSelectorProps.allowProjectRole).toBe(true)
+    expect(lastSelectorProps.allowProjectRoleOwner).toBe(true)
+    expect(lastSelectorProps.allowDynamic).toBe(true)
 
     await act(async () => {
-      Object.defineProperty(projectRoleSelect, 'selectedOptions', {
-        configurable: true,
-        value: [{ value: 'role_1' }],
+      lastSelectorProps.onConfirm({
+        users: [],
+        departments: [],
+        departmentLeaders: [{ id: 'dept_1', name: '研发部' }],
+        projectRoles: [{ id: 'role_1', name: '财务审批人' }],
+        projectRoleOwners: [{ id: 'role_1', name: '财务审批人' }],
+        deptLeader: true,
+        directManager: false,
       })
-      projectRoleSelect.dispatchEvent(new Event('change', { bubbles: true }))
     })
 
     expect(onConfigChange).toHaveBeenCalledWith('participantRules', [
+      {
+        sourceType: 'dept_leader',
+        sourceValue: 'dept_1',
+        sourceName: '研发部负责人',
+        sourceLabel: '研发部负责人',
+      },
       {
         sourceType: 'project_role',
         sourceValue: 'role_1',
         sourceName: '财务审批人',
         sourceLabel: '财务审批人',
       },
-    ])
-    expect(onConfigChange).toHaveBeenCalledWith('approver', '财务审批人')
-
-    const deptLeaderCheckbox = container.querySelector(
-      '[data-testid="approval-dept-leader-checkbox"]'
-    ) as HTMLInputElement
-
-    await act(async () => {
-      deptLeaderCheckbox.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(onConfigChange).toHaveBeenLastCalledWith('approver', '部门负责人')
-    expect(onConfigChange).toHaveBeenCalledWith('participantRules', [
+      {
+        sourceType: 'project_role_owner',
+        sourceValue: 'role_1',
+        sourceName: '财务审批人负责人',
+        sourceLabel: '财务审批人负责人',
+      },
       {
         sourceType: 'dept_leader',
-        sourceName: '部门负责人',
-        sourceLabel: '部门负责人',
+        sourceName: '发起人部门负责人',
+        sourceLabel: '发起人部门负责人',
       },
     ])
+    expect(onConfigChange).toHaveBeenCalledWith('approver', '研发部负责人, 财务审批人, 财务审批人负责人, 发起人部门负责人')
+  })
+
+  it('passes existing approval participant rules back to the selector for echo display', async () => {
+    const onConfigChange = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <ApprovalConfig
+          config={{
+            participantRules: [
+              {
+                sourceType: 'user',
+                sourceValue: 'user_1',
+                sourceName: '张三',
+              },
+              {
+                sourceType: 'department',
+                sourceValue: 'dept_1',
+                sourceName: '研发部',
+              },
+              {
+                sourceType: 'dept_leader',
+                sourceValue: 'dept_1',
+                sourceName: '研发部负责人',
+              },
+              {
+                sourceType: 'project_role',
+                sourceValue: 'role_1',
+                sourceName: '财务审批人',
+              },
+              {
+                sourceType: 'project_role_owner',
+                sourceValue: 'role_1',
+                sourceName: '财务审批人负责人',
+              },
+              {
+                sourceType: 'dept_leader',
+                sourceName: '发起人部门负责人',
+              },
+              {
+                sourceType: 'direct_manager',
+                sourceName: '直属上级',
+              },
+            ],
+          }}
+          onConfigChange={onConfigChange}
+        />
+      )
+    })
+
+    const openButton = Array.from(container.querySelectorAll('button')).find(
+      button => button.textContent?.trim() === '选择'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      openButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    const lastSelectorProps = selectorSpy.mock.calls.at(-1)?.[0]
+    expect(lastSelectorProps.value).toEqual({
+      users: [{ id: 'user_1', name: '张三' }],
+      departments: [{ id: 'dept_1', name: '研发部' }],
+      departmentLeaders: [{ id: 'dept_1', name: '研发部负责人' }],
+      projectRoles: [{ id: 'role_1', name: '财务审批人' }],
+      projectRoleOwners: [{ id: 'role_1', name: '财务审批人负责人' }],
+      deptLeader: true,
+      directManager: true,
+    })
   })
 
   it('loads team departments and project members for cc selector and syncs structured recipients', async () => {

@@ -24,9 +24,7 @@ import {
 } from '@ai-flow-src/api/org'
 import OrgTargetSelector from './common/OrgTargetSelector'
 import {
-  buildDynamicParticipantRules,
-  buildOrgParticipantRules,
-  buildProjectRoleParticipantRules,
+  buildSelectorParticipantRules,
   summarizeApprovalParticipants,
   type ApprovalParticipantRule,
 } from './approvalParticipants'
@@ -138,8 +136,10 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
     : []
   const selectedUsers = participantRules.filter((item: any) => item?.sourceType === 'user')
   const selectedDepartments = participantRules.filter((item: any) => item?.sourceType === 'department')
+  const selectedDepartmentLeaders = participantRules.filter((item: any) => item?.sourceType === 'dept_leader' && item?.sourceValue)
   const selectedProjectRoles = participantRules.filter((item: any) => item?.sourceType === 'project_role')
-  const hasDeptLeaderRule = participantRules.some((item: any) => item?.sourceType === 'dept_leader')
+  const selectedProjectRoleOwners = participantRules.filter((item: any) => item?.sourceType === 'project_role_owner')
+  const hasDeptLeaderRule = participantRules.some((item: any) => item?.sourceType === 'dept_leader' && !item?.sourceValue)
   const hasDirectManagerRule = participantRules.some((item: any) => item?.sourceType === 'direct_manager')
 
   const updateParticipantRules = (nextRules: ApprovalParticipantRule[]) => {
@@ -179,17 +179,13 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
   const syncParticipantRules = (value: {
     users: Array<{ id: string; name: string; departmentId?: string }>
     departments: Array<{ id: string; name: string }>
+    departmentLeaders?: Array<{ id: string; name: string }>
+    projectRoles?: Array<{ id: string; name: string }>
+    projectRoleOwners?: Array<{ id: string; name: string }>
+    deptLeader?: boolean
+    directManager?: boolean
   }) => {
-    updateParticipantRules(buildOrgParticipantRules(participantRules, value))
-  }
-
-  const handleProjectRoleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedRoleIds = Array.from(event.target.selectedOptions).map(option => option.value)
-    updateParticipantRules(buildProjectRoleParticipantRules(participantRules, roles, selectedRoleIds))
-  }
-
-  const toggleDynamicRule = (sourceType: 'dept_leader' | 'direct_manager', checked: boolean) => {
-    updateParticipantRules(buildDynamicParticipantRules(participantRules, sourceType, checked))
+    updateParticipantRules(buildSelectorParticipantRules(value))
   }
 
   const handleButtonChange = (buttonName: keyof typeof buttonConfig) => {
@@ -317,67 +313,27 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
                     {selectorLoading ? '加载中...' : '选择'}
                   </button>
                 </div>
-                {(selectedUsers.length > 0 || selectedDepartments.length > 0) && (
+                {participantRules.length > 0 && (
                   <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 space-y-2">
                     {selectedUsers.length > 0 && (
                       <div>项目成员：{selectedUsers.map((item: any) => item?.sourceName || item?.sourceValue).join('，')}</div>
                     )}
                     {selectedDepartments.length > 0 && (
-                      <div>团队部门：{selectedDepartments.map((item: any) => item?.sourceName || item?.sourceValue).join('，')}</div>
+                      <div>团队部门成员：{selectedDepartments.map((item: any) => item?.sourceName || item?.sourceValue).join('，')}</div>
                     )}
+                    {selectedDepartmentLeaders.length > 0 && (
+                      <div>部门负责人：{selectedDepartmentLeaders.map((item: any) => item?.sourceName || item?.sourceValue).join('，')}</div>
+                    )}
+                    {selectedProjectRoles.length > 0 && (
+                      <div>项目角色成员：{selectedProjectRoles.map((item: any) => item?.sourceName || item?.sourceValue).join('，')}</div>
+                    )}
+                    {selectedProjectRoleOwners.length > 0 && (
+                      <div>角色负责人：{selectedProjectRoleOwners.map((item: any) => item?.sourceName || item?.sourceValue).join('，')}</div>
+                    )}
+                    {hasDeptLeaderRule && <div>动态负责人：发起人部门负责人</div>}
+                    {hasDirectManagerRule && <div>动态负责人：直属上级</div>}
                   </div>
                 )}
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">
-                    项目角色
-                  </label>
-                  <select
-                    multiple
-                    data-testid="approval-project-role-select"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm bg-white min-h-[72px]"
-                    value={selectedProjectRoles.map((item: any) => String(item?.sourceValue))}
-                    onChange={handleProjectRoleChange}
-                    onFocus={() => {
-                      if (roles.length === 0) {
-                        void loadOrgOptions()
-                      }
-                    }}
-                  >
-                    {roles.map(role => (
-                      <option key={role.id} value={role.id}>
-                        {role.name}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1 text-xs text-slate-400">
-                    项目角色会在运行时解析为当前项目内的角色成员。
-                  </p>
-                </div>
-                <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <label className="flex items-center gap-2 text-xs text-slate-700">
-                    <input
-                      type="checkbox"
-                      data-testid="approval-dept-leader-checkbox"
-                      checked={hasDeptLeaderRule}
-                      onChange={event => toggleDynamicRule('dept_leader', event.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300"
-                    />
-                    部门负责人
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-slate-700">
-                    <input
-                      type="checkbox"
-                      data-testid="approval-direct-manager-checkbox"
-                      checked={hasDirectManagerRule}
-                      onChange={event => toggleDynamicRule('direct_manager', event.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 border-slate-300"
-                    />
-                    直属上级
-                  </label>
-                  <p className="text-xs text-amber-600">
-                    直属上级按发起人所属部门负责人解析；若负责人为本人，则向上级部门查找负责人。
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -665,6 +621,11 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
         title="选择审批参与者"
         members={members}
         departments={departments}
+        roles={roles}
+        allowDepartmentLeader
+        allowProjectRole
+        allowProjectRoleOwner
+        allowDynamic
         value={{
           users: selectedUsers.map((item: any) => ({
             id: String(item?.sourceValue),
@@ -674,6 +635,20 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
             id: String(item?.sourceValue),
             name: item?.sourceName || item?.sourceLabel || String(item?.sourceValue),
           })),
+          departmentLeaders: selectedDepartmentLeaders.map((item: any) => ({
+            id: String(item?.sourceValue),
+            name: item?.sourceName || item?.sourceLabel || String(item?.sourceValue),
+          })),
+          projectRoles: selectedProjectRoles.map((item: any) => ({
+            id: String(item?.sourceValue),
+            name: item?.sourceName || item?.sourceLabel || String(item?.sourceValue),
+          })),
+          projectRoleOwners: selectedProjectRoleOwners.map((item: any) => ({
+            id: String(item?.sourceValue),
+            name: item?.sourceName || item?.sourceLabel || String(item?.sourceValue),
+          })),
+          deptLeader: hasDeptLeaderRule,
+          directManager: hasDirectManagerRule,
         }}
         onConfirm={syncParticipantRules}
       />

@@ -24,6 +24,8 @@ export interface WorkflowProjectRole {
   name: string
   description?: string
   isSystem?: boolean
+  ownerUserId?: string
+  ownerUserName?: string
 }
 
 const normalizeId = (value: unknown): string | undefined => {
@@ -73,6 +75,8 @@ export const orgApi = {
       name: item.name || String(item.roleId || item.id),
       description: item.description || '',
       isSystem: Boolean(item.isSystem),
+      ownerUserId: normalizeId(item.ownerUserId),
+      ownerUserName: item.ownerUserName || '',
     })) as WorkflowProjectRole[]
   },
 }
