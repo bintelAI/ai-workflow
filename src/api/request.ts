@@ -9,6 +9,8 @@ interface ApiResponse<T = any> {
   msg: string;
 }
 
+const BILLING_UPGRADE_REQUIRED_CODE = 40201;
+
 const config: AxiosRequestConfig = {
   // 从环境变量获取 Base URL，开发环境为 /api，生产环境为实际地址
   baseURL: getRuntimeBaseURL(),
@@ -69,6 +71,20 @@ request.interceptors.response.use(
     if (res.code === 403) {
         message.error(res?.message || '无权访问该资源');
         return Promise.reject(new Error(res?.message || 'Forbidden'));
+    }
+
+    // 40201: 计费额度不足，需要宿主展示升级提示
+    if (res.code === BILLING_UPGRADE_REQUIRED_CODE) {
+        const payload = {
+            ...(res?.data || {}),
+            message: res?.message || res?.msg || '当前额度不足，请升级',
+        };
+        window.dispatchEvent(new CustomEvent('billing:upgrade-required', { detail: payload }));
+        message.warning(payload.message);
+        return Promise.reject(Object.assign(new Error(payload.message), {
+            code: BILLING_UPGRADE_REQUIRED_CODE,
+            data: res?.data,
+        }));
     }
 
     // 500: 服务器错误
