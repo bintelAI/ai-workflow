@@ -107,7 +107,6 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
   let globalFields: ApprovalFieldOption[] = approvalInputFields.map(field => ({
     key: field.variableName || field.fieldId,
     label: field.label || field.fieldName || field.fieldId,
-    permission: field.permission,
     required: field.required,
     source: 'approvalInput',
   }))
@@ -122,14 +121,17 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
     console.error('Failed to parse global data:', e)
   }
 
-  // 初始化字段配置，使用开始节点入参字段的默认权限。
+  // 初始化字段配置。开始节点只定义入参和必填，审批节点显式配置读写/隐藏权限。
   const initialFieldConfig: Record<string, ApprovalFieldPermission> = {}
   globalFields.forEach(field => {
-    initialFieldConfig[field.key] = field.permission || 'editable'
+    initialFieldConfig[field.key] = 'readonly'
   })
 
   // 字段配置数据
-  const fieldConfig = config?.fieldConfig || initialFieldConfig
+  const fieldConfig = {
+    ...initialFieldConfig,
+    ...(config?.fieldConfig || {}),
+  }
   const autoApproval = config?.autoApproval || {}
   const participantRules: ApprovalParticipantRule[] = Array.isArray(config?.participantRules)
     ? config.participantRules

@@ -167,4 +167,37 @@ describe('Approval input config', () => {
         ?.checked
     ).toBe(true)
   })
+
+  it('table input modal keeps required config and hides permission config', async () => {
+    await act(async () => {
+      root.render(
+        <StartConfig
+          config={{}}
+          onConfigChange={vi.fn()}
+          pluginType="approval"
+          teamId="team_1"
+          projectId="project_current"
+        />
+      )
+    })
+
+    const addButton = Array.from(container.querySelectorAll('button')).find(
+      button => button.textContent?.trim() === '添加表数据'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      addButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(document.body.textContent).not.toContain('权限')
+    expect(document.body.textContent).not.toContain('可编辑')
+    expect(document.body.textContent).not.toContain('只读')
+    expect(document.body.textContent).not.toContain('隐藏')
+    expect(document.body.textContent).toContain('必填')
+  })
 })

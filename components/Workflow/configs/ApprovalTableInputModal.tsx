@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Empty, Input, Modal, Radio, Select, Spin, Switch, Table, Typography } from 'antd';
+import { Alert, Empty, Input, Modal, Select, Spin, Switch, Table, Typography } from 'antd';
 import { mulApi, type WorkflowMulColumn, type WorkflowMulSheet } from '@ai-flow-src/api/mul';
 import {
-  APPROVAL_FIELD_PERMISSION_OPTIONS,
   type ApprovalInputConfig,
   type ApprovalInputField,
   createApprovalInputField,
@@ -226,26 +225,6 @@ const ApprovalTableInputModal: React.FC<ApprovalTableInputModalProps> = ({
                 ) : (
                   <span className="text-slate-400">选择后配置</span>
                 );
-              },
-            },
-            {
-              title: '权限',
-              width: 180,
-              render: (_: unknown, record) => {
-                const fieldId = getColumnKey(record);
-                const field = draftValue?.fields.find(item => item.fieldId === fieldId);
-                return field ? (
-                  <Radio.Group
-                    size="small"
-                    value={field.permission}
-                    onChange={event =>
-                      updateField(fieldId, {
-                        permission: event.target.value,
-                      })
-                    }
-                    options={APPROVAL_FIELD_PERMISSION_OPTIONS}
-                  />
-                ) : null;
               },
             },
             {

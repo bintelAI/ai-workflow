@@ -318,9 +318,11 @@ const StartConfig: React.FC<StartConfigProps> = ({
                 </div>
                 <div className="variable-summary-tags">
                   <Tag color="blue">{approvalInputFields.length} 个字段</Tag>
-                  {approvalInputFields.some(field => field.permission === 'editable') && <Tag color="green">可编辑</Tag>}
-                  {approvalInputFields.some(field => field.permission === 'readonly') && <Tag color="gold">只读</Tag>}
-                  {approvalInputFields.some(field => field.permission === 'hidden') && <Tag>隐藏</Tag>}
+                  {approvalInputFields.some(field => field.required) && (
+                    <Tag color="red">
+                      {approvalInputFields.filter(field => field.required).length} 个必填
+                    </Tag>
+                  )}
                 </div>
               </div>
               <div className="variable-summary-actions">
