@@ -73,7 +73,7 @@ export const EndConfig: React.FC<EndConfigProps> = ({ config, onConfigChange, va
         )}
 
         {outputs.map((item, index) => (
-          <div key={index} className="grid grid-cols-[160px_1fr_32px] gap-2 items-center">
+          <div key={index} className="grid min-w-0 grid-cols-[minmax(96px,140px)_minmax(0,1fr)_32px] gap-2 items-center">
             <input
               type="text"
               className="w-full px-3 py-2 border border-slate-300 rounded-md text-xs font-mono bg-white"

@@ -338,17 +338,17 @@ const WorkflowMulFilterBuilder: React.FC<WorkflowMulFilterBuilderProps> = ({
         )}
       </div>
 
-      <div className="space-y-3 overflow-x-auto p-3">
+      <div className="space-y-3 p-3">
         {filters.length ? (
           filters.map((filter, index) => {
             const column = filterableColumns.find(item => getColumnKey(item) === filter.columnId)
             return (
-              <div key={filter.id} className="grid min-w-[760px] grid-cols-[42px_220px_120px_1fr_32px] items-center gap-2 whitespace-nowrap">
-                <span className="text-center text-xs uppercase text-slate-400">{index === 0 ? '当' : matchType}</span>
+              <div key={filter.id} className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+                <span className="w-10 shrink-0 text-center text-xs uppercase text-slate-400">{index === 0 ? '当' : matchType}</span>
                 <Select
                   size="small"
                   showSearch
-                  className="w-full"
+                  className="w-[220px] shrink-0"
                   optionFilterProp="label"
                   value={filter.columnId}
                   onChange={value => updateFilter(filter.id, { columnId: value })}
@@ -359,19 +359,22 @@ const WorkflowMulFilterBuilder: React.FC<WorkflowMulFilterBuilderProps> = ({
                 />
                 <Select
                   size="small"
-                  className="w-full"
+                  className="w-[120px] shrink-0"
                   value={filter.operator}
                   onChange={value => updateFilter(filter.id, { operator: value, value: isEmptyOperator(value) ? '' : filter.value })}
                   options={getOperators(column)}
                 />
                 {isEmptyOperator(filter.operator) ? (
-                  <span className="text-xs text-slate-400">无需填写值</span>
+                  <span className="min-w-0 flex-1 text-xs text-slate-400">无需填写值</span>
                 ) : (
-                  <FilterValueInput filter={filter} column={column} onChange={value => updateFilter(filter.id, { value })} />
+                  <div className="min-w-0 flex-1">
+                    <FilterValueInput filter={filter} column={column} onChange={value => updateFilter(filter.id, { value })} />
+                  </div>
                 )}
                 <Button
                   type="text"
                   size="small"
+                  className="shrink-0"
                   icon={<Trash2 size={14} />}
                   onClick={() => onChange(filters.filter(item => item.id !== filter.id))}
                 />
