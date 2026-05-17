@@ -995,6 +995,10 @@ const convertMulTableOperationNodeData = (config: any, allNodes: Node[], nodeTyp
     config?.targetBinding?.rowIdTemplate || config?.rowIdTemplate || '',
     allNodes
   );
+  const queryFilterTemplates =
+    nodeType === 'mul_query'
+      ? collectQueryFilterTemplates(config)
+      : [];
   const bindingTemplates = Array.isArray(config?.targetBinding?.fieldBindings)
     ? config.targetBinding.fieldBindings
         .map((item: any) => item?.sourceTemplate)
@@ -1002,6 +1006,9 @@ const convertMulTableOperationNodeData = (config: any, allNodes: Node[], nodeTyp
     : [];
   const inputParams = [
     ...extractVariableRefs(rowIdTemplate, allNodes),
+    ...queryFilterTemplates.flatMap((template: string) =>
+      extractVariableRefs(normalizeLegacyTemplate(template, allNodes), allNodes)
+    ),
     ...bindingTemplates.flatMap((template: string) =>
       extractVariableRefs(normalizeLegacyTemplate(template, allNodes), allNodes)
     ),
@@ -1024,6 +1031,40 @@ const convertMulTableOperationNodeData = (config: any, allNodes: Node[], nodeTyp
       rowIdTemplate,
     },
   };
+};
+
+const collectQueryFilterTemplates = (config: any): string[] => {
+  const values: string[] = [];
+  const visit = (value: any) => {
+    if (typeof value === 'string') {
+      values.push(value);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (value && typeof value === 'object') {
+      Object.values(value).forEach(visit);
+    }
+  };
+
+  if (Array.isArray(config?.queryBinding?.filters)) {
+    config.queryBinding.filters.forEach((filter: any) => visit(filter?.value));
+  }
+
+  if (typeof config?.filtersJson === 'string') {
+    try {
+      const filters = JSON.parse(config.filtersJson);
+      if (Array.isArray(filters)) {
+        filters.forEach((filter: any) => visit(filter?.value));
+      }
+    } catch {
+      visit(config.filtersJson);
+    }
+  }
+
+  return values.filter(value => value.includes('{{'));
 };
 
 const extractVariableRefs = (text: string, allNodes: Node[]): FlowField[] => {

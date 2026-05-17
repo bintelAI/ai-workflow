@@ -581,6 +581,61 @@ describe('backendAdapter', () => {
       ]);
     });
 
+    it('should export query binding filter variables as input params', () => {
+      const workflow = {
+        nodes: [
+          {
+            id: 'start_1',
+            type: 'start' as WorkflowNodeType,
+            position: { x: 0, y: 0 },
+            data: { label: '开始', config: { variables: [{ name: 'status', type: 'text' }] } },
+          },
+          {
+            id: 'query_1',
+            type: 'mul_query' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: '查询项目表',
+              config: {
+                queryBinding: {
+                  projectId: 'project_b',
+                  sheetId: 'sheet_order',
+                  filterMatchType: 'and',
+                  filters: [
+                    {
+                      id: 'filter_1',
+                      columnId: 'status',
+                      operator: 'equals',
+                      value: '{{payload.status}}',
+                    },
+                  ],
+                },
+                targetProjectId: 'project_b',
+                sheetId: 'sheet_order',
+                filtersJson: '[{"columnId":"status","operator":"equals","value":"{{payload.status}}"}]',
+                returnMode: 'list',
+                maxRows: 20,
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const exported = exportToBackend(workflow as any);
+      const queryNode = exported.nodes.find(node => node.id === 'query_1');
+
+      expect(queryNode?.data?.inputParams).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'start_1',
+            field: 'status',
+            name: 'status',
+          }),
+        ])
+      );
+    });
+
     it('should include structured update row binding variables in input params', () => {
       const workflow = {
         nodes: [

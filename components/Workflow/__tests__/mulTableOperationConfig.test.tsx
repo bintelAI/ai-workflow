@@ -21,6 +21,40 @@ vi.mock('@ai-flow-src/api/mul', () => ({
   },
 }))
 
+vi.mock('../configs/MulQueryBindingModal', async () => {
+  const React = await import('react')
+  return {
+    default: ({ open, onSave }: any) =>
+      open
+        ? React.createElement(
+            'button',
+            {
+              type: 'button',
+              onClick: () =>
+                onSave({
+                  projectId: 'project_1',
+                  projectName: '目标项目',
+                  sheetId: 'sheet_1',
+                  sheetName: '目标表',
+                  filterMatchType: 'and',
+                  filters: [
+                    {
+                      id: 'filter_1',
+                      columnId: 'name',
+                      columnLabel: '姓名',
+                      columnType: 'text',
+                      operator: 'contains',
+                      value: '{{payload.status}}',
+                    },
+                  ],
+                }),
+            },
+            '保存查询绑定测试'
+          )
+        : null,
+  }
+})
+
 vi.mock('../store/useWorkflowStore', () => ({
   useWorkflowStore: () => ({
     selectedNodeId: 'mul_1',
@@ -137,5 +171,100 @@ describe('MulTableOperationConfig', () => {
     expect(titleIndex).toBeGreaterThanOrEqual(0)
     expect(bindingIndex).toBeGreaterThan(titleIndex)
     expect(targetProjectIndex).toBeGreaterThan(bindingIndex)
+  })
+
+  it('renders structured query binding summary and keeps advanced filters json', async () => {
+    await act(async () => {
+      root.render(
+        <MulTableOperationConfig
+          nodeType={WorkflowNodeType.MUL_QUERY}
+          config={{
+            targetProjectId: 'project_1',
+            sheetId: 'sheet_1',
+            filtersJson: '[{"columnId":"status","operator":"equals","value":"{{payload.status}}"}]',
+            filterMatchType: 'and',
+            queryBinding: {
+              projectId: 'project_1',
+              projectName: '目标项目',
+              sheetId: 'sheet_1',
+              sheetName: '目标表',
+              filterMatchType: 'and',
+              filters: [
+                {
+                  id: 'filter_1',
+                  columnId: 'status',
+                  columnLabel: '状态',
+                  operator: 'equals',
+                  value: '{{payload.status}}',
+                },
+              ],
+            },
+          }}
+          onConfigChange={vi.fn()}
+          teamId="team_1"
+          projectId="project_current"
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('查询绑定')
+    expect(container.textContent).toContain('打开绑定')
+    expect(container.textContent).toContain('目标项目')
+    expect(container.textContent).toContain('目标表')
+    expect(container.textContent).toContain('筛选 1 条')
+    expect(container.textContent).toContain('高级配置')
+    expect(container.textContent).toContain('过滤条件 JSON')
+  })
+
+  it('saves query binding as target and filters config patch', async () => {
+    const onConfigPatch = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <MulTableOperationConfig
+          nodeType={WorkflowNodeType.MUL_QUERY}
+          config={{
+            targetProjectId: '',
+            sheetId: '',
+            filtersJson: '[]',
+            filterMatchType: 'and',
+            returnMode: 'list',
+            maxRows: 20,
+          }}
+          onConfigChange={vi.fn()}
+          onConfigPatch={onConfigPatch}
+          teamId="team_1"
+          projectId="project_current"
+        />
+      )
+    })
+
+    await act(async () => {
+      Array.from(container.querySelectorAll('button')).find(button => button.textContent?.includes('打开绑定'))?.click()
+    })
+    await act(async () => {
+      Array.from(container.querySelectorAll('button')).find(button => button.textContent?.includes('保存查询绑定测试'))?.click()
+    })
+
+    expect(onConfigPatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetProjectId: 'project_1',
+        sheetId: 'sheet_1',
+        filterMatchType: 'and',
+        queryBinding: expect.objectContaining({
+          projectId: 'project_1',
+          sheetId: 'sheet_1',
+          filters: [
+            expect.objectContaining({
+              columnId: 'name',
+              value: '{{payload.status}}',
+            }),
+          ],
+        }),
+      })
+    )
+    expect(JSON.parse(onConfigPatch.mock.calls[0][0].filtersJson)).toEqual([
+      expect.objectContaining({ columnId: 'name', value: '{{payload.status}}' }),
+    ])
   })
 })

@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react'
-import { AlertCircle, Database, FileText, Link2, ListFilter, Rows3, Trash2 } from 'lucide-react'
+import { AlertCircle, ChevronDown, Database, FileText, Link2, ListFilter, Rows3, Search, Trash2 } from 'lucide-react'
 
 import { WorkflowNodeType } from '../types'
 import { VariableInput, VariableTextArea } from './common/index'
+import MulQueryBindingModal, { type MulQueryBinding } from './MulQueryBindingModal'
 import MulUpdateRowBindingModal, {
   type MulUpdateRowTargetBinding,
 } from './MulUpdateRowBindingModal'
@@ -46,6 +47,13 @@ const buildFieldMappingsJson = (binding: MulUpdateRowTargetBinding) => {
   return JSON.stringify(mappings, null, 2)
 }
 
+const buildFiltersJson = (binding: MulQueryBinding) =>
+  JSON.stringify(
+    (binding.filters || []).map(({ id, columnLabel, columnType, ...filter }) => filter),
+    null,
+    2
+  )
+
 const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
   nodeType,
   config,
@@ -60,11 +68,35 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
   const isUpdate = nodeType === WorkflowNodeType.MUL_UPDATE_ROW
   const isDelete = nodeType === WorkflowNodeType.MUL_DELETE_ROW
   const [bindingModalOpen, setBindingModalOpen] = useState(false)
+  const [queryBindingModalOpen, setQueryBindingModalOpen] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const queryBinding = config.queryBinding as MulQueryBinding | undefined
   const targetBinding = config.targetBinding as MulUpdateRowTargetBinding | undefined
   const bindingRows = useMemo(
     () => (targetBinding?.fieldBindings || []).filter(item => item.targetFieldId && item.sourceTemplate),
     [targetBinding?.fieldBindings]
   )
+  const queryFilters = useMemo(
+    () => (queryBinding?.filters || []).filter(item => item.columnId && item.operator),
+    [queryBinding?.filters]
+  )
+
+  const handleSaveQueryBinding = (binding: MulQueryBinding) => {
+    const patch = {
+      queryBinding: binding,
+      targetProjectId: binding.projectId,
+      sheetId: binding.sheetId,
+      filtersJson: buildFiltersJson(binding),
+      filterMatchType: binding.filterMatchType || 'and',
+    }
+
+    if (onConfigPatch) {
+      onConfigPatch(patch)
+    } else {
+      Object.entries(patch).forEach(([key, value]) => onConfigChange(key, value))
+    }
+    setQueryBindingModalOpen(false)
+  }
 
   const handleSaveBinding = (binding: MulUpdateRowTargetBinding) => {
     const patch = {
@@ -92,6 +124,56 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
         </div>
         <p className="mt-1 text-xs leading-5 text-slate-600">{meta.description}</p>
       </div>
+
+      {isQuery && (
+        <>
+          <div className="rounded-md border border-slate-200 bg-white">
+            <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <Search size={13} className="text-sky-600" />
+                查询绑定
+              </div>
+              <button
+                type="button"
+                onClick={() => setQueryBindingModalOpen(true)}
+                className="rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
+              >
+                打开绑定
+              </button>
+            </div>
+            <div className="space-y-2 p-3">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
+                  <span className="text-slate-400">项目：</span>
+                  <span className="font-mono text-slate-700">{queryBinding?.projectName || config.targetProjectId || '未配置'}</span>
+                </div>
+                <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
+                  <span className="text-slate-400">表：</span>
+                  <span className="font-mono text-slate-700">{queryBinding?.sheetName || config.sheetId || '未配置'}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs">
+                <span className="text-slate-500">筛选 {queryFilters.length} 条</span>
+                <span className="font-mono uppercase text-slate-500">{queryBinding?.filterMatchType || config.filterMatchType || 'and'}</span>
+              </div>
+            </div>
+          </div>
+
+          <MulQueryBindingModal
+            open={queryBindingModalOpen}
+            value={queryBinding || {
+              projectId: config.targetProjectId || projectId || '',
+              sheetId: config.sheetId || '',
+              filters: [],
+              filterMatchType: config.filterMatchType === 'or' ? 'or' : 'and',
+            }}
+            teamId={teamId}
+            projectId={projectId}
+            onCancel={() => setQueryBindingModalOpen(false)}
+            onSave={handleSaveQueryBinding}
+          />
+        </>
+      )}
 
       {isUpdate && (
         <>
@@ -184,21 +266,6 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
 
       {isQuery && (
         <>
-          <div className="space-y-2">
-            <label className="block text-xs font-medium text-slate-500 uppercase flex items-center gap-1.5">
-              <ListFilter size={12} className="text-sky-600" />
-              过滤条件 JSON
-            </label>
-            <VariableTextArea
-              value={config.filtersJson || '[]'}
-              onChange={value => onConfigChange('filtersJson', value)}
-              placeholder='[{"columnId":"status","operator":"eq","value":"open"}]'
-              rows={4}
-              scope="all"
-              plainTextMode
-            />
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="block text-xs font-medium text-slate-500 uppercase">返回模式</label>
@@ -232,6 +299,33 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
               placeholder="留空返回可见字段；多个字段用英文逗号分隔"
               scope="all"
             />
+          </div>
+
+          <div className="rounded-md border border-slate-200 bg-white">
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen(open => !open)}
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-semibold text-slate-600"
+            >
+              <span className="flex items-center gap-1.5">
+                <ListFilter size={12} className="text-sky-600" />
+                高级配置 · 过滤条件 JSON
+              </span>
+              <ChevronDown size={14} className={`transition ${advancedOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {advancedOpen && (
+              <div className="space-y-2 border-t border-slate-100 p-3">
+                <label className="block text-xs font-medium text-slate-500 uppercase">过滤条件 JSON</label>
+                <VariableTextArea
+                  value={config.filtersJson || '[]'}
+                  onChange={value => onConfigChange('filtersJson', value)}
+                  placeholder='[{"columnId":"status","operator":"equals","value":"open"}]'
+                  rows={4}
+                  scope="all"
+                  plainTextMode
+                />
+              </div>
+            )}
           </div>
         </>
       )}
