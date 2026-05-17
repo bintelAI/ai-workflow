@@ -112,4 +112,30 @@ describe('MulTableOperationConfig', () => {
     expect(container.textContent).toContain('{{payload.name}}')
     expect(container.textContent).toContain('行 ID')
   })
+
+  it('renders update row binding before target project id', async () => {
+    await act(async () => {
+      root.render(
+        <MulTableOperationConfig
+          nodeType={WorkflowNodeType.MUL_UPDATE_ROW}
+          config={{
+            targetProjectId: 'project_1',
+            sheetId: 'sheet_1',
+            rowIdTemplate: '',
+            fieldMappingsJson: '{}',
+          }}
+          onConfigChange={vi.fn()}
+        />
+      )
+    })
+
+    const content = container.textContent || ''
+    const titleIndex = content.indexOf('修改项目表行')
+    const bindingIndex = content.indexOf('绑定字段')
+    const targetProjectIndex = content.indexOf('目标项目 ID')
+
+    expect(titleIndex).toBeGreaterThanOrEqual(0)
+    expect(bindingIndex).toBeGreaterThan(titleIndex)
+    expect(targetProjectIndex).toBeGreaterThan(bindingIndex)
+  })
 })

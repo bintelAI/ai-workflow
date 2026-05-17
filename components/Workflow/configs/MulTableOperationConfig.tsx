@@ -93,6 +93,72 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
         <p className="mt-1 text-xs leading-5 text-slate-600">{meta.description}</p>
       </div>
 
+      {isUpdate && (
+        <>
+          <div className="rounded-md border border-slate-200 bg-white">
+            <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <Link2 size={13} className="text-sky-600" />
+                绑定字段
+              </div>
+              <button
+                type="button"
+                onClick={() => setBindingModalOpen(true)}
+                className="rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
+              >
+                打开绑定
+              </button>
+            </div>
+            <div className="space-y-2 p-3">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
+                  <span className="text-slate-400">项目：</span>
+                  <span className="font-mono text-slate-700">{targetBinding?.projectName || config.targetProjectId || '未配置'}</span>
+                </div>
+                <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
+                  <span className="text-slate-400">表：</span>
+                  <span className="font-mono text-slate-700">{targetBinding?.sheetName || config.sheetId || '未配置'}</span>
+                </div>
+              </div>
+              <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs">
+                <span className="text-slate-400">行 ID：</span>
+                <span className="font-mono text-slate-700">{targetBinding?.rowIdTemplate || config.rowIdTemplate || '空则新增'}</span>
+              </div>
+              <div className="overflow-hidden rounded border border-slate-100">
+                <div className="grid grid-cols-2 bg-slate-50 text-xs font-medium text-slate-500">
+                  <div className="border-r border-slate-100 px-2 py-1.5">左侧写入字段</div>
+                  <div className="px-2 py-1.5">右侧绑定信息</div>
+                </div>
+                {bindingRows.length ? (
+                  bindingRows.map(item => (
+                    <div key={item.targetFieldId} className="grid grid-cols-2 border-t border-slate-100 text-xs">
+                      <div className="min-w-0 border-r border-slate-100 px-2 py-1.5">
+                        <div className="truncate font-medium text-slate-700">{item.targetFieldLabel || item.targetFieldId}</div>
+                        <div className="truncate font-mono text-slate-400">{item.targetFieldId}</div>
+                      </div>
+                      <div className="min-w-0 px-2 py-1.5 font-mono text-slate-700">
+                        <div className="truncate">{item.sourceTemplate}</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-2 py-3 text-center text-xs text-slate-400">暂无字段绑定</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <MulUpdateRowBindingModal
+            open={bindingModalOpen}
+            value={targetBinding || null}
+            teamId={teamId}
+            projectId={projectId}
+            onCancel={() => setBindingModalOpen(false)}
+            onSave={handleSaveBinding}
+          />
+        </>
+      )}
+
       <div className="space-y-3">
         <label className="block text-xs font-medium text-slate-500 uppercase flex items-center gap-1.5">
           <Database size={12} className="text-sky-600" />
@@ -180,72 +246,6 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
             scope="all"
           />
         </div>
-      )}
-
-      {isUpdate && (
-        <>
-          <div className="rounded-md border border-slate-200 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                <Link2 size={13} className="text-sky-600" />
-                绑定字段
-              </div>
-              <button
-                type="button"
-                onClick={() => setBindingModalOpen(true)}
-                className="rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
-              >
-                打开绑定
-              </button>
-            </div>
-            <div className="space-y-2 p-3">
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
-                  <span className="text-slate-400">项目：</span>
-                  <span className="font-mono text-slate-700">{targetBinding?.projectName || config.targetProjectId || '未配置'}</span>
-                </div>
-                <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
-                  <span className="text-slate-400">表：</span>
-                  <span className="font-mono text-slate-700">{targetBinding?.sheetName || config.sheetId || '未配置'}</span>
-                </div>
-              </div>
-              <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs">
-                <span className="text-slate-400">行 ID：</span>
-                <span className="font-mono text-slate-700">{targetBinding?.rowIdTemplate || config.rowIdTemplate || '空则新增'}</span>
-              </div>
-              <div className="overflow-hidden rounded border border-slate-100">
-                <div className="grid grid-cols-2 bg-slate-50 text-xs font-medium text-slate-500">
-                  <div className="border-r border-slate-100 px-2 py-1.5">左侧写入字段</div>
-                  <div className="px-2 py-1.5">右侧绑定信息</div>
-                </div>
-                {bindingRows.length ? (
-                  bindingRows.map(item => (
-                    <div key={item.targetFieldId} className="grid grid-cols-2 border-t border-slate-100 text-xs">
-                      <div className="min-w-0 border-r border-slate-100 px-2 py-1.5">
-                        <div className="truncate font-medium text-slate-700">{item.targetFieldLabel || item.targetFieldId}</div>
-                        <div className="truncate font-mono text-slate-400">{item.targetFieldId}</div>
-                      </div>
-                      <div className="min-w-0 px-2 py-1.5 font-mono text-slate-700">
-                        <div className="truncate">{item.sourceTemplate}</div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="px-2 py-3 text-center text-xs text-slate-400">暂无字段绑定</div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <MulUpdateRowBindingModal
-            open={bindingModalOpen}
-            value={targetBinding || null}
-            teamId={teamId}
-            projectId={projectId}
-            onCancel={() => setBindingModalOpen(false)}
-            onSave={handleSaveBinding}
-          />
-        </>
       )}
 
       <div className="flex gap-2 rounded-md border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
