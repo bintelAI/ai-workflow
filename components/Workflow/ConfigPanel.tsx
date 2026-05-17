@@ -14,7 +14,6 @@ import ConditionConfig from './configs/ConditionConfig'
 import { DelayConfig } from './configs/DelayConfig'
 import { NotificationConfig } from './configs/NotificationConfig'
 import { ApprovalConfig } from './configs/ApprovalConfig'
-import ApprovalAIReviewConfig from './configs/ApprovalAIReviewConfig'
 import DataOpConfig from './configs/DataOpConfig'
 import MulTableOperationConfig from './configs/MulTableOperationConfig'
 import { CCConfig } from './configs/CCConfig'
@@ -38,7 +37,6 @@ import type { WorkflowPluginModeType } from './config/pluginModeRegistry'
 const BACKEND_SUPPORTED_NODE_TYPES = new Set<WorkflowNodeType>([
   WorkflowNodeType.START,
   WorkflowNodeType.END,
-  WorkflowNodeType.APPROVAL_AI_REVIEW,
   WorkflowNodeType.LLM,
   WorkflowNodeType.SCRIPT,
   WorkflowNodeType.CONDITION,
@@ -207,15 +205,6 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
             variables={availableVariables}
           />
         )
-      case WorkflowNodeType.APPROVAL_AI_REVIEW:
-        return (
-          <ApprovalAIReviewConfig
-            config={config}
-            onConfigChange={handleConfigChange}
-            onConfigPatch={handleConfigPatch}
-            variables={availableVariables}
-          />
-        )
       case WorkflowNodeType.API_CALL:
         return <APICallConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.CONDITION:
@@ -236,6 +225,9 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
             nodeType={selectedNode.type as WorkflowNodeType}
             config={config}
             onConfigChange={handleConfigChange}
+            onConfigPatch={handleConfigPatch}
+            teamId={teamId}
+            projectId={projectId}
           />
         )
       case WorkflowNodeType.CC:

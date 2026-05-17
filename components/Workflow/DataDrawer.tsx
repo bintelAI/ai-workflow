@@ -7,6 +7,7 @@ import { WorkflowNodeType } from './types'
 import { validateWorkflow } from './validators/workflowValidator'
 import { flowOpenApi, invokeOpenFlowWithSSE } from '@ai-flow/src/api/flow/open'
 import request from '@ai-flow/src/api/request'
+import { getRuntimeTeamId } from '@ai-flow/utils/runtime'
 import { message } from '@ai-flow/components/common/AntdStaticFunction'
 import {
   DataDrawerHeader,
@@ -372,8 +373,17 @@ export const DataDrawer: React.FC = () => {
 
 
   const uploadDebugFile = async (file: File) => {
+    const teamId = getRuntimeTeamId()
+    if (!teamId) {
+      throw new Error('上传文件必须携带团队ID')
+    }
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('teamId', teamId)
+    formData.append('source', 'workflow_debug')
+    formData.append('name', file.name)
+    formData.append('size', String(file.size))
+    formData.append('mimeType', file.type || '')
 
     const res = (await request({
       url: '/app/base/comm/upload',

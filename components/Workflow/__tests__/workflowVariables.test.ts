@@ -3,7 +3,27 @@ import { describe, expect, it } from 'vitest'
 import { buildVariableCatalog } from '../utils/workflowVariables'
 
 describe('workflowVariables', () => {
-  it('exposes approval AI review outputs as upstream node variables', () => {
+  it('exposes approval initiator user id as a system variable', () => {
+    const groups = buildVariableCatalog({
+      nodes: [],
+      edges: [],
+      currentNodeId: null,
+    } as any)
+
+    const systemVariables = groups.find(group => group.id === 'system')?.variables || []
+
+    expect(systemVariables).toContainEqual(
+      expect.objectContaining({
+        scope: 'system',
+        path: 'system.initiator_id',
+        template: '{{system.initiator_id}}',
+        label: '发起者用户 ID',
+        type: 'number',
+      })
+    )
+  })
+
+  it('does not expose deprecated approval AI review outputs as upstream node variables', () => {
     const groups = buildVariableCatalog({
       nodes: [
         {
@@ -34,24 +54,7 @@ describe('workflowVariables', () => {
 
     const reviewVariables = groups.find(group => group.id === 'ai_review_1')?.variables || []
 
-    expect(reviewVariables).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          scope: 'node',
-          path: 'nodes.ai_review_1.approvalDecision',
-          template: '{{nodes.ai_review_1.approvalDecision}}',
-          name: 'approvalDecision',
-          type: 'string',
-        }),
-        expect.objectContaining({
-          scope: 'node',
-          path: 'nodes.ai_review_1.reason',
-          template: '{{nodes.ai_review_1.reason}}',
-          name: 'reason',
-          type: 'string',
-        }),
-      ])
-    )
+    expect(reviewVariables).toEqual([])
   })
 
   it('exposes approval table input fields as payload variables', () => {

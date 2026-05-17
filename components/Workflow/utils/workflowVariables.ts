@@ -81,6 +81,26 @@ const SYSTEM_VARIABLES: WorkflowVariableMeta[] = [
     type: 'string',
     description: '当前执行请求标识',
   },
+  {
+    key: 'system:initiator_id',
+    scope: 'system',
+    path: 'system.initiator_id',
+    template: '{{system.initiator_id}}',
+    name: 'initiator_id',
+    label: '发起者用户 ID',
+    type: 'number',
+    description: '审批或工作流发起者的用户 ID',
+  },
+  {
+    key: 'system:initiator_name',
+    scope: 'system',
+    path: 'system.initiator_name',
+    template: '{{system.initiator_name}}',
+    name: 'initiator_name',
+    label: '发起者名称',
+    type: 'string',
+    description: '审批或工作流发起者名称',
+  },
 ]
 
 const LOOP_VARIABLES: WorkflowVariableMeta[] = [

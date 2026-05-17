@@ -34,15 +34,6 @@ export const getNodeOutputSchema = (node: Node): OutputSchemaItem[] => {
         return []
       }
     }
-    case WorkflowNodeType.APPROVAL_AI_REVIEW:
-      return [
-        { field: 'approvalDecision', type: 'string', description: 'AI 审批三态决策' },
-        { field: 'reason', type: 'string', description: 'AI 审批评估原因' },
-        { field: 'confidence', type: 'number', description: 'AI 审批评估置信度' },
-        { field: 'riskLevel', type: 'string', description: 'AI 审批风险等级' },
-        { field: 'hitRules', type: 'array', description: '命中的审批规则' },
-        { field: 'missingFields', type: 'array', description: '缺失或不足的信息字段' },
-      ]
     case WorkflowNodeType.LLM:
       return [
         { field: 'text', type: 'string', description: '回复内容' },

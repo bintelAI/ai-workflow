@@ -111,37 +111,37 @@ describe('backendAdapter', () => {
     ]);
   });
 
-  it('should export approval AI review node as approval_ai_review with structured decision outputs', () => {
+  it('should export embedded AI approval config on approval node', () => {
     const nodes = [
       createNode('start-1', WorkflowNodeType.START),
-      createNode('ai-review-1', WorkflowNodeType.APPROVAL_AI_REVIEW, {
-        model: 'gpt-4',
-        systemPrompt: '你是审批评估助手。',
-        userPrompt: '评估 {{nodes.start-1.amount}}',
-        approveRules: '金额低于 500 自动通过',
-        rejectRules: '票据缺失自动驳回',
-        manualRules: '不确定时人工审批',
+      createNode('approval-1', WorkflowNodeType.APPROVAL, {
+        participantRules: [{ sourceType: 'user', sourceValue: 1 }],
+        autoApproval: {
+          enabled: true,
+          model: 'gpt-4',
+          systemPrompt: '你是审批评估助手。',
+          userPrompt: '评估 {{payload.amount}}',
+          approveRules: '金额低于 500 自动通过',
+          rejectRules: '票据缺失自动驳回',
+          manualRules: '不确定时人工审批',
+        },
       }),
     ];
     const workflow: WorkflowStoreState = { nodes, edges: [], globalVariables: [] } as any;
 
     const result = exportToBackend(workflow);
-    const reviewNode = result.nodes.find(n => n.type === 'approval_ai_review');
+    const approvalNode = result.nodes.find(n => n.id === 'approval-1');
 
-    expect(reviewNode).toBeDefined();
-    expect(reviewNode?.data.outputParams).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ field: 'approvalDecision', type: 'string' }),
-        expect.objectContaining({ field: 'reason', type: 'string' }),
-      ])
-    );
-    expect(reviewNode?.data.options?.messages?.[0]?.content).toContain('审批评估助手');
-    expect(reviewNode?.data.options?.messages?.[1]?.content).toContain('只允许返回合法 JSON');
-    expect(reviewNode?.data.inputParams).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ nodeId: 'start-1', name: 'amount' }),
-      ])
-    );
+    expect(approvalNode).toBeDefined();
+    expect(approvalNode?.type).toBe('approval');
+    expect(approvalNode?.data.options?.autoApproval).toEqual(expect.objectContaining({
+      enabled: true,
+      model: 'gpt-4',
+      approveRules: '金额低于 500 自动通过',
+      rejectRules: '票据缺失自动驳回',
+      manualRules: '不确定时人工审批',
+    }));
+    expect(result.nodes.some(node => node.type === 'approval_ai_review')).toBe(false);
   });
 
   it('should convert Script node and wrap code', () => {

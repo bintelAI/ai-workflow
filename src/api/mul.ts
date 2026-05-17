@@ -15,6 +15,13 @@ export interface WorkflowMulColumn {
   [key: string]: any;
 }
 
+export interface WorkflowMulProject {
+  id: string;
+  name: string;
+  status?: number;
+  [key: string]: any;
+}
+
 const unwrapData = <T>(payload: any, fallback: T): T => {
   const data = payload?.data?.data ?? payload?.data ?? payload;
   if (Array.isArray(data)) return data as T;
@@ -24,6 +31,24 @@ const unwrapData = <T>(payload: any, fallback: T): T => {
 };
 
 export const mulApi = {
+  async getTeamProjects(teamId: string): Promise<WorkflowMulProject[]> {
+    if (!teamId) return [];
+    const res = await request.post(`/app/org/${teamId}/project/page`, {
+      page: 1,
+      size: 100,
+      sortField: 'updateTime',
+      sortOrder: 'desc',
+    });
+    const data = unwrapData<any[]>(res, []);
+    return Array.isArray(data)
+      ? data.map(item => ({
+          ...item,
+          id: String(item.id || item.projectId || ''),
+          name: String(item.name || item.projectName || item.id || item.projectId || ''),
+        })).filter(item => item.id)
+      : [];
+  },
+
   async getProjectSheets(projectId: string): Promise<WorkflowMulSheet[]> {
     if (!projectId) return [];
     const res = await request.get(`/app/mul/project/${projectId}/sheet/list`);

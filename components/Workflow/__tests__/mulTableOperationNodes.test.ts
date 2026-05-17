@@ -92,4 +92,39 @@ describe('mul table operation workflow nodes', () => {
       ])
     )
   })
+
+  it('accepts structured update row field bindings without legacy JSON', () => {
+    const validator = new WorkflowValidator(
+      [
+        createNode('start_1', WorkflowNodeType.START, { devMode: true }),
+        createNode('update_1', WorkflowNodeType.MUL_UPDATE_ROW, {
+          targetBinding: {
+            projectId: 'project_b',
+            sheetId: 'sheet_1',
+            fieldBindings: [
+              {
+                targetFieldId: 'name',
+                sourceTemplate: '{{payload.name}}',
+              },
+            ],
+          },
+        }),
+        createNode('end_1', WorkflowNodeType.END, {}),
+      ] as any,
+      [
+        { id: 'e1', source: 'start_1', target: 'update_1' },
+        { id: 'e2', source: 'update_1', target: 'end_1' },
+      ] as any
+    )
+
+    const result = validator.validate()
+
+    expect(result.errors).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: '修改项目表行节点未配置目标项目' }),
+        expect.objectContaining({ message: '修改项目表行节点未配置目标表' }),
+        expect.objectContaining({ message: '修改项目表行节点未配置要修改的字段' }),
+      ])
+    )
+  })
 })

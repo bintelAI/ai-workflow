@@ -88,6 +88,18 @@ export class WorkflowValidator {
     this.nodes.forEach(node => {
       const config = this.getNodeConfig(node)
 
+      if (node.type === 'approval_ai_review') {
+        this.addError({
+          type: 'error',
+          category: 'node_config',
+          nodeId: node.id,
+          nodeLabel: node.data.label,
+          message: 'AI 审批评估节点已废弃，请在审批节点中启用 AI 自动审批',
+          suggestion: '删除该节点，并在审批节点配置中打开启动 AI 自动审批',
+        })
+        return
+      }
+
       switch (node.type) {
         case WorkflowNodeType.START:
           this.validateStartNode(node, config)
@@ -465,19 +477,6 @@ export class WorkflowValidator {
       })
     }
 
-    if (
-      config.autoApproval?.enabled &&
-      !String(config.autoApproval?.decisionVariable || '').trim()
-    ) {
-      this.addError({
-        type: 'error',
-        category: 'node_config',
-        nodeId: node.id,
-        nodeLabel: node.data.label,
-        message: '启用 AI 自动审批时必须配置决策值来源',
-        suggestion: '选择 AI 审批评估节点输出的 approvalDecision 作为决策值来源',
-      })
-    }
   }
 
   private validateNotificationNode(node: WorkflowNode, config: any) {
@@ -724,7 +723,10 @@ export class WorkflowValidator {
   }
 
   private validateMulTableTarget(node: WorkflowNode, config: any, label: string) {
-    if (!this.hasNonEmptyString(config.targetProjectId)) {
+    const targetProjectId = config.targetBinding?.projectId || config.targetProjectId
+    const sheetId = config.targetBinding?.sheetId || config.sheetId
+
+    if (!this.hasNonEmptyString(targetProjectId)) {
       this.addError({
         type: 'error',
         category: 'node_config',
@@ -735,7 +737,7 @@ export class WorkflowValidator {
       })
     }
 
-    if (!this.hasNonEmptyString(config.sheetId)) {
+    if (!this.hasNonEmptyString(sheetId)) {
       this.addError({
         type: 'error',
         category: 'node_config',
@@ -780,6 +782,16 @@ export class WorkflowValidator {
 
   private validateMulUpdateRowNode(node: WorkflowNode, config: any) {
     this.validateMulTableTarget(node, config, '修改项目表行')
+
+    const structuredBindings = Array.isArray(config.targetBinding?.fieldBindings)
+      ? config.targetBinding.fieldBindings.filter((item: any) =>
+          this.hasNonEmptyString(item?.targetFieldId) && this.hasNonEmptyString(item?.sourceTemplate)
+        )
+      : []
+
+    if (structuredBindings.length > 0) {
+      return
+    }
 
     if (!this.hasNonEmptyString(config.fieldMappingsJson)) {
       this.addError({

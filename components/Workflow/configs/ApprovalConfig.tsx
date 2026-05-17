@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import { VariableTextArea } from './common'
 import {
-  Activity,
   CheckSquare,
   Users,
   Clock,
@@ -9,7 +8,6 @@ import {
   FileText,
   User,
   LayoutGrid,
-  PlayCircle,
   Save,
 } from 'lucide-react'
 import { useWorkflowStore } from '../store/useWorkflowStore'
@@ -38,36 +36,15 @@ interface ApprovalConfigProps {
   variables?: WorkflowVariableGroup[]
 }
 
-type TabKey = 'personnel' | 'approval' | 'buttons' | 'fields' | 'execution' | 'node'
+type TabKey = 'personnel' | 'approval' | 'buttons' | 'fields'
 
 export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfigChange, variables = [] }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('personnel')
-  const [showMore, setShowMore] = useState(false)
   const [selectorOpen, setSelectorOpen] = useState(false)
   const [departments, setDepartments] = useState<WorkflowOrgDepartment[]>([])
   const [members, setMembers] = useState<WorkflowProjectMember[]>([])
   const [roles, setRoles] = useState<WorkflowProjectRole[]>([])
   const [selectorLoading, setSelectorLoading] = useState(false)
-
-  // 点击外部区域关闭下拉菜单
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const moreButton = document.querySelector('.more-tab-button')
-      const dropdown = document.querySelector('.more-tab-dropdown')
-
-      if (
-        moreButton &&
-        dropdown &&
-        !moreButton.contains(event.target as Node) &&
-        !dropdown.contains(event.target as Node)
-      ) {
-        setShowMore(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   // 按钮配置数据
   const buttonConfig = config?.buttonConfig || {
@@ -238,51 +215,6 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
               {tab.label}
             </button>
           ))}
-
-          {/* 更多下拉菜单 */}
-          <div className="relative ml-auto">
-            <button
-              className="more-tab-button flex items-center gap-1.5 px-1 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-              onClick={() => setShowMore(!showMore)}
-            >
-              <span>更多</span>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="lucide lucide-chevron-down"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-
-            {showMore && (
-              <div className="more-tab-dropdown absolute top-full right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-10 min-w-[150px]">
-                {[
-                  { key: 'execution' as TabKey, label: '执行监听', icon: PlayCircle },
-                  { key: 'node' as TabKey, label: '节点监听', icon: Activity },
-                ].map(tab => (
-                  <button
-                    key={tab.key}
-                    onClick={() => {
-                      setActiveTab(tab.key)
-                      setShowMore(false)
-                    }}
-                    className={`flex items-center gap-2 px-4 py-2 text-sm w-full text-left transition-colors ${activeTab === tab.key ? 'bg-blue-50 text-blue-600' : 'text-slate-700 hover:bg-slate-50'}`}
-                  >
-                    <tab.icon size={16} />
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </nav>
       </div>
 
@@ -581,38 +513,6 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
               usingApprovalInputFields={usingApprovalInputFields}
               onFieldChange={handleFieldChange}
             />
-          </div>
-        )}
-
-        {/* 执行监听 */}
-        {activeTab === 'execution' && (
-          <div>
-            <div className="mb-4">
-              <label className="block text-xs font-bold text-slate-700 mb-2 uppercase flex items-center gap-1">
-                <PlayCircle size={12} className="text-blue-500" />
-                执行监听配置
-              </label>
-            </div>
-
-            <div className="text-xs text-slate-500 py-4 bg-slate-50 rounded border border-slate-200 text-center">
-              暂无执行监听配置
-            </div>
-          </div>
-        )}
-
-        {/* 节点监听 */}
-        {activeTab === 'node' && (
-          <div>
-            <div className="mb-4">
-              <label className="block text-xs font-bold text-slate-700 mb-2 uppercase flex items-center gap-1">
-                <Activity size={12} className="text-blue-500" />
-                节点监听配置
-              </label>
-            </div>
-
-            <div className="text-xs text-slate-500 py-4 bg-slate-50 rounded border border-slate-200 text-center">
-              暂无节点监听配置
-            </div>
           </div>
         )}
       </div>

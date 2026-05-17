@@ -13,6 +13,7 @@ export interface WorkflowPluginMode {
 }
 
 const APPROVAL_EXCLUDED_NODE_TYPES = [
+  'approval_ai_review',
   WorkflowNodeType.LLM,
   WorkflowNodeType.QUESTION_CLASSIFIER,
   WorkflowNodeType.KNOWLEDGE_RETRIEVAL,

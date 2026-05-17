@@ -1,13 +1,19 @@
-import React from 'react'
-import { AlertCircle, Database, FileText, ListFilter, Rows3, Trash2 } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import { AlertCircle, Database, FileText, Link2, ListFilter, Rows3, Trash2 } from 'lucide-react'
 
 import { WorkflowNodeType } from '../types'
 import { VariableInput, VariableTextArea } from './common/index'
+import MulUpdateRowBindingModal, {
+  type MulUpdateRowTargetBinding,
+} from './MulUpdateRowBindingModal'
 
 interface MulTableOperationConfigProps {
   nodeType: WorkflowNodeType
   config: Record<string, any>
   onConfigChange: (key: string, value: any) => void
+  onConfigPatch?: (patch: Record<string, any>) => void
+  teamId?: string | null
+  projectId?: string | null
 }
 
 const OPERATION_META = {
@@ -31,16 +37,51 @@ const OPERATION_META = {
 const getOperationMeta = (nodeType: WorkflowNodeType) =>
   OPERATION_META[nodeType as keyof typeof OPERATION_META] || OPERATION_META[WorkflowNodeType.MUL_QUERY]
 
+const buildFieldMappingsJson = (binding: MulUpdateRowTargetBinding) => {
+  const mappings = Object.fromEntries(
+    (binding.fieldBindings || [])
+      .filter(item => item.targetFieldId && item.sourceTemplate)
+      .map(item => [item.targetFieldId, item.sourceTemplate])
+  )
+  return JSON.stringify(mappings, null, 2)
+}
+
 const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
   nodeType,
   config,
   onConfigChange,
+  onConfigPatch,
+  teamId,
+  projectId,
 }) => {
   const meta = getOperationMeta(nodeType)
   const MetaIcon = meta.icon
   const isQuery = nodeType === WorkflowNodeType.MUL_QUERY
   const isUpdate = nodeType === WorkflowNodeType.MUL_UPDATE_ROW
   const isDelete = nodeType === WorkflowNodeType.MUL_DELETE_ROW
+  const [bindingModalOpen, setBindingModalOpen] = useState(false)
+  const targetBinding = config.targetBinding as MulUpdateRowTargetBinding | undefined
+  const bindingRows = useMemo(
+    () => (targetBinding?.fieldBindings || []).filter(item => item.targetFieldId && item.sourceTemplate),
+    [targetBinding?.fieldBindings]
+  )
+
+  const handleSaveBinding = (binding: MulUpdateRowTargetBinding) => {
+    const patch = {
+      targetBinding: binding,
+      targetProjectId: binding.projectId,
+      sheetId: binding.sheetId,
+      rowIdTemplate: binding.rowIdTemplate || '',
+      fieldMappingsJson: buildFieldMappingsJson(binding),
+    }
+
+    if (onConfigPatch) {
+      onConfigPatch(patch)
+    } else {
+      Object.entries(patch).forEach(([key, value]) => onConfigChange(key, value))
+    }
+    setBindingModalOpen(false)
+  }
 
   return (
     <div className="space-y-4">
@@ -142,17 +183,69 @@ const MulTableOperationConfig: React.FC<MulTableOperationConfigProps> = ({
       )}
 
       {isUpdate && (
-        <div className="space-y-2">
-          <label className="block text-xs font-medium text-slate-500 uppercase">修改字段 JSON</label>
-          <VariableTextArea
-            value={config.fieldMappingsJson || '{}'}
-            onChange={value => onConfigChange('fieldMappingsJson', value)}
-            placeholder='{"status":"done","amount":"{{payload.amount}}"}'
-            rows={5}
-            scope="all"
-            plainTextMode
+        <>
+          <div className="rounded-md border border-slate-200 bg-white">
+            <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <Link2 size={13} className="text-sky-600" />
+                绑定字段
+              </div>
+              <button
+                type="button"
+                onClick={() => setBindingModalOpen(true)}
+                className="rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 transition hover:border-sky-300 hover:bg-sky-100"
+              >
+                打开绑定
+              </button>
+            </div>
+            <div className="space-y-2 p-3">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
+                  <span className="text-slate-400">项目：</span>
+                  <span className="font-mono text-slate-700">{targetBinding?.projectName || config.targetProjectId || '未配置'}</span>
+                </div>
+                <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
+                  <span className="text-slate-400">表：</span>
+                  <span className="font-mono text-slate-700">{targetBinding?.sheetName || config.sheetId || '未配置'}</span>
+                </div>
+              </div>
+              <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs">
+                <span className="text-slate-400">行 ID：</span>
+                <span className="font-mono text-slate-700">{targetBinding?.rowIdTemplate || config.rowIdTemplate || '空则新增'}</span>
+              </div>
+              <div className="overflow-hidden rounded border border-slate-100">
+                <div className="grid grid-cols-2 bg-slate-50 text-xs font-medium text-slate-500">
+                  <div className="border-r border-slate-100 px-2 py-1.5">左侧写入字段</div>
+                  <div className="px-2 py-1.5">右侧绑定信息</div>
+                </div>
+                {bindingRows.length ? (
+                  bindingRows.map(item => (
+                    <div key={item.targetFieldId} className="grid grid-cols-2 border-t border-slate-100 text-xs">
+                      <div className="min-w-0 border-r border-slate-100 px-2 py-1.5">
+                        <div className="truncate font-medium text-slate-700">{item.targetFieldLabel || item.targetFieldId}</div>
+                        <div className="truncate font-mono text-slate-400">{item.targetFieldId}</div>
+                      </div>
+                      <div className="min-w-0 px-2 py-1.5 font-mono text-slate-700">
+                        <div className="truncate">{item.sourceTemplate}</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-2 py-3 text-center text-xs text-slate-400">暂无字段绑定</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <MulUpdateRowBindingModal
+            open={bindingModalOpen}
+            value={targetBinding || null}
+            teamId={teamId}
+            projectId={projectId}
+            onCancel={() => setBindingModalOpen(false)}
+            onSave={handleSaveBinding}
           />
-        </div>
+        </>
       )}
 
       <div className="flex gap-2 rounded-md border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-800">

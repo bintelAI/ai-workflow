@@ -183,8 +183,6 @@ const convertNodeData = (node: Node, allNodes: Node[], backendType: string): Flo
       return convertEndNodeData(config, allNodes);
     case 'llm':
       return convertLLMNodeData(config, allNodes);
-    case 'approval_ai_review':
-      return convertApprovalAIReviewNodeData(config, allNodes);
     case 'script':
       return convertCodeNodeData(config, allNodes);
     case 'condition':
@@ -458,53 +456,6 @@ const convertLLMNodeData = (config: any, allNodes: Node[]): FlowData => {
       isOutput: isOutput !== false,
       toolConfig: config?.toolConfig || [],
       mcpConfig: config?.mcpConfig || [],
-    },
-  };
-};
-
-const convertApprovalAIReviewNodeData = (config: any, allNodes: Node[]): FlowData => {
-  const baseData = convertLLMNodeData(config, allNodes);
-  const systemPrompt = config?.systemPrompt || '你是审批评估助手，需要根据审批单数据和审批规则输出审批决策。';
-  const rulePrompt = [
-    config?.userPrompt || '',
-    config?.approveRules ? `自动通过规则：${config.approveRules}` : '',
-    config?.rejectRules ? `自动驳回规则：${config.rejectRules}` : '',
-    config?.manualRules ? `人工审批规则：${config.manualRules}` : '',
-    '只允许返回合法 JSON，不要返回 Markdown。',
-    '返回字段固定为 approvalDecision、reason、confidence、riskLevel、hitRules、missingFields。',
-    'approvalDecision 只能是 "自动通过"、"自动驳回"、"人工审批"。',
-    '信息不足、风险边界不清、无法判断时必须输出 "人工审批"。',
-  ].filter(Boolean).join('\n');
-  const inputParams = extractVariableRefs(rulePrompt, allNodes);
-  const mergedInputParams = new Map<string, FlowField>();
-  [...(baseData.inputParams || []), ...inputParams].forEach((item, index) => {
-    const key = `${item.nodeId || ''}:${item.name || item.field || index}`;
-    mergedInputParams.set(key, {
-      ...item,
-      field: item.field || item.name || `var_${index + 1}`,
-    });
-  });
-
-  return {
-    inputParams: Array.from(mergedInputParams.values()),
-    outputParams: [
-      { type: 'string', field: 'approvalDecision', name: 'approvalDecision' },
-      { type: 'string', field: 'reason', name: 'reason' },
-      { type: 'number', field: 'confidence', name: 'confidence' },
-      { type: 'string', field: 'riskLevel', name: 'riskLevel' },
-      { type: 'array', field: 'hitRules', name: 'hitRules' },
-      { type: 'array', field: 'missingFields', name: 'missingFields' },
-    ],
-    options: {
-      ...baseData.options,
-      approvalAIReview: true,
-      approveRules: config?.approveRules || '',
-      rejectRules: config?.rejectRules || '',
-      manualRules: config?.manualRules || '',
-      messages: [
-        { role: 'system', content: normalizeLegacyTemplate(systemPrompt, allNodes) },
-        { role: 'user', content: normalizeLegacyTemplate(rulePrompt, allNodes) },
-      ],
     },
   };
 };
@@ -1040,8 +991,21 @@ const MUL_TABLE_DELETE_OUTPUTS: FlowField[] = [
 ];
 
 const convertMulTableOperationNodeData = (config: any, allNodes: Node[], nodeType?: string): FlowData => {
-  const rowIdTemplate = normalizeLegacyTemplate(config?.rowIdTemplate || '', allNodes);
-  const inputParams = extractVariableRefs(rowIdTemplate, allNodes);
+  const rowIdTemplate = normalizeLegacyTemplate(
+    config?.targetBinding?.rowIdTemplate || config?.rowIdTemplate || '',
+    allNodes
+  );
+  const bindingTemplates = Array.isArray(config?.targetBinding?.fieldBindings)
+    ? config.targetBinding.fieldBindings
+        .map((item: any) => item?.sourceTemplate)
+        .filter(Boolean)
+    : [];
+  const inputParams = [
+    ...extractVariableRefs(rowIdTemplate, allNodes),
+    ...bindingTemplates.flatMap((template: string) =>
+      extractVariableRefs(normalizeLegacyTemplate(template, allNodes), allNodes)
+    ),
+  ];
   const outputParams =
     nodeType === 'mul_query'
       ? MUL_TABLE_QUERY_OUTPUTS
@@ -1185,8 +1149,6 @@ const convertDataToConfig = (data: FlowData | undefined, nodeType: string): Reco
       return convertEndDataToConfig(data);
     case 'llm':
       return convertLLMDataToConfig(data);
-    case 'approval_ai_review':
-      return convertApprovalAIReviewDataToConfig(data);
     case 'code':
       return convertCodeDataToConfig(data);
     case 'judge':
@@ -1269,16 +1231,6 @@ const convertLLMDataToConfig = (data: FlowData): Record<string, any> => {
     configId: options.model?.configId || options.configId,
     comm: options.comm,
     options: modelOptions.map((option: any) => ({ ...option })),
-  };
-};
-
-const convertApprovalAIReviewDataToConfig = (data: FlowData): Record<string, any> => {
-  const config = convertLLMDataToConfig(data);
-  return {
-    ...config,
-    approveRules: data.options?.approveRules || '',
-    rejectRules: data.options?.rejectRules || '',
-    manualRules: data.options?.manualRules || '',
   };
 };
 

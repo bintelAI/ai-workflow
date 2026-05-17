@@ -5,10 +5,27 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ApprovalAutoApprovalConfig from '../configs/ApprovalAutoApprovalConfig'
 
-vi.mock('../configs/common/VariableSelector', () => ({
-  default: ({ value, placeholder }: { value?: string; placeholder?: string }) => (
-    <div data-testid="variable-selector">{value || placeholder}</div>
+vi.mock('../configs/LLMConfig', () => ({
+  default: ({ config }: { config: Record<string, any> }) => (
+    <div data-testid="llm-config">LLM:{config.model || 'default'}</div>
   ),
+}))
+
+vi.mock('../configs/common', () => ({
+  VariableTextArea: ({
+    value,
+    placeholder,
+  }: {
+    value?: string
+    placeholder?: string
+  }) => <div data-testid="variable-textarea">{value || placeholder}</div>,
+}))
+
+vi.mock('../store/useWorkflowStore', () => ({
+  useWorkflowStore: (selector?: any) => {
+    const state = { teamId: 'team_1' }
+    return typeof selector === 'function' ? selector(state) : state
+  },
 }))
 
 describe('ApprovalAutoApprovalConfig', () => {
@@ -24,7 +41,36 @@ describe('ApprovalAutoApprovalConfig', () => {
     vi.clearAllMocks()
   })
 
-  it('imports upstream approval AI review decision outputs into auto approval config', async () => {
+  it('shows embedded AI approval settings when enabled', async () => {
+    const onChange = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <ApprovalAutoApprovalConfig
+          autoApproval={{
+            enabled: true,
+            model: 'gpt-4',
+            approveRules: '金额低于 500 自动通过',
+            rejectRules: '票据缺失自动驳回',
+            manualRules: '无法判断时人工审批',
+          }}
+          onChange={onChange}
+          variables={[]}
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('启动 AI 自动审批')
+    expect(container.textContent).toContain('自动通过规则')
+    expect(container.textContent).toContain('自动驳回规则')
+    expect(container.textContent).toContain('人工审批兜底规则')
+    expect(container.querySelector('[data-testid="llm-config"]')?.textContent).toBe('LLM:gpt-4')
+    expect(container.textContent).not.toContain('上游 AI 审批评估')
+    expect(container.textContent).not.toContain('决策值来源')
+    expect(container.textContent).not.toContain('审批意见来源')
+  })
+
+  it('toggles embedded AI approval on from a single switch', async () => {
     const onChange = vi.fn()
 
     await act(async () => {
@@ -32,60 +78,19 @@ describe('ApprovalAutoApprovalConfig', () => {
         <ApprovalAutoApprovalConfig
           autoApproval={{}}
           onChange={onChange}
-          variables={[
-            {
-              id: 'ai_review_1',
-              type: 'approval_ai_review',
-              label: 'AI 审批评估',
-              source: 'node',
-              params: [
-                { field: 'approvalDecision', name: 'approvalDecision', type: 'string', label: 'approvalDecision' },
-                { field: 'reason', name: 'reason', type: 'string', label: 'reason' },
-              ],
-              variables: [
-                {
-                  key: 'node:ai_review_1:approvalDecision',
-                  scope: 'node',
-                  path: 'nodes.ai_review_1.approvalDecision',
-                  template: '{{nodes.ai_review_1.approvalDecision}}',
-                  name: 'approvalDecision',
-                  label: 'approvalDecision',
-                  type: 'string',
-                  nodeId: 'ai_review_1',
-                  nodeType: 'approval_ai_review',
-                  nodeLabel: 'AI 审批评估',
-                },
-                {
-                  key: 'node:ai_review_1:reason',
-                  scope: 'node',
-                  path: 'nodes.ai_review_1.reason',
-                  template: '{{nodes.ai_review_1.reason}}',
-                  name: 'reason',
-                  label: 'reason',
-                  type: 'string',
-                  nodeId: 'ai_review_1',
-                  nodeType: 'approval_ai_review',
-                  nodeLabel: 'AI 审批评估',
-                },
-              ],
-            },
-          ]}
+          variables={[]}
         />
       )
     })
 
-    const importButton = Array.from(container.querySelectorAll('button')).find(
-      button => button.textContent?.trim() === '引入 AI 审批评估结果'
-    ) as HTMLButtonElement
-
+    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement
     await act(async () => {
-      importButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      input.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
 
     expect(onChange).toHaveBeenCalledWith({
       enabled: true,
-      decisionVariable: '{{nodes.ai_review_1.approvalDecision}}',
-      reasonVariable: '{{nodes.ai_review_1.reason}}',
+      fallback: 'manual',
     })
   })
 })

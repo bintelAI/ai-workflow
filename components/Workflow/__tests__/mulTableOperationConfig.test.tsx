@@ -6,6 +6,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MulTableOperationConfig from '../configs/MulTableOperationConfig'
 import { WorkflowNodeType } from '../types'
 
+vi.mock('@ai-flow-src/api/mul', () => ({
+  mulApi: {
+    getTeamProjects: vi.fn().mockResolvedValue([
+      { id: 'project_1', name: '目标项目' },
+    ]),
+    getProjectSheets: vi.fn().mockResolvedValue([
+      { sheetId: 'sheet_1', name: '目标表', type: 'sheet' },
+    ]),
+    getSheetColumns: vi.fn().mockResolvedValue([
+      { fieldId: 'name', label: '姓名', type: 'text' },
+      { fieldId: 'status', label: '状态', type: 'select' },
+    ]),
+  },
+}))
+
 vi.mock('../store/useWorkflowStore', () => ({
   useWorkflowStore: () => ({
     selectedNodeId: 'mul_1',
@@ -57,6 +72,44 @@ describe('MulTableOperationConfig', () => {
       )
     })
 
-    expect(container.querySelectorAll('button[title="插入变量"]').length).toBeGreaterThanOrEqual(4)
+    expect(container.querySelectorAll('button[title="插入变量"]').length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('renders structured binding summary for update row node', async () => {
+    await act(async () => {
+      root.render(
+        <MulTableOperationConfig
+          nodeType={WorkflowNodeType.MUL_UPDATE_ROW}
+          config={{
+            targetProjectId: 'project_1',
+            sheetId: 'sheet_1',
+            rowIdTemplate: '{{payload.rowId}}',
+            fieldMappingsJson: '{"name":"{{payload.name}}"}',
+            targetBinding: {
+              projectId: 'project_1',
+              projectName: '目标项目',
+              sheetId: 'sheet_1',
+              sheetName: '目标表',
+              rowIdTemplate: '{{payload.rowId}}',
+              fieldBindings: [
+                {
+                  targetFieldId: 'name',
+                  targetFieldLabel: '姓名',
+                  sourceTemplate: '{{payload.name}}',
+                },
+              ],
+            },
+          }}
+          onConfigChange={vi.fn()}
+          teamId="team_1"
+          projectId="project_current"
+        />
+      )
+    })
+
+    expect(container.textContent).toContain('绑定字段')
+    expect(container.textContent).toContain('姓名')
+    expect(container.textContent).toContain('{{payload.name}}')
+    expect(container.textContent).toContain('行 ID')
   })
 })

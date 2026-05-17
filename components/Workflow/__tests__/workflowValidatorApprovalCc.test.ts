@@ -106,7 +106,7 @@ describe('WorkflowValidator approval / cc structured selections', () => {
     ).toBe(false)
   })
 
-  it('reports decision variable missing when AI auto approval is enabled', () => {
+  it('does not require legacy decision variable when AI auto approval is enabled', () => {
     const validator = new WorkflowValidator(
       [
         createNode('start_1', WorkflowNodeType.START, { devMode: true }),
@@ -137,6 +137,28 @@ describe('WorkflowValidator approval / cc structured selections', () => {
 
     expect(
       result.errors.some(error => error.message.includes('启用 AI 自动审批时必须配置决策值来源'))
+    ).toBe(false)
+  })
+
+  it('reports deprecated approval AI review node as unsupported', () => {
+    const validator = new WorkflowValidator(
+      [
+        createNode('start_1', WorkflowNodeType.START, { devMode: true }),
+        createNode('ai_review_1', 'approval_ai_review' as WorkflowNodeType, {}),
+      ] as any,
+      [
+        {
+          id: 'e1',
+          source: 'start_1',
+          target: 'ai_review_1',
+        },
+      ] as any
+    )
+
+    const result = validator.validate()
+
+    expect(
+      result.errors.some(error => error.message.includes('AI 审批评估节点已废弃'))
     ).toBe(true)
   })
 })

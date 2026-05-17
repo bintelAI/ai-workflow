@@ -4,40 +4,40 @@ import { resolveVariableSelection } from '../utils/variableSelection'
 
 describe('variableSelection', () => {
   it('resolves selected template back to InputParams field metadata', () => {
-    const selection = resolveVariableSelection('{{nodes.ai_review_1.reason}}', [
+    const selection = resolveVariableSelection('{{nodes.llm_1.text}}', [
       {
-        id: 'ai_review_1',
-        type: 'approval_ai_review',
-        label: 'AI 审批评估',
+        id: 'llm_1',
+        type: 'llm',
+        label: 'AI 分析',
         params: [
-          { field: 'reason', name: 'reason', type: 'string', label: 'reason' },
+          { field: 'text', name: 'text', type: 'string', label: 'text' },
         ],
         variables: [
           {
-            key: 'node:ai_review_1:reason',
+            key: 'node:llm_1:text',
             scope: 'node',
-            path: 'nodes.ai_review_1.reason',
-            template: '{{nodes.ai_review_1.reason}}',
-            name: 'reason',
-            label: 'reason',
+            path: 'nodes.llm_1.text',
+            template: '{{nodes.llm_1.text}}',
+            name: 'text',
+            label: 'text',
             type: 'string',
-            nodeId: 'ai_review_1',
-            nodeType: 'approval_ai_review',
-            nodeLabel: 'AI 审批评估',
+            nodeId: 'llm_1',
+            nodeType: 'llm',
+            nodeLabel: 'AI 分析',
           },
         ],
       },
     ])
 
     expect(selection).toEqual({
-      field: 'reason',
-      nodeId: 'ai_review_1',
-      nodeType: 'approval_ai_review',
+      field: 'text',
+      nodeId: 'llm_1',
+      nodeType: 'llm',
       value: '',
-      name: 'reason',
-      template: '{{nodes.ai_review_1.reason}}',
-      refPath: 'nodes.ai_review_1.reason',
-      label: 'reason',
+      name: 'text',
+      template: '{{nodes.llm_1.text}}',
+      refPath: 'nodes.llm_1.text',
+      label: 'text',
     })
   })
 

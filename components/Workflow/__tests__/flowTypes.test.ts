@@ -15,7 +15,7 @@ describe('Flow Types', () => {
       expect(NODE_TYPE_MAP['start']).toBe('start');
       expect(NODE_TYPE_MAP['end']).toBe('end');
       expect(NODE_TYPE_MAP['llm']).toBe('llm');
-      expect(NODE_TYPE_MAP['approval_ai_review']).toBe('approval_ai_review');
+      expect(NODE_TYPE_MAP['approval_ai_review']).toBeUndefined();
       expect(NODE_TYPE_MAP['script']).toBe('code');
       expect(NODE_TYPE_MAP['condition']).toBe('judge');
       expect(NODE_TYPE_MAP['question_classifier']).toBe('classify');
@@ -31,7 +31,7 @@ describe('Flow Types', () => {
       expect(REVERSE_NODE_TYPE_MAP['start']).toBe('start');
       expect(REVERSE_NODE_TYPE_MAP['end']).toBe('end');
       expect(REVERSE_NODE_TYPE_MAP['llm']).toBe('llm');
-      expect(REVERSE_NODE_TYPE_MAP['approval_ai_review']).toBe('approval_ai_review');
+      expect(REVERSE_NODE_TYPE_MAP['approval_ai_review']).toBeUndefined();
       expect(REVERSE_NODE_TYPE_MAP['code']).toBe('script');
       expect(REVERSE_NODE_TYPE_MAP['judge']).toBe('condition');
       expect(REVERSE_NODE_TYPE_MAP['classify']).toBe('question_classifier');
