@@ -144,7 +144,7 @@ describe('backendAdapter', () => {
     expect(result.nodes.some(node => node.type === 'approval_ai_review')).toBe(false);
   });
 
-  it('should convert Script node and wrap code', () => {
+  it('should convert Script node without legacy Cool wrapper', () => {
     const nodes = [
       createNode('script-1', WorkflowNodeType.SCRIPT, {
         language: 'javascript',
@@ -161,8 +161,8 @@ describe('backendAdapter', () => {
     const codeNode = result.nodes.find(n => n.type === 'code');
 
     expect(codeNode).toBeDefined();
-    expect(codeNode?.data.options?.code).toContain('class Cool extends BaseCode');
-    expect(codeNode?.data.options?.code).toContain('const a = 1; return { result: a };');
+    expect(codeNode?.data.options?.code).toBe('const a = 1; return { result: a };');
+    expect(codeNode?.data.options?.language).toBe('javascript');
     expect(codeNode?.data.inputParams).toHaveLength(1);
     expect(codeNode?.data.inputParams?.[0]).toMatchObject({
         field: 'arg1',

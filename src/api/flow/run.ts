@@ -10,6 +10,18 @@ const getFlowRunPath = (params?: FlowRunRequest) => {
   return `/app/flow/${teamId}/run`;
 };
 
+const normalizeFlowError = (error: any): string => {
+  if (!error) return 'Unknown error';
+  if (typeof error === 'string') return error;
+  if (error instanceof Error) return error.message;
+  if (typeof error?.message === 'string') return error.message;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+};
+
 export const flowRunApi = {
   debug: (data: FlowRunRequest) => {
     return request.post<any, { data: void }>(`${getFlowRunPath(data)}/debug`, data);
@@ -175,7 +187,7 @@ export const runFlowWithSSE = (
               callbacks.onFlowCancel?.();
             } else if (flowData.reason === 'error') {
               callbacks.onFlowError?.(
-                flowData.error || flowData.result?.error || 'Unknown error'
+                normalizeFlowError(flowData.error || flowData.result?.error)
               );
             }
           }
@@ -194,7 +206,7 @@ export const runFlowWithSSE = (
             const isError = nodeData.success === false || nodeData.result?.success === false || Boolean(explicitError);
 
             if (isError) {
-              callbacks.onNodeError?.(nodeData.nodeId, nodeData.nodeType, explicitError || 'Unknown error');
+              callbacks.onNodeError?.(nodeData.nodeId, nodeData.nodeType, normalizeFlowError(explicitError));
             } else {
               callbacks.onNodeComplete?.(nodeData.nodeId, nodeData.nodeType, {
                 ...(resultPayload && typeof resultPayload === 'object' ? resultPayload : { result: resultPayload }),

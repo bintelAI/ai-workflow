@@ -193,7 +193,15 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
       case WorkflowNodeType.END:
         return <EndConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
       case WorkflowNodeType.SCRIPT:
-        return <ScriptConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
+        return (
+          <ScriptConfig
+            config={config}
+            onConfigChange={handleConfigChange}
+            variables={availableVariables}
+            teamId={teamId}
+            projectId={projectId}
+          />
+        )
       case WorkflowNodeType.LLM:
         return (
           <LLMConfig

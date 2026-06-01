@@ -285,7 +285,12 @@ export const NODE_REGISTRY: Record<WorkflowNodeType, WorkflowNodeRegistryItem> =
     bgClass: 'bg-slate-50 border-slate-200',
     group: 'automation',
     sort: 24,
-    createDefaultConfig: () => ({ script: '' }),
+    createDefaultConfig: () => ({
+      language: 'javascript',
+      code: `async function main(params, context) {\n  return {\n    result: ''\n  };\n}`,
+      inputParams: [{ field: 'arg1', type: 'string' }],
+      outputParams: [{ field: 'result', type: 'string' }],
+    }),
   },
   [WorkflowNodeType.LLM]: {
     type: WorkflowNodeType.LLM,

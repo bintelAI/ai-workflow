@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flowInfoApi } from '@/src/api/flow/info';
-import { flowRunApi } from '@/src/api/flow/run';
+import { flowRunApi, runFlowWithSSE } from '@/src/api/flow/run';
 import { flowConfigApi } from '@/src/api/flow/config';
 
 vi.mock('@ai-flow/utils/runtime', () => ({
@@ -22,6 +22,7 @@ import request from '@/src/api/request';
 describe('Flow API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('flowInfoApi', () => {
@@ -108,6 +109,34 @@ describe('Flow API', () => {
       await flowRunApi.invoke(mockParams);
       
       expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/run/invoke', mockParams);
+    });
+
+    it('should normalize object node errors from SSE to message string', async () => {
+      const encoder = new TextEncoder();
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode([
+            'data:{"msgType":"node","data":{"status":"done","nodeId":"script_1","nodeType":"code","result":{"success":false,"error":{"nodeId":"script_1","message":"Code execution error"}}}}',
+            '',
+          ].join('\n')));
+          controller.close();
+        },
+      });
+      const fetchMock = vi.fn().mockResolvedValue(new Response(body, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' },
+      }));
+      vi.stubGlobal('fetch', fetchMock);
+      const onNodeError = vi.fn();
+
+      runFlowWithSSE(
+        { label: 'test_flow', teamId: 'team-1' },
+        { onNodeError }
+      );
+
+      await vi.waitFor(() => {
+        expect(onNodeError).toHaveBeenCalledWith('script_1', 'code', 'Code execution error');
+      });
     });
   });
 

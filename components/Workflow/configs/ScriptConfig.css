@@ -27,6 +27,18 @@
   text-transform: uppercase;
 }
 
+.script-code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.script-code-header .config-label {
+  margin-bottom: 0;
+}
+
 .code-editor {
   border: 1px solid #d9d9d9;
   border-radius: 6px;
@@ -72,4 +84,24 @@
 
 .script-config .ant-tabs-content {
   min-height: 300px;
+}
+
+.script-ai-code-preview {
+  max-height: 280px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border-radius: 6px;
+  background: #111827;
+  color: #e5e7eb;
+  font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.script-ai-issues {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
 }

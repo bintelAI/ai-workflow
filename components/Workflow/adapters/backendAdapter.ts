@@ -486,16 +486,7 @@ const convertCodeNodeData = (config: any, allNodes: Node[]): FlowData => {
     });
   }
 
-  let wrappedCode = code || '';
-  if (language === 'javascript' && !wrappedCode.includes('class Cool')) {
-    wrappedCode = `import { Base } from '@cool/code';
-
-export class Cool extends Base {
-  async main(params) {
-    ${code}
-  }
-}`;
-  }
+  const wrappedCode = code || '';
 
   return {
     inputParams,
@@ -509,6 +500,7 @@ export class Cool extends Base {
     options: {
       code: wrappedCode,
       type: language || 'javascript',
+      language: language || 'javascript',
     },
   };
 };
