@@ -45,21 +45,26 @@
   overflow: hidden;
 }
 
-.code-textarea {
+.code-editor .code-textarea,
+.code-editor .code-textarea:hover,
+.code-editor .code-textarea:focus {
   font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
   font-size: 12px;
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: #000 !important;
+  color: #fff !important;
   border: none;
   resize: vertical;
-}
-
-.code-textarea:focus {
   box-shadow: none;
+  caret-color: #fff;
 }
 
-.code-textarea::placeholder {
-  color: #6a9955;
+.code-editor .code-textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+.code-editor .code-textarea::selection {
+  background: #2563eb;
+  color: #fff;
 }
 
 .code-library {
