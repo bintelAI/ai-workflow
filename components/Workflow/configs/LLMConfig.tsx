@@ -224,18 +224,20 @@ const LLMConfig: React.FC<LLMConfigProps> = ({
     }
 
     const currentOptions = Array.isArray(config.options) ? config.options : [];
-    const needsOptionSync =
-      currentOptions.length === 0 ||
-      matchedGroup.options.some((option: any) => !currentOptions.some((item: any) => item?.field === option?.field));
+    if (matchedGroup.options.length > 0) {
+      const needsOptionSync =
+        currentOptions.length === 0 ||
+        matchedGroup.options.some((option: any) => !currentOptions.some((item: any) => item?.field === option?.field));
 
-    if (needsOptionSync) {
-      const mergedOptions = matchedGroup.options.map((option: any) => {
-        const matchedOption = currentOptions.find((item: any) => item?.field === option?.field);
-        return matchedOption
-          ? { ...option, value: matchedOption.value, enable: matchedOption.enable }
-          : { ...option };
-      });
-      onConfigChange('options', mergedOptions);
+      if (needsOptionSync) {
+        const mergedOptions = matchedGroup.options.map((option: any) => {
+          const matchedOption = currentOptions.find((item: any) => item?.field === option?.field);
+          return matchedOption
+            ? { ...option, value: matchedOption.value, enable: matchedOption.enable }
+            : { ...option };
+        });
+        onConfigChange('options', mergedOptions);
+      }
     }
   }, [
     config.comm,

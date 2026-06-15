@@ -161,6 +161,25 @@ describe('Flow API', () => {
       expect(result).toEqual(mockResponse);
     });
 
+    it('should load llm models from new-api visible models', async () => {
+      (request.get as any).mockResolvedValue({
+        data: [
+          { id: 'qwen-plus' },
+          { name: 'deepseek-chat' },
+        ],
+      });
+
+      const result = await flowConfigApi.getModels('team_1');
+
+      expect(request.get).toHaveBeenCalledWith('/app/new-api/team_1/models', {
+        params: {
+          capability: 'chat',
+          modelScope: 'platform_default',
+        },
+      });
+      expect(result.data[0].options.options[0].select).toEqual(['qwen-plus', 'deepseek-chat']);
+    });
+
     it('should call config API with correct params', async () => {
       const mockResponse = { data: { options: [] } };
       (request.post as any).mockResolvedValue(mockResponse);
