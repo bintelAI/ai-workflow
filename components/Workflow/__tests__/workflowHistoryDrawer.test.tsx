@@ -124,6 +124,7 @@ describe('WorkflowApp history drawer', () => {
       stopExecution: vi.fn(),
       isExecuting: false,
       isFlowSaving: false,
+      flowSchemaVersion: 2,
       flowInfo: {
         id: 3,
         name: '测试流程',

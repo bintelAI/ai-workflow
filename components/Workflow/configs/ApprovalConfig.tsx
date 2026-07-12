@@ -33,12 +33,13 @@ import ApprovalAutoApprovalConfig from './ApprovalAutoApprovalConfig'
 interface ApprovalConfigProps {
   config: any
   onConfigChange: (key: string, value: any) => void
+  onConfigPatch?: (patch: Record<string, any>) => void
   variables?: WorkflowVariableGroup[]
 }
 
 type TabKey = 'personnel' | 'approval' | 'buttons' | 'fields'
 
-export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfigChange, variables = [] }) => {
+export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfigChange, onConfigPatch, variables = [] }) => {
   const [activeTab, setActiveTab] = useState<TabKey>('personnel')
   const [selectorOpen, setSelectorOpen] = useState(false)
   const [departments, setDepartments] = useState<WorkflowOrgDepartment[]>([])
@@ -122,6 +123,13 @@ export const ApprovalConfig: React.FC<ApprovalConfigProps> = ({ config, onConfig
   const hasDirectManagerRule = participantRules.some((item: any) => item?.sourceType === 'direct_manager')
 
   const updateParticipantRules = (nextRules: ApprovalParticipantRule[]) => {
+    if (onConfigPatch) {
+      onConfigPatch({
+        participantRules: nextRules,
+        approver: summarizeApprovalParticipants(nextRules),
+      })
+      return
+    }
     onConfigChange('participantRules', nextRules)
     onConfigChange('approver', summarizeApprovalParticipants(nextRules))
   }

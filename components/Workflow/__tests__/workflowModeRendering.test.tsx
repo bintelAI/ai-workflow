@@ -11,7 +11,9 @@ vi.mock('reactflow', () => ({
 }))
 
 vi.mock('../index', () => ({
-  WorkflowCanvas: () => <div data-testid="workflow-canvas" />,
+  WorkflowCanvas: ({ readonly }: { readonly?: boolean }) => (
+    <div data-testid="workflow-canvas" data-readonly={String(Boolean(readonly))} />
+  ),
   Sidebar: () => <div data-testid="workflow-sidebar" />,
   ConfigPanel: () => <div data-testid="workflow-config-panel" />,
   DataDrawer: () => <div data-testid="workflow-data-drawer" />,
@@ -55,9 +57,12 @@ const createStoreMock = (overrides: Record<string, any> = {}) => ({
   nodes: [],
   edges: [],
   setWorkflow: vi.fn(),
+  setFlowSchemaVersion: vi.fn(),
+  replaceWithPreview: vi.fn(),
   updateCategory: vi.fn(),
   setActiveCategory: vi.fn(),
   saveFlow: vi.fn().mockResolvedValue(undefined),
+  upgradeLegacyFlow: vi.fn().mockResolvedValue(undefined),
   releaseFlow: vi.fn().mockResolvedValue(undefined),
   runFlow: vi.fn().mockResolvedValue(undefined),
   stopExecution: vi.fn(),
@@ -68,6 +73,7 @@ const createStoreMock = (overrides: Record<string, any> = {}) => ({
     name: '测试流程',
     label: 'test_flow',
   },
+  flowSchemaVersion: 2,
   teamId: 'team_1',
   setTeamId: vi.fn(),
   ...overrides,
@@ -161,6 +167,7 @@ describe('WorkflowApp mode rendering', () => {
   it('renders approval mode without AI command center and with approval title', async () => {
     const updateCategory = vi.fn()
     const setActiveCategory = vi.fn()
+    const releaseFlow = vi.fn().mockResolvedValue(undefined)
     vi.mocked(useWorkflowStore).mockReturnValue(createStoreMock({
       validateWorkflow: vi.fn(),
       toggleDrawer: vi.fn(),
@@ -177,7 +184,7 @@ describe('WorkflowApp mode rendering', () => {
       updateCategory,
       setActiveCategory,
       saveFlow: vi.fn().mockResolvedValue(undefined),
-      releaseFlow: vi.fn().mockResolvedValue(undefined),
+      releaseFlow,
       runFlow: vi.fn().mockResolvedValue(undefined),
       stopExecution: vi.fn(),
       isExecuting: false,
@@ -197,6 +204,14 @@ describe('WorkflowApp mode rendering', () => {
     expect(container.querySelector('[data-testid="workflow-ai-command"]')).toBeFalsy()
     expect(setActiveCategory).toHaveBeenCalledWith('business_approval')
     expectProjectTableNodesEnabled(updateCategory, 'business_approval')
+
+    const releaseButton = Array.from(container.querySelectorAll('button')).find(
+      button => button.textContent?.includes('发布流程')
+    ) as HTMLButtonElement
+    await act(async () => {
+      releaseButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(releaseFlow).toHaveBeenCalledWith('approval')
   })
 
   it('renders automation mode with automation title and without AI command center', async () => {
@@ -230,13 +245,19 @@ describe('WorkflowApp mode rendering', () => {
           embedded
           mode="dev"
           pluginType="approval"
-          allowedNodeTypes={[WorkflowNodeType.START, WorkflowNodeType.END, WorkflowNodeType.SQL]}
+          allowedNodeTypes={[
+            WorkflowNodeType.START,
+            WorkflowNodeType.END,
+            WorkflowNodeType.SQL,
+            WorkflowNodeType.VARIABLE,
+          ]}
         />
       )
     })
 
     const categoryPatch = updateCategory.mock.calls.find(([categoryId]) => categoryId === 'business_approval')?.[1]
     expect(categoryPatch.allowedNodeTypes).not.toContain(WorkflowNodeType.SQL)
+    expect(categoryPatch.allowedNodeTypes).not.toContain(WorkflowNodeType.VARIABLE)
     expect(updateCategory).toHaveBeenCalledWith(
       'business_approval',
       expect.objectContaining({
@@ -266,5 +287,75 @@ describe('WorkflowApp mode rendering', () => {
     expect(container.textContent).toContain('维表智联工作流')
     expect(setActiveCategory).toHaveBeenCalledWith('general')
     expectProjectTableNodesEnabled(updateCategory, 'general')
+  })
+
+  it('forces a legacy graph into effective readonly mode', async () => {
+    vi.mocked(useWorkflowStore).mockReturnValue(
+      createStoreMock({ flowSchemaVersion: null }) as any
+    )
+
+    await act(async () => {
+      root.render(<WorkflowApp embedded pluginType="all" />)
+    })
+
+    expect(container.querySelector('[data-testid="workflow-sidebar"]')).toBeFalsy()
+    expect(container.querySelector('[data-testid="workflow-config-panel"]')).toBeFalsy()
+    expect(
+      container.querySelector('[data-testid="workflow-canvas"]')?.getAttribute('data-readonly')
+    ).toBe('true')
+  })
+
+  it('offers an explicit V2 upgrade for a legacy graph in an editable context', async () => {
+    const upgradeLegacyFlow = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(useWorkflowStore).mockReturnValue(
+      createStoreMock({ flowSchemaVersion: null, upgradeLegacyFlow }) as any
+    )
+
+    await act(async () => {
+      root.render(<WorkflowApp embedded pluginType="all" />)
+    })
+
+    const upgradeButton = Array.from(container.querySelectorAll('button')).find(
+      button => button.textContent?.includes('升级为 V2 后编辑')
+    )
+    expect(upgradeButton).toBeTruthy()
+
+    await act(async () => {
+      upgradeButton?.click()
+    })
+
+    expect(upgradeLegacyFlow).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not offer legacy migration in an explicitly readonly preview', async () => {
+    vi.mocked(useWorkflowStore).mockReturnValue(
+      createStoreMock({ flowSchemaVersion: null }) as any
+    )
+
+    await act(async () => {
+      root.render(<WorkflowApp embedded readonly pluginType="all" />)
+    })
+
+    expect(container.textContent).not.toContain('升级为 V2 后编辑')
+  })
+
+  it('atomically replaces loaded state with an initial preview', async () => {
+    const replaceWithPreview = vi.fn()
+    vi.mocked(useWorkflowStore).mockReturnValue(
+      createStoreMock({ replaceWithPreview }) as any
+    )
+
+    await act(async () => {
+      root.render(
+        <WorkflowApp
+          embedded
+          initialNodes={[]}
+          initialEdges={[]}
+          initialSchemaVersion={null}
+        />
+      )
+    })
+
+    expect(replaceWithPreview).toHaveBeenCalledWith([], [], null)
   })
 })

@@ -89,6 +89,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
 
   const onAddClick = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (data.readonly) return
     const node = getNode(id)
     if (!node) return
 
@@ -106,12 +107,14 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (data.readonly) return
     deleteNode(id)
     setShowMenu(false)
   }
 
   const toggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (data.readonly) return
     setShowMenu(!showMenu)
   }
 
@@ -156,7 +159,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
           <h3 className="font-semibold text-slate-800 text-sm truncate">{data.label}</h3>
           <p className="text-xs text-slate-500 truncate">{getNodeTypeLabel(type || '')}</p>
         </div>
-        <div className="relative" ref={menuRef}>
+        {!data.readonly && <div className="relative" ref={menuRef}>
           <button
             onClick={toggleMenu}
             className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-100 rounded transition-colors"
@@ -176,7 +179,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
               </button>
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Node Body (Optional Content) */}
@@ -206,7 +209,7 @@ export const BaseNode: React.FC<BaseNodeProps> = ({
       {customHandles}
 
       {/* Add Button */}
-      {showAddButton && !customHandles && (
+      {!data.readonly && showAddButton && !customHandles && (
         <div
           className={`absolute z-20 opacity-0 group-hover:opacity-100 transition-all duration-200 ${
             isHorizontal

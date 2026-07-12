@@ -2,14 +2,18 @@ import React, { useState, useEffect } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import { WorkflowCanvas, Sidebar, ConfigPanel, DataDrawer, AICommandCenter, SettingsModal } from '.'
 import GlobalConfigModal from './GlobalConfigModal'
-import { Layers, Share2, Settings, ShieldCheck, Eye, Database, Save, PlayCircle, StopCircle, History } from 'lucide-react'
+import { Layers, Share2, Settings, ShieldCheck, Eye, Database, Save, PlayCircle, StopCircle, History, RefreshCw } from 'lucide-react'
 import { useWorkflowStore } from './store/useWorkflowStore'
 import ValidationReportModal, { ValidationResult } from './ValidationReportModal'
 import { validateWorkflow } from './validators/workflowValidator'
 import { WorkflowNode, WorkflowEdge, WorkflowNodeType } from './types'
 import { message } from '@ai-flow/components/common/AntdStaticFunction'
 import { getRuntimeProjectId, getRuntimeTeamId } from '@ai-flow/utils/runtime'
-import { getPluginMode, type WorkflowPluginModeType } from './config/pluginModeRegistry'
+import {
+  filterNewWorkflowNodeTypes,
+  getPluginMode,
+  type WorkflowPluginModeType,
+} from './config/pluginModeRegistry'
 import WorkflowHistoryDrawer from './WorkflowHistoryDrawer'
 
 const PROJECT_TABLE_NODE_TYPES = [
@@ -18,12 +22,10 @@ const PROJECT_TABLE_NODE_TYPES = [
   WorkflowNodeType.MUL_DELETE_ROW,
 ]
 
-const filterNewNodeTypes = (nodeTypes: WorkflowNodeType[]) =>
-  nodeTypes.filter(type => type !== WorkflowNodeType.SQL)
-
 interface WorkflowAppProps {
   initialNodes?: WorkflowNode[]
   initialEdges?: WorkflowEdge[]
+  initialSchemaVersion?: 2 | null
   allowedNodeTypes?: WorkflowNodeType[]
   teamId?: string
   pluginType?: WorkflowPluginModeType
@@ -35,6 +37,7 @@ interface WorkflowAppProps {
 const App: React.FC<WorkflowAppProps> = ({
   initialNodes,
   initialEdges,
+  initialSchemaVersion,
   allowedNodeTypes,
   teamId: propTeamId,
   pluginType = 'all',
@@ -52,10 +55,11 @@ const App: React.FC<WorkflowAppProps> = ({
     activeCategoryId,
     nodes,
     edges,
-    setWorkflow,
+    replaceWithPreview,
     updateCategory,
     setActiveCategory,
     saveFlow,
+    upgradeLegacyFlow,
     releaseFlow,
     runFlow,
     stopExecution,
@@ -64,6 +68,7 @@ const App: React.FC<WorkflowAppProps> = ({
     flowInfo,
     teamId: storeTeamId,
     setTeamId,
+    flowSchemaVersion,
   } = useWorkflowStore()
 
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
@@ -106,19 +111,20 @@ const App: React.FC<WorkflowAppProps> = ({
 
   useEffect(() => {
     if (initialNodes || initialEdges) {
-      setWorkflow(
+      replaceWithPreview(
         initialNodes || [],
-        initialEdges || []
+        initialEdges || [],
+        initialSchemaVersion === 2 ? 2 : null
       )
     }
-  }, [initialNodes, initialEdges, setWorkflow])
+  }, [initialNodes, initialEdges, initialSchemaVersion, replaceWithPreview])
 
   useEffect(() => {
     const mode = getPluginMode(pluginType)
     setActiveCategory(mode.categoryId)
     const nextAllowedNodeTypes = allowedNodeTypes && allowedNodeTypes.length > 0
-      ? filterNewNodeTypes(Array.from(new Set([...allowedNodeTypes, ...PROJECT_TABLE_NODE_TYPES])))
-      : filterNewNodeTypes([...mode.allowedNodeTypes])
+      ? filterNewWorkflowNodeTypes(Array.from(new Set([...allowedNodeTypes, ...PROJECT_TABLE_NODE_TYPES])), mode.type)
+      : filterNewWorkflowNodeTypes(mode.allowedNodeTypes, mode.type)
     updateCategory(mode.categoryId, {
       allowedNodeTypes: nextAllowedNodeTypes,
       isSystem: true,
@@ -136,6 +142,8 @@ const App: React.FC<WorkflowAppProps> = ({
   const monitorButtonLabel = isApprovalMode ? '查看审批数据' : '监控数据流'
   const runtimeTeamIdForConfig = storeTeamId || propTeamId || getRuntimeTeamId()
   const runtimeProjectIdForConfig = getRuntimeProjectId()
+  const effectiveReadonly = readonly || flowSchemaVersion !== 2
+  const canUpgradeLegacyFlow = !readonly && flowSchemaVersion !== 2 && !!flowInfo?.id
 
   const handleVerify = () => {
     const result = validateWorkflow(nodes, edges)
@@ -160,6 +168,15 @@ const App: React.FC<WorkflowAppProps> = ({
     }
   }
 
+  const handleUpgradeLegacyFlow = async () => {
+    try {
+      await upgradeLegacyFlow()
+      message.success('工作流已升级为 V2，可以继续编辑')
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '工作流升级失败')
+    }
+  }
+
   const handleReloadFlow = async () => {
     if (!flowInfo?.id) return
     try {
@@ -176,7 +193,7 @@ const App: React.FC<WorkflowAppProps> = ({
     }
     try {
       await saveFlow()
-      await releaseFlow()
+      await releaseFlow(pluginType)
       message.success('发布成功')
     } catch (error) {
       message.error('发布失败')
@@ -215,7 +232,7 @@ const App: React.FC<WorkflowAppProps> = ({
         className="flex flex-col overflow-hidden bg-slate-50 text-slate-900 font-sans"
         style={embedded ? { height: 'calc(100vh - 63px)', width: '100%' } : { height: '100vh', width: '100vw' }}
       >
-        {!readonly && (
+        {!effectiveReadonly && (
           <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shadow-sm shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-200">
@@ -303,15 +320,29 @@ const App: React.FC<WorkflowAppProps> = ({
         )}
 
         <div className="flex-1 flex overflow-hidden relative">
-          {!readonly && <Sidebar pluginType={pluginType} />}
+          {!effectiveReadonly && <Sidebar pluginType={pluginType} />}
 
           <main className="flex-1 relative flex flex-col">
+            {canUpgradeLegacyFlow && (
+              <div className="h-12 shrink-0 border-b border-amber-200 bg-amber-50 px-4 flex items-center justify-between gap-4">
+                <span className="text-sm text-amber-800">当前工作流为旧版格式，升级前保持只读。</span>
+                <button
+                  type="button"
+                  onClick={handleUpgradeLegacyFlow}
+                  disabled={isFlowSaving}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-amber-900 bg-white border border-amber-300 rounded-md hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw size={16} className={isFlowSaving ? 'animate-spin' : ''} />
+                  {isFlowSaving ? '升级中...' : '升级为 V2 后编辑'}
+                </button>
+              </div>
+            )}
             <div className="flex-1 relative">
-              <WorkflowCanvas readonly={readonly} />
+              <WorkflowCanvas readonly={effectiveReadonly} />
 
-              {!readonly && isAiMode && <AICommandCenter />}
+              {!effectiveReadonly && isAiMode && <AICommandCenter />}
 
-              {!readonly && (
+              {!effectiveReadonly && (
                 <div className="absolute bottom-4 left-4 z-10">
                   <button
                     onClick={handleOpenDrawer}
@@ -325,24 +356,24 @@ const App: React.FC<WorkflowAppProps> = ({
             </div>
           </main>
 
-          {!readonly && (
+          {!effectiveReadonly && (
             <ConfigPanel
               pluginType={pluginType}
               teamId={runtimeTeamIdForConfig}
               projectId={runtimeProjectIdForConfig}
             />
           )}
-          {!readonly && <DataDrawer />}
-          {!readonly && <SettingsModal />}
-          {!readonly && <GlobalConfigModal />}
-          {!readonly && (
+          {!effectiveReadonly && <DataDrawer />}
+          {!effectiveReadonly && <SettingsModal />}
+          {!effectiveReadonly && <GlobalConfigModal />}
+          {!effectiveReadonly && (
             <ValidationReportModal
               isOpen={isValidationModalOpen}
               onClose={() => setIsValidationModalOpen(false)}
               result={validationResult}
             />
           )}
-          {!readonly && (
+          {!effectiveReadonly && (
             <WorkflowHistoryDrawer
               open={isHistoryDrawerOpen}
               flowInfo={flowInfo}

@@ -112,6 +112,7 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
         activeCategoryId: state.activeCategoryId,
         globalVariables: state.globalVariables,
         teamId: state.teamId,
+        flowSchemaVersion: state.flowSchemaVersion,
       }),
       merge: (persistedState: any, currentState) => {
         const persisted = persistedState || {}
@@ -121,6 +122,12 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
           ...persisted,
           categories,
           activeCategoryId: normalizeActiveCategoryId(persisted.activeCategoryId, categories),
+          flowSchemaVersion:
+            persisted.flowSchemaVersion === 2
+              ? 2
+              : Object.prototype.hasOwnProperty.call(persisted, 'nodes')
+                ? null
+                : currentState.flowSchemaVersion,
         }
       },
     }

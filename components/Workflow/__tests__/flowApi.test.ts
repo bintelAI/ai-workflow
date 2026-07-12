@@ -90,6 +90,29 @@ describe('Flow API', () => {
       
       expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/info/release', { flowId: 1 });
     });
+
+    it('should call usage type API with the workflow usage type', async () => {
+      (request.post as any).mockResolvedValue({});
+
+      await flowInfoApi.setUsageType('team-1', 1, 'approval');
+
+      expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/info/setUsageType', {
+        flowId: 1,
+        usageType: 'approval',
+      });
+    });
+
+    it('should save a formal V2 graph without dropping schemaVersion', async () => {
+      const draft = { schemaVersion: 2 as const, nodes: [], edges: [] };
+      (request.post as any).mockResolvedValue({ data: { id: 1, draft } });
+
+      await flowInfoApi.save('team-1', 1, draft);
+
+      expect(request.post).toHaveBeenCalledWith('/app/flow/team-1/info/update', {
+        id: 1,
+        draft,
+      });
+    });
   });
 
   describe('flowRunApi', () => {

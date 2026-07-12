@@ -1,29 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/utils/request', () => ({
-  default: vi.fn(),
+vi.mock('@/src/api/request', () => ({
+  default: {
+    post: vi.fn(),
+  },
 }));
 
-import request from '@/utils/request';
-import { flowChatApi } from '@/api/flowChat';
+import request from '@/src/api/request';
+import { flowChatApi } from '@/src/api/flow/chat';
 
 describe('flowChatApi', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (request as any).mockResolvedValue({ data: { choices: [] } });
+    (request.post as any).mockResolvedValue({ data: { choices: [] } });
   });
 
   it('使用团队 chat/completions 接口', async () => {
-    await flowChatApi.completions('team-1', {
+    await flowChatApi.completions({
       messages: [{ role: 'user', content: '生成工作流' }],
       model: 'team-default',
       response_format: { type: 'json_object' },
-    });
+    }, 'team-1');
 
-    expect(request).toHaveBeenCalledWith(
+    expect(request.post).toHaveBeenCalledWith(
+      '/app/flow/team-1/v1/chat/completions',
       expect.objectContaining({
-        url: '/app/flow/team-1/v1/chat/completions',
-        method: 'POST',
         model: 'team-default',
         messages: [{ role: 'user', content: '生成工作流' }],
         response_format: { type: 'json_object' },

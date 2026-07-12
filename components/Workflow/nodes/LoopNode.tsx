@@ -17,6 +17,7 @@ const LoopNode = ({ id, data, selected, isConnectable }: NodeProps<NodeData>) =>
   const handleAddNode = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
+      if (data.readonly) return
 
       const position = screenToFlowPosition({
         x: e.clientX,
@@ -29,7 +30,7 @@ const LoopNode = ({ id, data, selected, isConnectable }: NodeProps<NodeData>) =>
 
       openNodeAppendMenu(null, { x: position.x + 20, y: position.y - 10 }, id, newNodeRelativePosition)
     },
-    [id, openNodeAppendMenu, isHorizontal]
+    [data.readonly, id, openNodeAppendMenu, isHorizontal]
   )
 
   const getNodeColor = (status?: string) => {
@@ -88,7 +89,7 @@ const LoopNode = ({ id, data, selected, isConnectable }: NodeProps<NodeData>) =>
     >
       <NodeResizer
         color="#6366f1"
-        isVisible={selected}
+        isVisible={selected && !data.readonly}
         minWidth={300}
         minHeight={200}
         handleStyle={{ width: 8, height: 8, borderRadius: 4 }}
@@ -106,13 +107,13 @@ const LoopNode = ({ id, data, selected, isConnectable }: NodeProps<NodeData>) =>
             {config?.targetArray ? `循环对象: ${config.targetArray}` : '请配置循环数组'}
           </p>
         </div>
-        <button
+        {!data.readonly && <button
           onClick={handleAddNode}
           className="p-1.5 text-indigo-600 hover:bg-indigo-200 rounded-md transition-colors"
           title="在循环内添加节点"
         >
           <Plus size={16} />
-        </button>
+        </button>}
       </div>
 
       {outputHandle}
@@ -132,12 +133,12 @@ const LoopNode = ({ id, data, selected, isConnectable }: NodeProps<NodeData>) =>
                   isConnectable={isConnectable}
                   className="!bg-indigo-500 !w-3 !h-3 !border-2 !border-white !static !translate-x-0"
                 />
-                <button
+                {!data.readonly && <button
                   onClick={handleAddNode}
                   className="absolute -inset-1 flex items-center justify-center bg-indigo-500 text-white rounded-full opacity-0 group-hover/plus:opacity-100 transition-opacity z-10"
                 >
                   <Plus size={10} strokeWidth={3} />
-                </button>
+                </button>}
                 <div className="absolute -inset-1 flex items-center justify-center bg-indigo-500 text-white rounded-full pointer-events-none shadow-sm">
                   <Plus size={10} strokeWidth={3} />
                 </div>
@@ -163,12 +164,12 @@ const LoopNode = ({ id, data, selected, isConnectable }: NodeProps<NodeData>) =>
                     isConnectable={isConnectable}
                     className="!bg-indigo-500 !w-3 !h-3 !border-2 !border-white !static !translate-y-0"
                   />
-                  <button
+                  {!data.readonly && <button
                     onClick={handleAddNode}
                     className="absolute -inset-1 flex items-center justify-center bg-indigo-500 text-white rounded-full opacity-0 group-hover/plus:opacity-100 transition-opacity z-10"
                   >
                     <Plus size={10} strokeWidth={3} />
-                  </button>
+                  </button>}
                   <div className="absolute -inset-1 flex items-center justify-center bg-indigo-500 text-white rounded-full pointer-events-none shadow-sm">
                     <Plus size={10} strokeWidth={3} />
                   </div>

@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { Sidebar } from '../Sidebar'
 import { getPluginMode } from '../config/pluginModeRegistry'
 import { useWorkflowStore } from '../store/useWorkflowStore'
+import { WorkflowNodeType } from '../types'
 
 vi.mock('reactflow', () => ({
   useReactFlow: () => ({
@@ -61,5 +62,49 @@ describe('Sidebar node library', () => {
     const html = renderToStaticMarkup(<Sidebar pluginType="ai" />)
 
     expect(html).toContain('维表查询')
+  })
+
+  it('does not render the unsafe variable node in the general category', () => {
+    vi.mocked(useWorkflowStore).mockReturnValue({
+      categories: [
+        {
+          id: 'general',
+          name: '全功能模式',
+          allowedNodeTypes: [WorkflowNodeType.START, WorkflowNodeType.VARIABLE],
+        },
+      ],
+      activeCategoryId: 'general',
+      nodes: [],
+      edges: [],
+      setWorkflow: vi.fn(),
+      globalVariables: [],
+    } as any)
+
+    const html = renderToStaticMarkup(<Sidebar pluginType="all" />)
+
+    expect(html).toContain('开始')
+    expect(html).not.toContain('变量处理')
+  })
+
+  it('does not render the unsafe variable node from a persisted custom category', () => {
+    vi.mocked(useWorkflowStore).mockReturnValue({
+      categories: [
+        {
+          id: 'custom_persisted',
+          name: '自定义类型',
+          allowedNodeTypes: [WorkflowNodeType.START, WorkflowNodeType.VARIABLE],
+        },
+      ],
+      activeCategoryId: 'custom_persisted',
+      nodes: [],
+      edges: [],
+      setWorkflow: vi.fn(),
+      globalVariables: [],
+    } as any)
+
+    const html = renderToStaticMarkup(<Sidebar pluginType="all" />)
+
+    expect(html).toContain('开始')
+    expect(html).not.toContain('变量处理')
   })
 })

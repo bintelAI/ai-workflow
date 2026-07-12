@@ -1,5 +1,5 @@
 import request from '../request';
-import type { FlowInfoEntity, FlowDraft } from '../../types/flow';
+import type { FlowInfoEntity, FlowGraphV2 } from '../../types/flow';
 
 export interface FlowPageParams {
   page: number;
@@ -54,7 +54,18 @@ export const flowInfoApi = {
     return request.post<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/release`, { flowId });
   },
 
-  save: (teamId: string, id: number, draft: FlowDraft) => {
+  setUsageType: (
+    teamId: string,
+    flowId: number,
+    usageType: NonNullable<FlowInfoEntity['usageType']>
+  ) => {
+    return request.post<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/setUsageType`, {
+      flowId,
+      usageType,
+    });
+  },
+
+  save: (teamId: string, id: number, draft: FlowGraphV2) => {
     return request.post<any, { data: FlowInfoEntity }>(`/app/flow/${teamId}/info/update`, {
       id,
       draft,

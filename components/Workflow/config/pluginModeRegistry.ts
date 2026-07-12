@@ -1,4 +1,5 @@
 import { WorkflowNodeType, type WorkflowCategory, type LayoutDirection } from '../types'
+import { getConfigurableNodeTypes, isNodeConfigurable } from './nodeCapabilities'
 
 export type WorkflowPluginModeType = 'all' | 'ai' | 'approval' | 'automation'
 
@@ -12,42 +13,15 @@ export interface WorkflowPluginMode {
   isSystem: true
 }
 
-const APPROVAL_EXCLUDED_NODE_TYPES = [
-  'approval_ai_review',
-  WorkflowNodeType.SQL,
-  WorkflowNodeType.LLM,
-  WorkflowNodeType.QUESTION_CLASSIFIER,
-  WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
-  WorkflowNodeType.DOCUMENT_EXTRACTOR,
-  WorkflowNodeType.JSON_PARSE,
-  WorkflowNodeType.SMART_PARSE,
-] as const
+export const isNewWorkflowNodeTypeAllowed = (
+  type: WorkflowNodeType,
+  mode: WorkflowPluginModeType = DEFAULT_PLUGIN_MODE
+) => isNodeConfigurable(type, mode)
 
-const APPROVAL_ALLOWED_NODE_TYPES = Object.values(WorkflowNodeType).filter(
-  type => !APPROVAL_EXCLUDED_NODE_TYPES.includes(type as any)
-)
-
-const AUTOMATION_ALLOWED_NODE_TYPES = [
-  WorkflowNodeType.START,
-  WorkflowNodeType.END,
-  WorkflowNodeType.CONDITION,
-  WorkflowNodeType.PARALLEL,
-  WorkflowNodeType.LOOP,
-  WorkflowNodeType.DELAY,
-  WorkflowNodeType.NOTIFICATION,
-  WorkflowNodeType.FLOW_CALL,
-  WorkflowNodeType.VARIABLE,
-  WorkflowNodeType.API_CALL,
-  WorkflowNodeType.DATA_OP,
-  WorkflowNodeType.MUL_QUERY,
-  WorkflowNodeType.MUL_UPDATE_ROW,
-  WorkflowNodeType.MUL_DELETE_ROW,
-  WorkflowNodeType.SCRIPT,
-  WorkflowNodeType.CLOUD_PHONE,
-  WorkflowNodeType.STORAGE,
-]
-
-const ALL_ALLOWED_NODE_TYPES = Object.values(WorkflowNodeType).filter(type => type !== WorkflowNodeType.SQL)
+export const filterNewWorkflowNodeTypes = (
+  nodeTypes: readonly WorkflowNodeType[],
+  mode: WorkflowPluginModeType = DEFAULT_PLUGIN_MODE
+) => nodeTypes.filter(type => isNewWorkflowNodeTypeAllowed(type, mode))
 
 export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPluginMode> = {
   all: {
@@ -55,7 +29,7 @@ export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPlugin
     categoryId: 'general',
     name: '全功能模式',
     description: '包含所有可用节点，适用于复杂混合场景。',
-    allowedNodeTypes: ALL_ALLOWED_NODE_TYPES,
+    allowedNodeTypes: getConfigurableNodeTypes('all'),
     layoutDirection: 'vertical',
     isSystem: true,
   },
@@ -64,28 +38,7 @@ export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPlugin
     categoryId: 'ai_agent',
     name: 'AI Agent 编排',
     description: '专注于 LLM 调用、数据处理和 API 集成。',
-    allowedNodeTypes: [
-      WorkflowNodeType.START,
-      WorkflowNodeType.END,
-      WorkflowNodeType.LLM,
-      WorkflowNodeType.QUESTION_CLASSIFIER,
-      WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
-      WorkflowNodeType.DOCUMENT_EXTRACTOR,
-      WorkflowNodeType.JSON_PARSE,
-      WorkflowNodeType.SMART_PARSE,
-      WorkflowNodeType.FLOW_CALL,
-      WorkflowNodeType.VARIABLE,
-      WorkflowNodeType.API_CALL,
-      WorkflowNodeType.DATA_OP,
-      WorkflowNodeType.MUL_QUERY,
-      WorkflowNodeType.MUL_UPDATE_ROW,
-      WorkflowNodeType.MUL_DELETE_ROW,
-      WorkflowNodeType.SCRIPT,
-      WorkflowNodeType.CONDITION,
-      WorkflowNodeType.LOOP,
-      WorkflowNodeType.DELAY,
-      WorkflowNodeType.NOTIFICATION,
-    ],
+    allowedNodeTypes: getConfigurableNodeTypes('ai'),
     layoutDirection: 'vertical',
     isSystem: true,
   },
@@ -94,7 +47,7 @@ export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPlugin
     categoryId: 'business_approval',
     name: '行政审批流 (BPM)',
     description: '包含审批、抄送、条件、通知、数据处理与外部集成节点。',
-    allowedNodeTypes: APPROVAL_ALLOWED_NODE_TYPES,
+    allowedNodeTypes: getConfigurableNodeTypes('approval'),
     layoutDirection: 'vertical',
     isSystem: true,
   },
@@ -103,7 +56,7 @@ export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPlugin
     categoryId: 'automation',
     name: '自动化工作流',
     description: '专注于流程调用、接口、数据处理、脚本与通知等自动化编排。',
-    allowedNodeTypes: AUTOMATION_ALLOWED_NODE_TYPES,
+    allowedNodeTypes: getConfigurableNodeTypes('automation'),
     layoutDirection: 'vertical',
     isSystem: true,
   },

@@ -11,6 +11,16 @@ vi.mock('@/api/flowChat', () => ({
 
 describe('backendAdapter', () => {
   describe('exportToBackend', () => {
+    it('exports a formal V2 flow graph', () => {
+      const workflow = {
+        nodes: [],
+        edges: [],
+        globalVariables: [],
+      } as any
+
+      expect(exportToBackend(workflow).schemaVersion).toBe(2)
+    })
+
     it('should convert start node correctly', () => {
       const workflow = {
         nodes: [
@@ -366,7 +376,8 @@ describe('backendAdapter', () => {
           type: 'array',
           itemType: 'number',
           itemLabel: '评分',
-        })
+  })
+
       );
     });
 
@@ -1119,4 +1130,14 @@ describe('backendAdapter', () => {
       );
     });
   });
+
+  describe('schema version import metadata', () => {
+    it('preserves missing legacy schema version as read-only metadata', () => {
+      expect(importFromBackend({ nodes: [], edges: [] } as any).flowSchemaVersion).toBeNull()
+    })
+
+    it('preserves V2 schema version', () => {
+      expect(importFromBackend({ schemaVersion: 2, nodes: [], edges: [] } as any).flowSchemaVersion).toBe(2)
+    })
+  })
 });

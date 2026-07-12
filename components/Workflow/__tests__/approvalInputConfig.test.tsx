@@ -32,6 +32,7 @@ vi.mock('@ai-flow-src/api/org', () => ({
 }))
 
 vi.mock('@ai-flow/utils/runtime', () => ({
+  getRuntimeBaseURL: vi.fn(() => '/api'),
   getRuntimeTeamId: vi.fn(() => 'team_1'),
   getRuntimeProjectId: vi.fn(() => 'project_current'),
 }))

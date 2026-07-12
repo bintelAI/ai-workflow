@@ -3,7 +3,16 @@ import { resolveAiFlowRuntime, setAiFlowRuntime } from '@ai-flow/utils/runtime'
 
 describe('ai-flow runtime query alias', () => {
   beforeEach(() => {
-    window.localStorage.clear()
+    const values = new Map<string, string>()
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: {
+        clear: () => values.clear(),
+        getItem: (key: string) => values.get(key) ?? null,
+        removeItem: (key: string) => values.delete(key),
+        setItem: (key: string, value: string) => values.set(key, String(value)),
+      },
+    })
     window.history.replaceState({}, '', '/')
     setAiFlowRuntime({
       id: undefined,

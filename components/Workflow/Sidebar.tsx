@@ -1,16 +1,56 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { Download, Upload, Search, X } from "lucide-react";
+import { useReactFlow } from "reactflow";
+import { WorkflowNodeType } from "./types";
+import { useWorkflowStore } from "./store/useWorkflowStore";
+import { SidebarProps } from "./Workflow.types";
 import {
-  Download,
-  Upload,
-  Search,
-  X,
-} from 'lucide-react'
-import { useReactFlow } from 'reactflow'
-import { WorkflowNodeType } from './types'
-import { useWorkflowStore } from './store/useWorkflowStore'
-import { SidebarProps } from './Workflow.types'
-import { getDefaultCategoriesFromPluginModes, getPluginMode } from './config/pluginModeRegistry'
-import { NODE_GROUP_LABELS, getRegistryItems } from './config/nodeRegistry'
+  filterNewWorkflowNodeTypes,
+  getPluginMode,
+  type WorkflowPluginModeType,
+} from "./config/pluginModeRegistry";
+import { NODE_GROUP_LABELS, getRegistryItems } from "./config/nodeRegistry";
+import { getUnsupportedPublishNodeTypes } from "./config/nodeCapabilities";
+
+const validateImportedGraph = (
+  data: any,
+  pluginType: WorkflowPluginModeType,
+) => {
+  if (!Array.isArray(data?.nodes) || !Array.isArray(data?.edges)) {
+    throw new Error("工作流节点或连线格式无效");
+  }
+  const nodeIds = new Set<string>();
+  const nodeTypes: WorkflowNodeType[] = [];
+  data.nodes.forEach((node: any) => {
+    if (
+      !node ||
+      typeof node.id !== "string" ||
+      !node.id ||
+      typeof node.type !== "string"
+    ) {
+      throw new Error("工作流节点缺少有效 id/type");
+    }
+    nodeIds.add(node.id);
+    nodeTypes.push(node.type as WorkflowNodeType);
+  });
+  const unsupportedNodeTypes = getUnsupportedPublishNodeTypes(
+    nodeTypes,
+    pluginType,
+  );
+  if (unsupportedNodeTypes.length > 0) {
+    throw new Error(`当前模式不支持节点: ${unsupportedNodeTypes.join(", ")}`);
+  }
+  data.edges.forEach((edge: any) => {
+    if (
+      !edge ||
+      typeof edge.id !== "string" ||
+      !nodeIds.has(edge.source) ||
+      !nodeIds.has(edge.target)
+    ) {
+      throw new Error("工作流连线结构无效");
+    }
+  });
+};
 
 const DraggableNode = ({
   type,
@@ -19,23 +59,23 @@ const DraggableNode = ({
   color,
   bgClass,
 }: {
-  type: WorkflowNodeType
-  label: string
-  icon: any
-  color: string
-  bgClass: string
+  type: WorkflowNodeType;
+  label: string;
+  icon: any;
+  color: string;
+  bgClass: string;
 }) => {
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
-    event.dataTransfer.setData('application/reactflow', nodeType)
-    event.dataTransfer.effectAllowed = 'move'
-  }
+    event.dataTransfer.setData("application/reactflow", nodeType);
+    event.dataTransfer.effectAllowed = "move";
+  };
 
-  const getNodeBgColor = (bgClass: string): string => bgClass
+  const getNodeBgColor = (bgClass: string): string => bgClass;
 
   return (
     <div
       className="flex flex-col items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded-xl cursor-grab hover:shadow-md hover:border-indigo-300 transition-all active:cursor-grabbing group aspect-square"
-      onDragStart={event => onDragStart(event, type)}
+      onDragStart={(event) => onDragStart(event, type)}
       draggable
     >
       <div
@@ -45,34 +85,47 @@ const DraggableNode = ({
       </div>
       <span className="text-xs font-medium text-slate-700">{label}</span>
     </div>
-  )
-}
+  );
+};
 
-export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
-  const [width, setWidth] = useState(260)
-  const [isResizing, setIsResizing] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const sidebarRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { getViewport, setViewport } = useReactFlow()
+export const Sidebar: React.FC<SidebarProps> = ({ pluginType = "all" }) => {
+  const [width, setWidth] = useState(260);
+  const [isResizing, setIsResizing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { getViewport, setViewport } = useReactFlow();
 
   // Get store data for filtering
-  const { categories, activeCategoryId, nodes, edges, setWorkflow, globalVariables } = useWorkflowStore()
-  const activeCategory = categories.find(c => c.id === activeCategoryId)
-  const pluginMode = getPluginMode(pluginType)
-  const effectiveAllowedNodes = activeCategoryId === 'general'
-    ? Object.values(WorkflowNodeType)
-    : activeCategory?.allowedNodeTypes?.length
-      ? activeCategory.allowedNodeTypes
-      : activeCategoryId === pluginMode.categoryId
-        ? pluginMode.allowedNodeTypes
-        : []
-  const allowedNodes = new Set(effectiveAllowedNodes)
+  const {
+    categories,
+    activeCategoryId,
+    nodes,
+    edges,
+    replaceWithPreview,
+    globalVariables,
+  } = useWorkflowStore();
+  const activeCategory = categories.find((c) => c.id === activeCategoryId);
+  const pluginMode = getPluginMode(pluginType);
+  const effectiveAllowedNodes =
+    activeCategoryId === "general"
+      ? Object.values(WorkflowNodeType)
+      : activeCategory?.allowedNodeTypes?.length
+        ? activeCategory.allowedNodeTypes
+        : activeCategoryId === pluginMode.categoryId
+          ? pluginMode.allowedNodeTypes
+          : [];
+  const allowedNodes = new Set(
+    filterNewWorkflowNodeTypes(effectiveAllowedNodes, pluginMode.type),
+  );
 
-  const registryItems = getRegistryItems().filter(item => item.visibleInSidebar !== false)
+  const registryItems = getRegistryItems().filter(
+    (item) => item.visibleInSidebar !== false,
+  );
 
   const handleExport = () => {
     const data = {
+      schemaVersion: 2,
       nodes,
       edges,
       categories,
@@ -80,132 +133,141 @@ export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
       globalVariables,
       viewport: getViewport(),
       exportedAt: new Date().toISOString(),
-      version: '1.4',
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `workflow-export-${new Date().getTime()}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
+      version: "1.4",
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `workflow-export-${new Date().getTime()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const handleImportClick = () => {
-    fileInputRef.current?.click()
-  }
+    fileInputRef.current?.click();
+  };
 
   const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    const reader = new FileReader()
-    reader.onload = e => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
       try {
-        const content = e.target?.result as string
-        const data = JSON.parse(content)
-        if (data.nodes && data.edges) {
-          setWorkflow(
-            data.nodes,
-            data.edges,
-            data.activeCategoryId,
-            data.categories || getDefaultCategoriesFromPluginModes(),
-            data.globalVariables
-          )
+        const content = e.target?.result as string;
+        const data = JSON.parse(content);
+        validateImportedGraph(data, pluginMode.type);
+        replaceWithPreview(
+          data.nodes,
+          data.edges,
+          data.schemaVersion === 2 ? 2 : null,
+        );
 
-          if (data.viewport) {
-            setTimeout(() => {
-              setViewport(data.viewport, { duration: 800 })
-            }, 100)
-          }
-
-          alert('工作流导入成功！')
-        } else {
-          alert('无效的工作流文件格式')
+        if (data.viewport) {
+          setTimeout(() => {
+            setViewport(data.viewport, { duration: 800 });
+          }, 100);
         }
+
+        alert("工作流导入成功！");
       } catch (err) {
-        console.error('Import failed:', err)
-        alert('导入失败，请检查文件格式')
+        console.error("Import failed:", err);
+        alert("导入失败，请检查文件格式");
       }
-    }
-    reader.readAsText(file)
+    };
+    reader.readAsText(file);
     // Reset input
-    event.target.value = ''
-  }
+    event.target.value = "";
+  };
 
   const startResizing = useCallback(() => {
-    setIsResizing(true)
-  }, [])
+    setIsResizing(true);
+  }, []);
 
   const stopResizing = useCallback(() => {
-    setIsResizing(false)
-  }, [])
+    setIsResizing(false);
+  }, []);
 
   const resize = useCallback(
     (mouseMoveEvent: MouseEvent) => {
       if (isResizing) {
-        const newWidth = mouseMoveEvent.clientX
+        const newWidth = mouseMoveEvent.clientX;
         if (newWidth > 180 && newWidth < 480) {
-          setWidth(newWidth)
+          setWidth(newWidth);
         }
       }
     },
-    [isResizing]
-  )
+    [isResizing],
+  );
 
   useEffect(() => {
-    window.addEventListener('mousemove', resize)
-    window.addEventListener('mouseup', stopResizing)
+    window.addEventListener("mousemove", resize);
+    window.addEventListener("mouseup", stopResizing);
     return () => {
-      window.removeEventListener('mousemove', resize)
-      window.removeEventListener('mouseup', stopResizing)
-    }
-  }, [resize, stopResizing])
+      window.removeEventListener("mousemove", resize);
+      window.removeEventListener("mouseup", stopResizing);
+    };
+  }, [resize, stopResizing]);
 
   // Helper to render only if allowed
   const RenderNode: React.FC<{
-    type: WorkflowNodeType
-    label: string
-    icon: any
-    color: string
-    bgClass: string
+    type: WorkflowNodeType;
+    label: string;
+    icon: any;
+    color: string;
+    bgClass: string;
   }> = ({ type, label, icon, color, bgClass }) => {
-    if (!allowedNodes.has(type)) return null
-    return <DraggableNode type={type} label={label} icon={icon} color={color} bgClass={bgClass} />
-  }
+    if (!allowedNodes.has(type)) return null;
+    return (
+      <DraggableNode
+        type={type}
+        label={label}
+        icon={icon}
+        color={color}
+        bgClass={bgClass}
+      />
+    );
+  };
 
   // Helper to check if a node matches search query
   const nodeMatchesSearch = (type: WorkflowNodeType): boolean => {
-    if (!searchQuery.trim()) return true
-    const metadata = registryItems.find(item => item.type === type)
-    const keyword = searchQuery.toLowerCase()
+    if (!searchQuery.trim()) return true;
+    const metadata = registryItems.find((item) => item.type === type);
+    const keyword = searchQuery.toLowerCase();
     return [
       metadata?.label,
       metadata?.shortLabel,
       metadata?.description,
       metadata?.type,
-    ].some(text => text?.toLowerCase().includes(keyword))
-  }
+    ].some((text) => text?.toLowerCase().includes(keyword));
+  };
 
-  const groupedRegistryItems = Object.entries(NODE_GROUP_LABELS).map(([group, label]) => ({
-    group,
-    label,
-    items: registryItems.filter(
-      item => item.group === group && allowedNodes.has(item.type) && nodeMatchesSearch(item.type)
-    ),
-  }))
+  const groupedRegistryItems = Object.entries(NODE_GROUP_LABELS).map(
+    ([group, label]) => ({
+      group,
+      label,
+      items: registryItems.filter(
+        (item) =>
+          item.group === group &&
+          allowedNodes.has(item.type) &&
+          nodeMatchesSearch(item.type),
+      ),
+    }),
+  );
 
   const helperText =
-    pluginType === 'approval'
-      ? '拖拽审批节点到画布，编排审批、抄送、条件与通知流程'
-      : pluginType === 'automation'
-        ? '拖拽自动化节点到画布，编排接口、数据、脚本与通知流程'
-      : pluginType === 'ai'
-        ? '拖拽 AI 节点到画布，编排模型、数据与工具调用流程'
-        : '拖拽节点到画布'
-
+    pluginType === "approval"
+      ? "拖拽审批节点到画布，编排审批、抄送、条件与通知流程"
+      : pluginType === "automation"
+        ? "拖拽自动化节点到画布，编排接口、数据、脚本与通知流程"
+        : pluginType === "ai"
+          ? "拖拽 AI 节点到画布，编排模型、数据与工具调用流程"
+          : "拖拽节点到画布";
 
   return (
     <aside
@@ -218,23 +280,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
         <div className="flex items-center justify-between mt-1">
           <p className="text-xs text-slate-500">{helperText}</p>
           <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 truncate max-w-[100px]">
-            {activeCategory?.name || 'General'}
+            {activeCategory?.name || "General"}
           </span>
         </div>
-        
+
         {/* Search Box */}
         <div className="mt-4 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="搜索节点..."
             className="w-full pl-9 pr-8 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder:text-slate-400"
           />
           {searchQuery && (
             <button
-              onClick={() => setSearchQuery('')}
+              onClick={() => setSearchQuery("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-md transition-colors"
             >
               <X className="w-3.5 h-3.5 text-slate-400" />
@@ -245,14 +307,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
 
       <div className="p-4 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200">
         {groupedRegistryItems.map(({ group, label, items }) => {
-          if (items.length === 0) return null
+          if (items.length === 0) return null;
           return (
             <div className="mb-6" key={group}>
               <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
                 {label}
               </h3>
               <div className="grid grid-cols-2 gap-3">
-                {items.map(item => (
+                {items.map((item) => (
                   <RenderNode
                     key={item.type}
                     type={item.type}
@@ -264,12 +326,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
                 ))}
               </div>
             </div>
-          )
+          );
         })}
 
-        {groupedRegistryItems.every(group => group.items.length === 0) && (
+        {groupedRegistryItems.every((group) => group.items.length === 0) && (
           <div className="text-center p-4 text-slate-400 text-xs">
-            {searchQuery ? '未找到匹配的节点' : '当前模式未配置任何可用节点'}
+            {searchQuery ? "未找到匹配的节点" : "当前模式未配置任何可用节点"}
           </div>
         )}
       </div>
@@ -306,5 +368,5 @@ export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
         onMouseDown={startResizing}
       ></div>
     </aside>
-  )
-}
+  );
+};

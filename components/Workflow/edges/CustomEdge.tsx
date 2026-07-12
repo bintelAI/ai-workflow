@@ -15,6 +15,7 @@ export const CustomEdge: React.FC<EdgeProps> = ({
   markerEnd,
   source,
   target,
+  data,
 }) => {
   const { openEdgeMenu } = useWorkflowStore()
   const { screenToFlowPosition } = useReactFlow()
@@ -49,7 +50,7 @@ export const CustomEdge: React.FC<EdgeProps> = ({
   return (
     <>
       <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
-      <EdgeLabelRenderer>
+      {!data?.readonly && <EdgeLabelRenderer>
         <div
           style={{
             position: 'absolute',
@@ -76,7 +77,7 @@ export const CustomEdge: React.FC<EdgeProps> = ({
             </button>
           </div>
         </div>
-      </EdgeLabelRenderer>
+      </EdgeLabelRenderer>}
     </>
   )
 }

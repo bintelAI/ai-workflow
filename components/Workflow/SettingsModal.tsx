@@ -3,6 +3,11 @@ import { useWorkflowStore } from './store/useWorkflowStore'
 import { WorkflowCategory, LayoutDirection, WorkflowNodeType } from './types'
 import { getRegistryItems } from './config/nodeRegistry'
 import {
+  filterNewWorkflowNodeTypes,
+  getPluginModeByCategoryId,
+  isNewWorkflowNodeTypeAllowed,
+} from './config/pluginModeRegistry'
+import {
   X,
   Plus,
   Trash2,
@@ -72,7 +77,7 @@ export const SettingsModal: React.FC = () => {
       id: newId,
       name: '新工作流类型',
       description: '自定义工作流配置',
-      allowedNodeTypes: Object.values(WorkflowNodeType),
+      allowedNodeTypes: filterNewWorkflowNodeTypes(Object.values(WorkflowNodeType)),
       isSystem: false,
     }
     addCategory(newCat)
@@ -86,13 +91,15 @@ export const SettingsModal: React.FC = () => {
   }
 
   const toggleNodeType = (type: WorkflowNodeType) => {
+    const editingMode = getPluginModeByCategoryId(editingId)?.type || 'all'
+    if (!isNewWorkflowNodeTypeAllowed(type, editingMode)) return
     const currentTypes = new Set<WorkflowNodeType>(editForm.allowedNodeTypes || [])
     if (currentTypes.has(type)) {
       currentTypes.delete(type)
     } else {
       currentTypes.add(type)
     }
-    const updatedTypes = Array.from(currentTypes)
+    const updatedTypes = filterNewWorkflowNodeTypes(Array.from(currentTypes), editingMode)
     setEditForm({ ...editForm, allowedNodeTypes: updatedTypes })
     // Auto save on toggle for better UX
     if (editingId) {
@@ -107,6 +114,7 @@ export const SettingsModal: React.FC = () => {
 
   const currentCategory = categories.find(c => c.id === editingId)
   const isSystemCategory = currentCategory?.isSystem
+  const editingMode = getPluginModeByCategoryId(editingId)?.type || 'all'
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -282,7 +290,9 @@ export const SettingsModal: React.FC = () => {
               </h3>
               <div className="grid grid-cols-3 gap-3">
                 {getRegistryItems()
-                  .filter(item => item.visibleInSettings !== false)
+                  .filter(
+                    item => item.visibleInSettings !== false && isNewWorkflowNodeTypeAllowed(item.type, editingMode)
+                  )
                   .map(item => {
                     const Icon = item.icon
                     const isAllowed = editForm.allowedNodeTypes?.includes(item.type)

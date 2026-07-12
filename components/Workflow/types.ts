@@ -158,6 +158,7 @@ export interface NodeData {
     | Record<string, any>
   icon?: string
   status?: 'idle' | 'running' | 'completed' | 'error'
+  readonly?: boolean
 }
 
 export type WorkflowNode = Node<NodeData>
@@ -308,6 +309,8 @@ export interface WorkflowStoreState {
   executionLogs: WorkflowExecutionLog[]
   currentRequestId: string | null
   teamId: string | null
+  flowSchemaVersion: 2 | null
+  flowLoadGeneration: number
 
   onNodesChange: (changes: any) => void
   onEdgesChange: (changes: any) => void
@@ -379,6 +382,7 @@ export interface WorkflowStoreState {
   // --- NEW: Flow Actions ---
   loadFlow: (flowId: number, teamId?: string) => Promise<void>
   saveFlow: () => Promise<void>
+  upgradeLegacyFlow: () => Promise<void>
   loadFlowList: (params?: { page?: number; size?: number; teamId?: string }) => Promise<void>
   createFlow: (data: Partial<FlowInfoEntity> & { teamId?: string }) => Promise<FlowInfoEntity>
   updateFlow: (data: Partial<FlowInfoEntity> & { teamId?: string }) => Promise<void>
@@ -388,6 +392,12 @@ export interface WorkflowStoreState {
   setExecuting: (isExecuting: boolean) => void
   setExecutionResult: (result: any) => void
   setTeamId: (teamId: string | null) => void
+  setFlowSchemaVersion: (version: 2 | null) => void
+  replaceWithPreview: (
+    nodes: WorkflowNode[],
+    edges: WorkflowEdge[],
+    schemaVersion: 2 | null
+  ) => void
 
   // --- NEW: Execution Actions ---
   runFlow: (params?: { params?: Record<string, any>; nodeId?: string }) => Promise<void>

@@ -6,7 +6,8 @@ import {
   FlowData,
   FlowNode,
   FlowEdge,
-  FlowDraft
+  FlowDraft,
+  FlowGraphV2
 } from '@/src/types/flow';
 
 describe('Flow Types', () => {
@@ -128,6 +129,16 @@ describe('Flow Types', () => {
       expect(draft.nodes).toHaveLength(2);
       expect(draft.edges).toHaveLength(1);
       expect(draft.viewport?.zoom).toBe(1);
+    });
+
+    it('requires schemaVersion 2 for a formal publishable graph', () => {
+      const graph: FlowGraphV2 = {
+        schemaVersion: 2,
+        nodes: [],
+        edges: [],
+      };
+
+      expect(graph.schemaVersion).toBe(2);
     });
   });
 });

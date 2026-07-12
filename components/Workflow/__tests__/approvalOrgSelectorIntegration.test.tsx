@@ -13,6 +13,7 @@ const { orgApiMock, runtimeMock, selectorSpy } = vi.hoisted(() => ({
     getProjectRoles: vi.fn(),
   },
   runtimeMock: {
+    getRuntimeBaseURL: vi.fn(() => '/api'),
     getRuntimeTeamId: vi.fn(() => 'team_1'),
     getRuntimeProjectId: vi.fn(() => 'project_1'),
   },
@@ -139,6 +140,58 @@ describe('Approval / CC org selector integration', () => {
       },
     ])
     expect(onConfigChange).toHaveBeenCalledWith('approver', '张三, 研发部')
+  })
+
+  it('atomically persists approval participant rules and summary', async () => {
+    const onConfigChange = vi.fn()
+    const onConfigPatch = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <ApprovalConfig
+          config={{}}
+          onConfigChange={onConfigChange}
+          onConfigPatch={onConfigPatch}
+        />
+      )
+    })
+
+    const openButton = Array.from(container.querySelectorAll('button')).find(
+      button => button.textContent?.trim() === '选择'
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      openButton.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
+    })
+
+    const lastSelectorProps = selectorSpy.mock.calls.at(-1)?.[0]
+    await act(async () => {
+      lastSelectorProps.onConfirm({
+        users: [{ id: 'user_1', name: '张三', departmentId: 'dept_1' }],
+        departments: [{ id: 'dept_1', name: '研发部' }],
+      })
+    })
+
+    expect(onConfigPatch).toHaveBeenCalledOnce()
+    expect(onConfigPatch).toHaveBeenCalledWith({
+      participantRules: [
+        {
+          sourceType: 'user',
+          sourceValue: 'user_1',
+          sourceName: '张三',
+          sourceLabel: '张三',
+        },
+        {
+          sourceType: 'department',
+          sourceValue: 'dept_1',
+          sourceName: '研发部',
+          sourceLabel: '研发部',
+        },
+      ],
+      approver: '张三, 研发部',
+    })
+    expect(onConfigChange).not.toHaveBeenCalled()
   })
 
   it('syncs approval project role and dynamic participant rules', async () => {

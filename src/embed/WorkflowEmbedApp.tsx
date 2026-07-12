@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import 'reactflow/dist/style.css'
 import { WorkflowApp } from '@ai-flow/components/Workflow/WorkflowApp'
 import { useWorkflowStore } from '@ai-flow/components/Workflow/store/useWorkflowStore'
@@ -20,6 +20,11 @@ export interface WorkflowEmbedProps {
   previewDraft?: FlowDraft | null
 }
 
+let activeEmbedLease: symbol | null = null
+
+export const importPreviewDraft = (previewDraft?: FlowDraft | null) =>
+  previewDraft ? importFromBackend(previewDraft) : null
+
 const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
   workflowId,
   teamId,
@@ -33,19 +38,33 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
 }) => {
   const { loadFlow, isFlowLoading } = useWorkflowStore()
   const [error, setError] = useState<string | null>(null)
+  const leaseId = useRef(Symbol('workflow-embed'))
+  const [leaseState, setLeaseState] = useState<'pending' | 'granted' | 'denied'>('pending')
+
+  useEffect(() => {
+    if (activeEmbedLease && activeEmbedLease !== leaseId.current) {
+      setLeaseState('denied')
+      return
+    }
+    activeEmbedLease = leaseId.current
+    setLeaseState('granted')
+    return () => {
+      if (activeEmbedLease === leaseId.current) {
+        activeEmbedLease = null
+      }
+    }
+  }, [])
 
   const resolvedPluginType = useMemo(() => {
     return getPluginMode(type || undefined).type as WorkflowPluginModeType
   }, [type])
 
   const previewGraph = useMemo(() => {
-    if (!previewDraft?.nodes?.length) {
-      return null
-    }
-    return importFromBackend(previewDraft)
+    return importPreviewDraft(previewDraft)
   }, [previewDraft])
 
   useEffect(() => {
+    if (leaseState !== 'granted') return
     setAiFlowRuntime({
       id: workflowId,
       teamId,
@@ -55,7 +74,7 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
       type,
       mode,
     } as any)
-  }, [workflowId, teamId, projectId, token, baseURL, type, mode])
+  }, [leaseState, workflowId, teamId, projectId, token, baseURL, type, mode])
 
   const readonlyFromQuery = useMemo(() => {
     if (typeof window === 'undefined') return false
@@ -67,6 +86,8 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
   const isReadonly = readonly || readonlyFromQuery
 
   useEffect(() => {
+    if (leaseState !== 'granted') return
+    let active = true
     if (previewGraph) {
       setError(null)
       return
@@ -86,10 +107,26 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
 
     setError(null)
     loadFlow(id, teamId || undefined).catch((err) => {
+      if (!active) return
       console.error('Failed to load flow:', err)
       setError('加载工作流失败，请检查ID是否正确')
     })
-  }, [previewGraph, workflowId, teamId, loadFlow])
+    return () => {
+      active = false
+    }
+  }, [leaseState, previewGraph, workflowId, teamId, loadFlow])
+
+  if (leaseState === 'denied') {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-slate-50 text-slate-600">
+        同一页面只能挂载一个工作流编辑器
+      </div>
+    )
+  }
+
+  if (leaseState === 'pending') {
+    return <div className="h-full w-full bg-slate-50" />
+  }
 
   if (error) {
     return (
@@ -120,6 +157,7 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
     <WorkflowApp
       initialNodes={previewGraph?.nodes}
       initialEdges={previewGraph?.edges}
+      initialSchemaVersion={previewGraph?.flowSchemaVersion}
       teamId={teamId}
       pluginType={resolvedPluginType}
       embedded

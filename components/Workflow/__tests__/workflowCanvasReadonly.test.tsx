@@ -4,6 +4,9 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { WorkflowCanvas } from '../WorkflowCanvas'
 import { ReactFlowProvider } from 'reactflow'
 import { useWorkflowStore } from '../store/useWorkflowStore'
+import { WorkflowNodeType } from '../types'
+
+const reactFlowCapture = vi.hoisted(() => ({ props: null as any }))
 
 vi.mock('reactflow', () => ({
   ReactFlowProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -18,7 +21,10 @@ vi.mock('reactflow', () => ({
     setCenter: () => undefined,
     flowToScreenPosition: (position: { x: number; y: number }) => position,
   }),
-  default: ({ children }: { children: React.ReactNode }) => <div data-testid="react-flow">{children}</div>,
+  default: (props: any) => {
+    reactFlowCapture.props = props
+    return <div data-testid="react-flow">{props.children}</div>
+  },
 }))
 
 vi.mock('../store/useWorkflowStore', () => ({
@@ -28,8 +34,15 @@ vi.mock('../store/useWorkflowStore', () => ({
 describe('WorkflowCanvas readonly', () => {
   beforeEach(() => {
     vi.mocked(useWorkflowStore).mockReturnValue({
-      nodes: [],
-      edges: [],
+      nodes: [
+        {
+          id: 'start-1',
+          type: WorkflowNodeType.START,
+          position: { x: 0, y: 0 },
+          data: { label: '开始' },
+        },
+      ],
+      edges: [{ id: 'e1', source: 'start-1', target: 'end-1', data: {} }],
       onNodesChange: vi.fn(),
       onEdgesChange: vi.fn(),
       onConnect: vi.fn(),
@@ -84,5 +97,55 @@ describe('WorkflowCanvas readonly', () => {
     expect(html).not.toContain('data-testid="flow-controls"')
     expect(html).not.toContain('data-testid="flow-minimap"')
     expect(html).not.toContain('data-testid="flow-panel"')
+    expect(reactFlowCapture.props.nodesDraggable).toBe(false)
+    expect(reactFlowCapture.props.nodesConnectable).toBe(false)
+    expect(reactFlowCapture.props.onNodesChange).toBeUndefined()
+    expect(reactFlowCapture.props.onEdgesChange).toBeUndefined()
+    expect(reactFlowCapture.props.onConnect).toBeUndefined()
+    expect(reactFlowCapture.props.onDrop).toBeUndefined()
+    expect(reactFlowCapture.props.onNodeDragStop).toBeUndefined()
+    expect(reactFlowCapture.props.nodes[0].data.readonly).toBe(true)
+    expect(reactFlowCapture.props.edges[0].data.readonly).toBe(true)
+  })
+
+  it('does not offer the unsafe variable node from a persisted category in quick add', () => {
+    vi.mocked(useWorkflowStore).mockReturnValue({
+      nodes: [],
+      edges: [],
+      onNodesChange: vi.fn(),
+      onEdgesChange: vi.fn(),
+      onConnect: vi.fn(),
+      addNode: vi.fn(),
+      setSelectedNode: vi.fn(),
+      closeEdgeMenu: vi.fn(),
+      closeNodeMenu: vi.fn(),
+      onNodeDragStop: vi.fn(),
+      applyAutoLayout: vi.fn(),
+      categories: [{
+        id: 'custom_persisted',
+        name: '自定义类型',
+        allowedNodeTypes: [WorkflowNodeType.START, WorkflowNodeType.VARIABLE],
+      }],
+      activeCategoryId: 'custom_persisted',
+      selectedNodeId: null,
+      edgeMenu: { isOpen: false },
+      nodeMenu: {
+        isOpen: true,
+        sourceNodeId: 'start_1',
+        position: { x: 10, y: 10 },
+        parentNodeId: null,
+      },
+      insertNodeBetween: vi.fn(),
+      appendNode: vi.fn(),
+    } as any)
+
+    const html = renderToStaticMarkup(
+      <ReactFlowProvider>
+        <WorkflowCanvas />
+      </ReactFlowProvider>
+    )
+
+    expect(html).toContain('开始')
+    expect(html).not.toContain('变量处理')
   })
 })

@@ -134,10 +134,15 @@ export interface FlowInfoEntity {
 }
 
 export interface FlowDraft {
+  schemaVersion?: 2;
   nodes: FlowNode[];
   edges: FlowEdge[];
   viewport?: { x: number; y: number; zoom: number };
   activeNodeId?: string;
+}
+
+export interface FlowGraphV2 extends FlowDraft {
+  schemaVersion: 2;
 }
 
 export interface FlowRunRequest {

@@ -33,24 +33,7 @@ import { buildLoopBodyOutputCatalog, buildVariableCatalog } from './utils/workfl
 // Import common components from configs/common.tsx
 import { AIButton } from './configs/common'
 import type { WorkflowPluginModeType } from './config/pluginModeRegistry'
-
-const BACKEND_SUPPORTED_NODE_TYPES = new Set<WorkflowNodeType>([
-  WorkflowNodeType.START,
-  WorkflowNodeType.END,
-  WorkflowNodeType.LLM,
-  WorkflowNodeType.SCRIPT,
-  WorkflowNodeType.CONDITION,
-  WorkflowNodeType.QUESTION_CLASSIFIER,
-  WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
-  WorkflowNodeType.VARIABLE,
-  WorkflowNodeType.JSON_PARSE,
-  WorkflowNodeType.SMART_PARSE,
-  WorkflowNodeType.FLOW_CALL,
-  WorkflowNodeType.LOOP,
-  WorkflowNodeType.MUL_QUERY,
-  WorkflowNodeType.MUL_UPDATE_ROW,
-  WorkflowNodeType.MUL_DELETE_ROW,
-])
+import { isNodeConfigurable, isSingleNodeDebugSupported } from './config/nodeCapabilities'
 
 interface ConfigPanelRuntimeProps {
   pluginType?: WorkflowPluginModeType
@@ -83,7 +66,13 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
   const loopBodyOutputVariables = selectedNode?.type === WorkflowNodeType.LOOP
     ? buildLoopBodyOutputCatalog(nodes, selectedNode.id)
     : []
-  const isBackendSupportedNode = selectedNode ? BACKEND_SUPPORTED_NODE_TYPES.has(selectedNode.type as WorkflowNodeType) : false
+  const runtimeMode = pluginType || 'all'
+  const isBackendSupportedNode = selectedNode
+    ? isNodeConfigurable(selectedNode.type as WorkflowNodeType, runtimeMode)
+    : false
+  const canDebugSelectedNode = selectedNode
+    ? isSingleNodeDebugSupported(selectedNode.type as WorkflowNodeType, runtimeMode)
+    : false
   const [loadingField, setLoadingField] = useState<string | null>(null)
   const [panelWidth, setPanelWidth] = useState(450)
   const [isResizing, setIsResizing] = useState(false)
@@ -222,7 +211,14 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
       case WorkflowNodeType.NOTIFICATION:
         return <NotificationConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.APPROVAL:
-        return <ApprovalConfig config={config} onConfigChange={handleConfigChange} variables={availableVariables} />
+        return (
+          <ApprovalConfig
+            config={config}
+            onConfigChange={handleConfigChange}
+            onConfigPatch={handleConfigPatch}
+            variables={availableVariables}
+          />
+        )
       case WorkflowNodeType.DATA_OP:
         return <DataOpConfig config={config} onConfigChange={handleConfigChange} />
       case WorkflowNodeType.MUL_QUERY:
@@ -359,7 +355,7 @@ const ConfigPanel: React.FC<ConfigPanelRuntimeProps> = ({ pluginType, teamId, pr
         >
           <Save size={16} /> 完成
         </button>
-        {isBackendSupportedNode && selectedNode.type !== WorkflowNodeType.START && selectedNode.type !== WorkflowNodeType.END && (
+        {canDebugSelectedNode && (
           <button
             onClick={handleNodeDebug}
             className="flex items-center justify-center gap-2 px-4 py-2 border border-indigo-200 bg-indigo-50 text-indigo-700 rounded-md hover:bg-indigo-100 transition-colors"

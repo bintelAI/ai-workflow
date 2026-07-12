@@ -5,6 +5,7 @@ import {
   FlowNode, 
   FlowEdge, 
   FlowDraft,
+  FlowGraphV2,
   NODE_TYPE_MAP, 
   REVERSE_NODE_TYPE_MAP,
   ConditionOperator 
@@ -36,13 +37,14 @@ const mapToBackendType = (backendType?: string): string => {
   return REVERSE_NODE_TYPE_MAP[backendType] || backendType;
 };
 
-export const exportToBackend = (workflow: WorkflowStoreState): FlowDraft => {
+export const exportToBackend = (workflow: WorkflowStoreState): FlowGraphV2 => {
   const { nodes, edges } = workflow;
   const normalizedEdges = ensureLoopEdges(nodes, edges)
   const backendNodes = nodes.map((node, index) => convertNodeToBackend(node, nodes, index));
   const backendEdges = normalizedEdges.map((edge, index) => convertEdgeToBackend(edge, index, nodes));
 
   return {
+    schemaVersion: 2,
     nodes: backendNodes,
     edges: backendEdges,
     viewport: { x: 0, y: 0, zoom: 1 },
@@ -1124,7 +1126,7 @@ export const importFromBackend = (draft: FlowDraft): Partial<WorkflowStoreState>
   })
   const edges = Array.from(dedupEdgeMap.values()).map(edge => convertEdgeFromBackend(edge, nodes));
 
-  return { nodes, edges };
+  return { nodes, edges, flowSchemaVersion: draft.schemaVersion === 2 ? 2 : null };
 };
 
 const convertNodeFromBackend = (node: FlowNode): Node => {

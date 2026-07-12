@@ -41,6 +41,7 @@ import { CustomEdge } from './edges/CustomEdge'
 import { WorkflowNodeType } from './types'
 import { WorkflowCanvasProps } from './Workflow.types'
 import { createDefaultNodePayload, getRegistryItems } from './config/nodeRegistry'
+import { filterNewWorkflowNodeTypes, getPluginModeByCategoryId } from './config/pluginModeRegistry'
 import { X, LayoutGrid } from 'lucide-react'
 
 // Register custom node types
@@ -94,7 +95,13 @@ const NodeAddMenu = () => {
 
   // Get active category allowed nodes
   const activeCategory = categories.find(c => c.id === activeCategoryId)
-  const allowedNodes = new Set(activeCategory?.allowedNodeTypes || Object.values(WorkflowNodeType))
+  const activePluginMode = getPluginModeByCategoryId(activeCategoryId)?.type || 'all'
+  const allowedNodes = new Set(
+    filterNewWorkflowNodeTypes(
+      activeCategory?.allowedNodeTypes || Object.values(WorkflowNodeType),
+      activePluginMode
+    )
+  )
 
   // Determine which menu is active
   const isOpen = edgeMenu.isOpen || nodeMenu.isOpen
@@ -202,12 +209,25 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({ readonly = false }
   } = useWorkflowStore()
 
   const activeCategory = categories.find(c => c.id === activeCategoryId)
+  const activePluginMode = getPluginModeByCategoryId(activeCategoryId)?.type || 'all'
   const effectiveAllowedNodes = activeCategory?.allowedNodeTypes?.length
     ? activeCategory.allowedNodeTypes
     : Object.values(WorkflowNodeType)
   const allowedNodes = useMemo(
-    () => new Set(effectiveAllowedNodes),
-    [effectiveAllowedNodes]
+    () => new Set(filterNewWorkflowNodeTypes(effectiveAllowedNodes, activePluginMode)),
+    [effectiveAllowedNodes, activePluginMode]
+  )
+  const canvasNodes = useMemo(
+    () => readonly
+      ? nodes.map(node => ({ ...node, data: { ...node.data, readonly: true } }))
+      : nodes,
+    [nodes, readonly]
+  )
+  const canvasEdges = useMemo(
+    () => readonly
+      ? edges.map(edge => ({ ...edge, data: { ...edge.data, readonly: true } }))
+      : edges,
+    [edges, readonly]
   )
 
   const { project, getNodes, fitView, setCenter } = useReactFlow()
@@ -322,24 +342,24 @@ const WorkflowCanvasInner: React.FC<WorkflowCanvasProps> = ({ readonly = false }
   return (
     <div className="flex-1 h-full w-full bg-slate-50 relative" ref={reactFlowWrapper}>
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
+        nodes={canvasNodes}
+        edges={canvasEdges}
+        onNodesChange={readonly ? undefined : onNodesChange}
+        onEdgesChange={readonly ? undefined : onEdgesChange}
+        onConnect={readonly ? undefined : onConnect}
         onInit={setReactFlowInstance}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
+        onDrop={readonly ? undefined : onDrop}
+        onDragOver={readonly ? undefined : onDragOver}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
-        onNodeDragStop={handleNodeDragStop}
+        onNodeDragStop={readonly ? undefined : handleNodeDragStop}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
         nodesConnectable={!readonly}
         elementsSelectable={!readonly}
         panOnDrag
-        nodesDraggable
+        nodesDraggable={!readonly}
       >
         <Background color="#cbd5e1" gap={20} />
         {!readonly && (

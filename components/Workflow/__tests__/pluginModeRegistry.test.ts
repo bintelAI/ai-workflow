@@ -4,27 +4,16 @@ import { getPluginMode, PLUGIN_MODE_REGISTRY } from '../config/pluginModeRegistr
 import { WorkflowNodeType } from '../types'
 
 describe('PLUGIN_MODE_REGISTRY', () => {
-  it('allows approval mode to use all non-AI nodes', () => {
+  it('allows approval mode to use connected approval runtime nodes', () => {
     expect(PLUGIN_MODE_REGISTRY.approval.allowedNodeTypes).toEqual(
       expect.arrayContaining([
         WorkflowNodeType.START,
         WorkflowNodeType.APPROVAL,
-        WorkflowNodeType.CC,
         WorkflowNodeType.CONDITION,
-        WorkflowNodeType.PARALLEL,
-        WorkflowNodeType.LOOP,
-        WorkflowNodeType.DELAY,
         WorkflowNodeType.NOTIFICATION,
-        WorkflowNodeType.DATA_OP,
         WorkflowNodeType.MUL_QUERY,
         WorkflowNodeType.MUL_UPDATE_ROW,
         WorkflowNodeType.MUL_DELETE_ROW,
-        WorkflowNodeType.API_CALL,
-        WorkflowNodeType.SCRIPT,
-        WorkflowNodeType.FLOW_CALL,
-        WorkflowNodeType.VARIABLE,
-        WorkflowNodeType.CLOUD_PHONE,
-        WorkflowNodeType.STORAGE,
         WorkflowNodeType.END,
       ])
     )
@@ -88,5 +77,12 @@ describe('PLUGIN_MODE_REGISTRY', () => {
     expect(PLUGIN_MODE_REGISTRY.ai.allowedNodeTypes).not.toContain(WorkflowNodeType.SQL)
     expect(PLUGIN_MODE_REGISTRY.approval.allowedNodeTypes).not.toContain(WorkflowNodeType.SQL)
     expect(PLUGIN_MODE_REGISTRY.automation.allowedNodeTypes).not.toContain(WorkflowNodeType.SQL)
+  })
+
+  it('keeps the unsafe variable node out of all new workflow modes', () => {
+    expect(PLUGIN_MODE_REGISTRY.all.allowedNodeTypes).not.toContain(WorkflowNodeType.VARIABLE)
+    expect(PLUGIN_MODE_REGISTRY.ai.allowedNodeTypes).not.toContain(WorkflowNodeType.VARIABLE)
+    expect(PLUGIN_MODE_REGISTRY.approval.allowedNodeTypes).not.toContain(WorkflowNodeType.VARIABLE)
+    expect(PLUGIN_MODE_REGISTRY.automation.allowedNodeTypes).not.toContain(WorkflowNodeType.VARIABLE)
   })
 })
