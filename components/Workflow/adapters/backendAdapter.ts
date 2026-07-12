@@ -1045,6 +1045,20 @@ const collectQueryFilterTemplates = (config: any): string[] => {
     config.queryBinding.filters.forEach((filter: any) => visit(filter?.value));
   }
 
+  if (Array.isArray(config?.queryPlan?.filters)) {
+    config.queryPlan.filters.forEach((filter: any) => {
+      visit(filter?.valueTemplate);
+      visit(filter?.value);
+    });
+  }
+
+  if (Array.isArray(config?.queryPlan?.params)) {
+    config.queryPlan.params.forEach((param: any) => {
+      visit(param?.defaultValue);
+      visit(param?.valueTemplate);
+    });
+  }
+
   if (typeof config?.filtersJson === 'string') {
     try {
       const filters = JSON.parse(config.filtersJson);

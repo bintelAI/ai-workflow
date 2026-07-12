@@ -14,6 +14,7 @@ export interface WorkflowPluginMode {
 
 const APPROVAL_EXCLUDED_NODE_TYPES = [
   'approval_ai_review',
+  WorkflowNodeType.SQL,
   WorkflowNodeType.LLM,
   WorkflowNodeType.QUESTION_CLASSIFIER,
   WorkflowNodeType.KNOWLEDGE_RETRIEVAL,
@@ -41,11 +42,12 @@ const AUTOMATION_ALLOWED_NODE_TYPES = [
   WorkflowNodeType.MUL_QUERY,
   WorkflowNodeType.MUL_UPDATE_ROW,
   WorkflowNodeType.MUL_DELETE_ROW,
-  WorkflowNodeType.SQL,
   WorkflowNodeType.SCRIPT,
   WorkflowNodeType.CLOUD_PHONE,
   WorkflowNodeType.STORAGE,
 ]
+
+const ALL_ALLOWED_NODE_TYPES = Object.values(WorkflowNodeType).filter(type => type !== WorkflowNodeType.SQL)
 
 export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPluginMode> = {
   all: {
@@ -53,7 +55,7 @@ export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPlugin
     categoryId: 'general',
     name: '全功能模式',
     description: '包含所有可用节点，适用于复杂混合场景。',
-    allowedNodeTypes: Object.values(WorkflowNodeType),
+    allowedNodeTypes: ALL_ALLOWED_NODE_TYPES,
     layoutDirection: 'vertical',
     isSystem: true,
   },
@@ -78,7 +80,6 @@ export const PLUGIN_MODE_REGISTRY: Record<WorkflowPluginModeType, WorkflowPlugin
       WorkflowNodeType.MUL_QUERY,
       WorkflowNodeType.MUL_UPDATE_ROW,
       WorkflowNodeType.MUL_DELETE_ROW,
-      WorkflowNodeType.SQL,
       WorkflowNodeType.SCRIPT,
       WorkflowNodeType.CONDITION,
       WorkflowNodeType.LOOP,

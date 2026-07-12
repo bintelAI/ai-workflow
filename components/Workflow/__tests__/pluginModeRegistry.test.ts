@@ -20,7 +20,6 @@ describe('PLUGIN_MODE_REGISTRY', () => {
         WorkflowNodeType.MUL_UPDATE_ROW,
         WorkflowNodeType.MUL_DELETE_ROW,
         WorkflowNodeType.API_CALL,
-        WorkflowNodeType.SQL,
         WorkflowNodeType.SCRIPT,
         WorkflowNodeType.FLOW_CALL,
         WorkflowNodeType.VARIABLE,
@@ -82,5 +81,12 @@ describe('PLUGIN_MODE_REGISTRY', () => {
         WorkflowNodeType.LLM,
       ])
     )
+  })
+
+  it('keeps legacy SQL node out of all new workflow modes', () => {
+    expect(PLUGIN_MODE_REGISTRY.all.allowedNodeTypes).not.toContain(WorkflowNodeType.SQL)
+    expect(PLUGIN_MODE_REGISTRY.ai.allowedNodeTypes).not.toContain(WorkflowNodeType.SQL)
+    expect(PLUGIN_MODE_REGISTRY.approval.allowedNodeTypes).not.toContain(WorkflowNodeType.SQL)
+    expect(PLUGIN_MODE_REGISTRY.automation.allowedNodeTypes).not.toContain(WorkflowNodeType.SQL)
   })
 })

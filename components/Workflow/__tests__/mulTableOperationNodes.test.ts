@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { getPluginMode, PLUGIN_MODE_REGISTRY } from '../config/pluginModeRegistry'
+import { getNodeMeta } from '../config/nodeRegistry'
 import { WorkflowNodeType } from '../types'
 import { WorkflowValidator } from '../validators/workflowValidator'
 
@@ -52,6 +53,67 @@ describe('mul table operation workflow nodes', () => {
         expect.objectContaining({ message: '查询项目表节点未配置目标项目' }),
         expect.objectContaining({ message: '查询项目表节点未配置目标表' }),
         expect.objectContaining({ message: '查询项目表节点返回行数必须在 1-1000 之间' }),
+      ])
+    )
+  })
+
+  it('creates mul query nodes with P0 multi-query protocol defaults without changing single-table defaults', () => {
+    const config = getNodeMeta(WorkflowNodeType.MUL_QUERY).createDefaultConfig()
+
+    expect(config.maxRows).toBe(20)
+    expect(config.queryMode).toBe('single')
+    expect(config.mode).toBe('visual')
+    expect(config.queryPlan).toEqual({
+      tables: [],
+      joins: [],
+      fields: [],
+      filters: [],
+      groupBy: [],
+      having: [],
+      orderBy: [],
+      params: [],
+      limit: 100,
+    })
+  })
+
+  it('keeps legacy SQL node hidden from new-node entry points', () => {
+    const sqlMeta = getNodeMeta(WorkflowNodeType.SQL)
+
+    expect(sqlMeta.visibleInSidebar).toBe(false)
+    expect(sqlMeta.visibleInQuickAdd).toBe(false)
+    expect(sqlMeta.visibleInSettings).toBe(false)
+  })
+
+  it('accepts multi-table queryPlan without legacy sheetId', () => {
+    const validator = new WorkflowValidator(
+      [
+        createNode('start_1', WorkflowNodeType.START, { devMode: true }),
+        createNode('query_multi', WorkflowNodeType.MUL_QUERY, {
+          queryMode: 'multi',
+          mode: 'visual',
+          targetProjectId: 'project_b',
+          queryPlan: {
+            tables: [{ alias: 'c', sheetId: 'sheet_customer' }],
+            joins: [],
+            fields: [{ tableAlias: 'c', fieldId: 'name', as: 'customer_name' }],
+            filters: [],
+            groupBy: [],
+            having: [],
+            orderBy: [],
+            params: [],
+            limit: 20,
+          },
+          maxRows: 20,
+        }),
+      ] as any,
+      [{ id: 'e1', source: 'start_1', target: 'query_multi' }] as any
+    )
+
+    const result = validator.validate()
+
+    expect(result.errors).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: '查询项目表节点未配置目标表' }),
       ])
     )
   })

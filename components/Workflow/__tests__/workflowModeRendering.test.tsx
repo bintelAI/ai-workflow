@@ -230,11 +230,13 @@ describe('WorkflowApp mode rendering', () => {
           embedded
           mode="dev"
           pluginType="approval"
-          allowedNodeTypes={[WorkflowNodeType.START, WorkflowNodeType.END]}
+          allowedNodeTypes={[WorkflowNodeType.START, WorkflowNodeType.END, WorkflowNodeType.SQL]}
         />
       )
     })
 
+    const categoryPatch = updateCategory.mock.calls.find(([categoryId]) => categoryId === 'business_approval')?.[1]
+    expect(categoryPatch.allowedNodeTypes).not.toContain(WorkflowNodeType.SQL)
     expect(updateCategory).toHaveBeenCalledWith(
       'business_approval',
       expect.objectContaining({

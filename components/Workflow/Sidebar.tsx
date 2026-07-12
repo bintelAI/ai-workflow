@@ -9,7 +9,7 @@ import { useReactFlow } from 'reactflow'
 import { WorkflowNodeType } from './types'
 import { useWorkflowStore } from './store/useWorkflowStore'
 import { SidebarProps } from './Workflow.types'
-import { getDefaultCategoriesFromPluginModes } from './config/pluginModeRegistry'
+import { getDefaultCategoriesFromPluginModes, getPluginMode } from './config/pluginModeRegistry'
 import { NODE_GROUP_LABELS, getRegistryItems } from './config/nodeRegistry'
 
 const DraggableNode = ({
@@ -59,12 +59,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
   // Get store data for filtering
   const { categories, activeCategoryId, nodes, edges, setWorkflow, globalVariables } = useWorkflowStore()
   const activeCategory = categories.find(c => c.id === activeCategoryId)
+  const pluginMode = getPluginMode(pluginType)
   const effectiveAllowedNodes = activeCategoryId === 'general'
     ? Object.values(WorkflowNodeType)
-    : activeCategory?.allowedNodeTypes || []
+    : activeCategory?.allowedNodeTypes?.length
+      ? activeCategory.allowedNodeTypes
+      : activeCategoryId === pluginMode.categoryId
+        ? pluginMode.allowedNodeTypes
+        : []
   const allowedNodes = new Set(effectiveAllowedNodes)
 
-  const registryItems = getRegistryItems()
+  const registryItems = getRegistryItems().filter(item => item.visibleInSidebar !== false)
 
   const handleExport = () => {
     const data = {
@@ -175,7 +180,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ pluginType = 'all' }) => {
   const nodeMatchesSearch = (type: WorkflowNodeType): boolean => {
     if (!searchQuery.trim()) return true
     const metadata = registryItems.find(item => item.type === type)
-    return metadata?.label.toLowerCase().includes(searchQuery.toLowerCase()) ?? false
+    const keyword = searchQuery.toLowerCase()
+    return [
+      metadata?.label,
+      metadata?.shortLabel,
+      metadata?.description,
+      metadata?.type,
+    ].some(text => text?.toLowerCase().includes(keyword))
   }
 
   const groupedRegistryItems = Object.entries(NODE_GROUP_LABELS).map(([group, label]) => ({

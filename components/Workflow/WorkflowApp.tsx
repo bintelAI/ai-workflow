@@ -18,6 +18,9 @@ const PROJECT_TABLE_NODE_TYPES = [
   WorkflowNodeType.MUL_DELETE_ROW,
 ]
 
+const filterNewNodeTypes = (nodeTypes: WorkflowNodeType[]) =>
+  nodeTypes.filter(type => type !== WorkflowNodeType.SQL)
+
 interface WorkflowAppProps {
   initialNodes?: WorkflowNode[]
   initialEdges?: WorkflowEdge[]
@@ -114,8 +117,8 @@ const App: React.FC<WorkflowAppProps> = ({
     const mode = getPluginMode(pluginType)
     setActiveCategory(mode.categoryId)
     const nextAllowedNodeTypes = allowedNodeTypes && allowedNodeTypes.length > 0
-      ? Array.from(new Set([...allowedNodeTypes, ...PROJECT_TABLE_NODE_TYPES]))
-      : [...mode.allowedNodeTypes]
+      ? filterNewNodeTypes(Array.from(new Set([...allowedNodeTypes, ...PROJECT_TABLE_NODE_TYPES])))
+      : filterNewNodeTypes([...mode.allowedNodeTypes])
     updateCategory(mode.categoryId, {
       allowedNodeTypes: nextAllowedNodeTypes,
       isSystem: true,

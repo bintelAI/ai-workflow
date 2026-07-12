@@ -750,6 +750,43 @@ export class WorkflowValidator {
   }
 
   private validateMulQueryNode(node: WorkflowNode, config: any) {
+    if (config.queryMode === 'multi') {
+      const targetProjectId = config.targetProjectId
+      if (!this.hasNonEmptyString(targetProjectId)) {
+        this.addError({
+          type: 'error',
+          category: 'node_config',
+          nodeId: node.id,
+          nodeLabel: node.data.label,
+          message: '查询项目表节点未配置目标项目',
+          suggestion: '填写目标项目 ID；多表查询必须限定在当前团队的目标项目内',
+        })
+      }
+
+      const queryPlan = config.queryPlan || {}
+      if (!Array.isArray(queryPlan.tables) || queryPlan.tables.length === 0) {
+        this.addError({
+          type: 'error',
+          category: 'node_config',
+          nodeId: node.id,
+          nodeLabel: node.data.label,
+          message: '查询项目表节点未配置查询表',
+          suggestion: '在 queryPlan.tables 中至少配置一张表',
+        })
+      }
+      if (!Array.isArray(queryPlan.fields) || queryPlan.fields.length === 0) {
+        this.addError({
+          type: 'error',
+          category: 'node_config',
+          nodeId: node.id,
+          nodeLabel: node.data.label,
+          message: '查询项目表节点未配置返回字段',
+          suggestion: '在 queryPlan.fields 中至少配置一个返回字段',
+        })
+      }
+      return
+    }
+
     this.validateMulTableTarget(node, config, '查询项目表')
 
     const maxRows = Number(config.maxRows)

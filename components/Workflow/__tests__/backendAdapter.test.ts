@@ -636,6 +636,66 @@ describe('backendAdapter', () => {
       );
     });
 
+    it('should export multi-table queryPlan options for backend controlled execution', () => {
+      const queryPlan = {
+        tables: [{ alias: 'c', sheetId: 'sheet_customer' }],
+        joins: [],
+        fields: [{ tableAlias: 'c', fieldId: 'name', as: 'customer_name' }],
+        filters: [{ tableAlias: 'c', fieldId: 'status', operator: 'equals', valueTemplate: '{{payload.status}}' }],
+        groupBy: [],
+        having: [],
+        orderBy: [],
+        params: [],
+        limit: 20,
+      };
+      const workflow = {
+        nodes: [
+          {
+            id: 'start_1',
+            type: 'start' as WorkflowNodeType,
+            position: { x: 0, y: 0 },
+            data: { label: '开始', config: { variables: [{ name: 'status', type: 'text' }] } },
+          },
+          {
+            id: 'query_multi',
+            type: 'mul_query' as WorkflowNodeType,
+            position: { x: 100, y: 100 },
+            data: {
+              label: '查询项目表',
+              config: {
+                queryMode: 'multi',
+                mode: 'visual',
+                targetProjectId: 'project_b',
+                queryPlan,
+                returnMode: 'list',
+                maxRows: 20,
+                timeoutMs: 5000,
+              },
+            },
+          },
+        ],
+        edges: [],
+      };
+
+      const exported = exportToBackend(workflow as any);
+      const queryNode = exported.nodes.find(node => node.id === 'query_multi');
+
+      expect(queryNode?.data?.options).toEqual(
+        expect.objectContaining({
+          queryMode: 'multi',
+          mode: 'visual',
+          targetProjectId: 'project_b',
+          queryPlan,
+          timeoutMs: 5000,
+        })
+      );
+      expect(queryNode?.data?.inputParams).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ nodeId: 'start_1', field: 'status', name: 'status' }),
+        ])
+      );
+    });
+
     it('should include structured update row binding variables in input params', () => {
       const workflow = {
         nodes: [
