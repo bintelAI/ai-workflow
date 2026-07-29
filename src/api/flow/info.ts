@@ -29,9 +29,48 @@ export interface FlowPageResponse {
   };
 }
 
+export interface RuntimeWorkflowQuery {
+  page?: number;
+  size?: number;
+  keyword?: string;
+  usageType?: NonNullable<FlowInfoEntity['usageType']>;
+  scene?: 'ai_analysis' | 'workflow_field' | 'row_action' | 'batch_action';
+}
+
+export interface RuntimeWorkflowItem {
+  id: number;
+  name: string;
+  label: string;
+  description?: string;
+  version: string | number;
+  releaseTime: string;
+  usageType: NonNullable<FlowInfoEntity['usageType']>;
+  author?: string;
+  logo?: string;
+  cover?: string;
+  inputParams?: Record<string, unknown>[];
+  approvalInputConfig?: Record<string, unknown>;
+}
+
+export interface RuntimeWorkflowResponse {
+  list: RuntimeWorkflowItem[];
+  pagination: {
+    page: number;
+    size: number;
+    total: number;
+  };
+}
+
 export const flowInfoApi = {
   page: (teamId: string, params: FlowPageParams) => {
     return request.post<any, { data: FlowPageResponse }>(`/app/flow/${teamId}/info/page`, params);
+  },
+
+  availableForUse: (teamId: string, params: RuntimeWorkflowQuery = {}) => {
+    return request.get<any, { data: RuntimeWorkflowResponse }>(
+      `/app/flow/${teamId}/info/availableForUse`,
+      { params }
+    );
   },
 
   info: (teamId: string, id: number) => {
