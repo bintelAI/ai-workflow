@@ -17,6 +17,7 @@ export interface WorkflowEmbedProps {
   type?: string
   mode?: 'default' | 'dev'
   readonly?: boolean
+  autoUpgradeLegacyDraft?: boolean
   previewDraft?: FlowDraft | null
 }
 
@@ -34,6 +35,7 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
   type,
   mode = 'default',
   readonly = false,
+  autoUpgradeLegacyDraft = false,
   previewDraft,
 }) => {
   const { loadFlow, isFlowLoading } = useWorkflowStore()
@@ -163,6 +165,7 @@ const WorkflowEmbedApp: React.FC<WorkflowEmbedProps> = ({
       embedded
       mode={mode}
       readonly={isReadonly}
+      autoUpgradeLegacyDraft={autoUpgradeLegacyDraft}
     />
   )
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { ReactFlowProvider } from 'reactflow'
 import { WorkflowCanvas, Sidebar, ConfigPanel, DataDrawer, AICommandCenter, SettingsModal } from '.'
 import GlobalConfigModal from './GlobalConfigModal'
@@ -32,6 +32,7 @@ interface WorkflowAppProps {
   embedded?: boolean
   mode?: 'default' | 'dev'
   readonly?: boolean
+  autoUpgradeLegacyDraft?: boolean
 }
 
 const App: React.FC<WorkflowAppProps> = ({
@@ -44,6 +45,7 @@ const App: React.FC<WorkflowAppProps> = ({
   embedded = false,
   mode = 'default',
   readonly = false,
+  autoUpgradeLegacyDraft = false,
 }) => {
   const {
     validateWorkflow: storeValidateWorkflow,
@@ -74,6 +76,8 @@ const App: React.FC<WorkflowAppProps> = ({
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false)
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false)
+  const [legacyUpgradeError, setLegacyUpgradeError] = useState<{ flowId: number; message: string } | null>(null)
+  const autoUpgradedFlowId = useRef<number | null>(null)
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -143,7 +147,30 @@ const App: React.FC<WorkflowAppProps> = ({
   const runtimeTeamIdForConfig = storeTeamId || propTeamId || getRuntimeTeamId()
   const runtimeProjectIdForConfig = getRuntimeProjectId()
   const effectiveReadonly = readonly || flowSchemaVersion !== 2
-  const canUpgradeLegacyFlow = !readonly && flowSchemaVersion !== 2 && !!flowInfo?.id
+  const canUpgradeLegacyFlow = !readonly && !autoUpgradeLegacyDraft && flowSchemaVersion !== 2 && !!flowInfo?.id
+
+  useEffect(() => {
+    const flowId = flowInfo?.id
+    if (
+      !autoUpgradeLegacyDraft ||
+      readonly ||
+      flowSchemaVersion === 2 ||
+      !flowId ||
+      autoUpgradedFlowId.current === flowId
+    ) {
+      return
+    }
+
+    autoUpgradedFlowId.current = flowId
+    setLegacyUpgradeError(null)
+    void upgradeLegacyFlow().catch(error => {
+      console.error('Failed to automatically upgrade legacy plugin workflow:', error)
+      setLegacyUpgradeError({
+        flowId,
+        message: error instanceof Error ? error.message : '工作流模板自动升级失败，请刷新后重试',
+      })
+    })
+  }, [autoUpgradeLegacyDraft, flowInfo?.id, flowSchemaVersion, readonly, upgradeLegacyFlow])
 
   const handleVerify = () => {
     const result = validateWorkflow(nodes, edges)
@@ -323,6 +350,11 @@ const App: React.FC<WorkflowAppProps> = ({
           {!effectiveReadonly && <Sidebar pluginType={pluginType} />}
 
           <main className="flex-1 relative flex flex-col">
+            {autoUpgradeLegacyDraft && legacyUpgradeError && legacyUpgradeError.flowId === flowInfo?.id && (
+              <div className="h-12 shrink-0 border-b border-rose-200 bg-rose-50 px-4 flex items-center text-sm text-rose-800">
+                工作流模板自动升级失败：{legacyUpgradeError.message}
+              </div>
+            )}
             {canUpgradeLegacyFlow && (
               <div className="h-12 shrink-0 border-b border-amber-200 bg-amber-50 px-4 flex items-center justify-between gap-4">
                 <span className="text-sm text-amber-800">当前工作流为旧版格式，升级前保持只读。</span>

@@ -305,7 +305,7 @@ describe('WorkflowApp mode rendering', () => {
     ).toBe('true')
   })
 
-  it('offers an explicit V2 upgrade for a legacy graph in an editable context', async () => {
+  it('offers an explicit V2 upgrade for a legacy graph outside plugin editing', async () => {
     const upgradeLegacyFlow = vi.fn().mockResolvedValue(undefined)
     vi.mocked(useWorkflowStore).mockReturnValue(
       createStoreMock({ flowSchemaVersion: null, upgradeLegacyFlow }) as any
@@ -325,6 +325,32 @@ describe('WorkflowApp mode rendering', () => {
     })
 
     expect(upgradeLegacyFlow).toHaveBeenCalledTimes(1)
+  })
+
+  it('automatically upgrades a legacy plugin flow without showing an upgrade prompt', async () => {
+    const upgradeLegacyFlow = vi.fn().mockResolvedValue(undefined)
+    vi.mocked(useWorkflowStore).mockReturnValue(
+      createStoreMock({ flowSchemaVersion: null, upgradeLegacyFlow }) as any
+    )
+
+    await act(async () => {
+      root.render(<WorkflowApp embedded pluginType="all" autoUpgradeLegacyDraft />)
+    })
+
+    expect(upgradeLegacyFlow).toHaveBeenCalledTimes(1)
+    expect(container.textContent).not.toContain('升级为 V2 后编辑')
+  })
+
+  it('does not render an automatic-upgrade error before the plugin flow loads', async () => {
+    vi.mocked(useWorkflowStore).mockReturnValue(
+      createStoreMock({ flowInfo: null, flowSchemaVersion: null }) as any
+    )
+
+    await act(async () => {
+      root.render(<WorkflowApp embedded pluginType="all" autoUpgradeLegacyDraft />)
+    })
+
+    expect(container.textContent).not.toContain('工作流模板自动升级失败')
   })
 
   it('does not offer legacy migration in an explicitly readonly preview', async () => {
